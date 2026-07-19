@@ -185,9 +185,20 @@ wouldn't engage anyway), but it's the reason not to fight for it.
 amounts. A misread currency means someone gets paid the wrong amount.
 
 Add to the eval harness in OCR_PLAN §8: **currency accuracy, target ≥98%**, and put foreign
-receipts in the corpus deliberately — at least 20 of the 200. Also add a guard: if the detected
-currency isn't the workspace's home currency, route to `needs_review` regardless of confidence.
-Cheap insurance on a high-consequence field.
+receipts in the corpus deliberately — at least 20 of the 200.
+
+> **Revised 2026-07-19.** I originally specified: route any non-home currency to
+> `needs_review` regardless of confidence. That was wrong once we established the user is
+> euro-based *and travels*. Foreign receipts are a normal path, not an edge case, and a
+> week abroad would dump thirty receipts into manual review — recreating the tedium the
+> product exists to remove.
+>
+> Now: foreign currency is a **soft** flag. It converts automatically and shows the FX line
+> the design already includes in the receipt drawer. The guard against a *misread* currency
+> is the confidence score — `currency` is one of the weakest-link critical fields, so low
+> certainty already pulls the receipt into review on its own merits. What still needs a hard
+> guard is conversion time: refuse to convert when no FX rate exists for that date rather
+> than silently falling back to a nearby one.
 
 ### 5.3 Smaller items
 

@@ -18,7 +18,9 @@ create table profiles (
 create table workspaces (
   id                 uuid primary key default gen_random_uuid(),
   name               text not null,
-  home_currency      char(3) not null default 'USD',
+  -- Euro-based business travelling abroad, so foreign receipts are a normal path
+  -- rather than an edge case. Onboarding must still ask rather than assume.
+  home_currency      char(3) not null default 'EUR',
   mileage_rate_minor int not null default 70,          -- minor units per mile
   mileage_unit       text not null default 'mi' check (mileage_unit in ('mi','km')),
   created_at         timestamptz not null default now()
@@ -83,7 +85,7 @@ create table receipts (
   category_id       uuid references categories on delete set null,
 
   -- Home-currency amounts. All reporting reads these.
-  currency          char(3) not null default 'USD',
+  currency          char(3) not null default 'EUR',
   subtotal_minor    bigint,
   tax_minor         bigint,
   total_minor       bigint generated always as

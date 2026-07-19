@@ -54,10 +54,10 @@ async function main() {
   // needs FX conversion and a human check before it can be reimbursed. Defaulting
   // this to whatever the receipt said would hide that rule entirely.
   const homeIdx = process.argv.indexOf("--home");
-  const homeCurrency = (homeIdx === -1 ? "USD" : process.argv[homeIdx + 1] ?? "USD").toUpperCase();
+  const homeCurrency = (homeIdx === -1 ? "EUR" : process.argv[homeIdx + 1] ?? "EUR").toUpperCase();
 
   console.log(`\nReading ${files.length} receipt${files.length === 1 ? "" : "s"}…`);
-  console.log(`${DIM}home currency: ${homeCurrency} (change with --home EUR)${OFF}\n`);
+  console.log(`${DIM}home currency: ${homeCurrency} (change with --home GBP)${OFF}\n`);
 
   const provider = getProvider();
   let totalCostMinor = 0;

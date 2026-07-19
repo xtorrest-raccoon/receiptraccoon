@@ -102,10 +102,18 @@ export function validateExtraction(
   } else if (!/^[A-Z]{3}$/.test(data.currency)) {
     issues.push({ field: "currency", severity: "hard", message: "Currency is not an ISO 4217 code" });
   } else if (data.currency !== opts.homeCurrency) {
+    // Soft, not hard. Travel is a normal path for this product, not an edge case,
+    // and forcing every foreign receipt through manual review would recreate the
+    // tedium the app exists to remove.
+    //
+    // The protection against a MISREAD currency is the confidence score: currency
+    // is one of the weakest-link critical fields, so low certainty already drags
+    // the receipt into review on its own. What needs guarding at conversion time is
+    // that an FX rate actually exists for the date — see convertMinor().
     issues.push({
       field: "currency",
-      severity: "hard",
-      message: `Foreign currency (${data.currency}) — requires review before conversion`,
+      severity: "soft",
+      message: `Foreign currency (${data.currency}) — will be converted to ${opts.homeCurrency}`,
     });
   }
 
@@ -138,14 +146,10 @@ export function validateExtraction(
   }
 
   const hard = issues.filter((i) => i.severity === "hard");
-  const onlyCurrencyMismatch =
-    hard.length > 0 && hard.every((i) => i.field === "currency" && i.message.startsWith("Foreign"));
 
   return {
     passed: hard.length === 0,
     issues,
-    // A foreign-currency receipt is correct, just requires review — re-running a
-    // bigger model would burn money to reach the same answer.
-    worthEscalating: hard.length > 0 && !onlyCurrencyMismatch,
+    worthEscalating: hard.length > 0,
   };
 }
