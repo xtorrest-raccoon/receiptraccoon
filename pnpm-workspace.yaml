@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+# esbuild's postinstall fetches its platform-native binary; tsx depends on it.
+allowBuilds:
+  esbuild: true

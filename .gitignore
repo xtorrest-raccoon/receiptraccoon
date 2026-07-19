@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# build output
+dist/
+build/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# expo
+.expo/
+.expo-shared/
+
+# eval artifacts (large images, generated reports)
+packages/extraction/eval/corpus/
+packages/extraction/eval/results/
+
+# design source (large; keep the zip out of git history)
+*.zip
+
+# local machine-specific tool settings
+.claude/settings.local.json
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
