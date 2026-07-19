@@ -10,6 +10,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "try": "pnpm --filter @rr/extraction run try",
     "eval": "pnpm --filter @rr/extraction run eval"
   },
   "devDependencies": {

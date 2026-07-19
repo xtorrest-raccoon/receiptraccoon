@@ -20,10 +20,13 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, dirname, basename, extname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadEnv } from "../env.js";
 import { getProvider } from "../index.js";
 import { validateExtraction } from "../validate.js";
 import { computeOverallConfidence } from "../confidence.js";
 import { SEED_CATEGORIES, parseMoneyToMinor } from "@rr/shared";
+
+loadEnv();
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORPUS = join(HERE, "..", "..", "eval", "corpus");

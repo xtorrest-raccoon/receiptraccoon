@@ -11,6 +11,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "try": "tsx src/try.ts",
     "eval": "tsx src/eval/run.ts"
   },
   "dependencies": {
