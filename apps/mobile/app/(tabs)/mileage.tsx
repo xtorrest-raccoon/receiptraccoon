@@ -85,7 +85,7 @@ export default function MileageScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Mileage</Text>
           <View style={styles.unitToggle}>

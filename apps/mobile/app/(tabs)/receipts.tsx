@@ -45,7 +45,7 @@ export default function ReceiptsScreen() {
         <FlatList
           data={receipts}
           keyExtractor={(r) => r.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 96, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 96 + insets.bottom, gap: 8 }}
           renderItem={({ item }) => (
             <ReceiptRow
               receipt={item}

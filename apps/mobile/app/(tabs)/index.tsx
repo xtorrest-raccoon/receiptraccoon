@@ -46,7 +46,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 }}
+        contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}
       >
         {/* Header */}
         <View style={styles.headerRow}>

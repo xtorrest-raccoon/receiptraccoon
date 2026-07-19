@@ -59,14 +59,31 @@ const TAB_META: Record<string, { label: string; icon: (tint: string) => ReactNod
  * 82px tall, Capture raised as a green circular button in the centre with a
  * glow shadow. Passed as the `tabBar` render prop to expo-router's <Tabs>.
  */
+/**
+ * How far the Capture button rises above the bar. The wrap is extended upward by
+ * this much and left transparent, rather than letting the button overflow the
+ * container: a negative margin escaping its parent gets clipped, and even with
+ * clipping disabled React Native does not reliably deliver touches outside a
+ * parent's bounds — the top of the button would look right but not respond.
+ */
+const CAPTURE_OVERHANG = 22;
+
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { height: layout.tabBarHeight + insets.bottom }]}>
-      <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
-      <View style={[styles.overlay, { borderTopColor: rn(color.border) }]} />
-      <View style={[styles.row, { paddingBottom: insets.bottom }]}>
+    <View
+      // box-none so the transparent overhang strip does not swallow taps meant
+      // for the screen content behind it.
+      pointerEvents="box-none"
+      style={[styles.wrap, { height: layout.tabBarHeight + insets.bottom + CAPTURE_OVERHANG }]}
+    >
+      <BlurView intensity={40} tint="light" style={[styles.chrome, { top: CAPTURE_OVERHANG }]} />
+      <View style={[styles.overlay, { top: CAPTURE_OVERHANG, borderTopColor: rn(color.border) }]} />
+      <View
+        pointerEvents="box-none"
+        style={[styles.row, { paddingTop: CAPTURE_OVERHANG + 10, paddingBottom: insets.bottom }]}
+      >
         {state.routes.map((route, index) => {
           const meta = TAB_META[route.name];
           if (!meta) return null;
@@ -105,11 +122,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    overflow: "hidden",
+  },
+  // Blur and tint cover only the bar itself, not the transparent overhang above it.
+  chrome: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   overlay: {
     position: "absolute",
-    inset: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: rnAlpha(color.bgMobile, 0.75),
     borderTopWidth: 1,
   },
@@ -118,7 +143,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "flex-start",
-    paddingTop: 10,
   },
   item: {
     alignItems: "center",
