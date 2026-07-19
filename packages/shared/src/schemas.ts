@@ -29,6 +29,21 @@ const baseExtractionShape = {
   is_receipt: z.boolean(),
   legibility: z.enum(["clear", "partial", "poor"]),
   notes: z.string().nullable(),
+  /**
+   * Model's own 0–1 confidence per critical field.
+   *
+   * Second choice. The original design used token logprobs, which are better
+   * calibrated, but the gpt-5.6 family does not support the `logprobs` parameter.
+   * Self-reported confidence is weakly calibrated — models report high confidence
+   * on confident-sounding mistakes — so deterministic validation carries the
+   * larger weight in routing. See confidence.ts.
+   */
+  confidence: z.object({
+    vendor: z.number(),
+    receipt_date: z.number(),
+    total: z.number(),
+    currency: z.number(),
+  }),
 };
 
 /**
@@ -79,7 +94,7 @@ export const PatchReceiptBody = z.object({
   totalMinor: z.number().int().positive().optional(),
   comment: z.string().max(2000).nullable().optional(),
   paymentBrand: z.string().max(50).nullable().optional(),
-  paymentLast4: z.string().regex(/^\d{4}$/).nullable().optional(),
+  paymentLast4: z.string().regex(/^[0-9Xx*•#]{2,8}$/).nullable().optional(),
 });
 export type PatchReceiptBodyT = z.infer<typeof PatchReceiptBody>;
 

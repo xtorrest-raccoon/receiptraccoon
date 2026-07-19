@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { buildReceiptExtractionSchema, ReceiptExtractionLoose } from "@rr/shared";
 import { SYSTEM_PROMPT } from "../prompt.js";
-import { CRITICAL_FIELDS, computeOverallConfidence, fieldConfidenceFromTokens } from "../confidence.js";
+import { computeOverallConfidence, toFieldConfidence } from "../confidence.js";
 import {
   ExtractionError,
   type ExtractionProvider,
@@ -50,32 +50,37 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
 
     let completion;
     try {
-      completion = await this.client.chat.completions.create({
-        model,
-        response_format: zodResponseFormat(schema, "receipt"),
-        logprobs: true,
-        temperature: 0, // transcription, not writing — no upside to sampling variance
-        max_completion_tokens: 1500,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Extract this receipt." },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${req.mimeType};base64,${base64}`,
-                  // Mandatory. On "low" the image is downsampled to 512px and line
-                  // items become unreadable — the most common cause of bad
-                  // receipt extraction.
-                  detail: "high",
+      completion = await withRetry(() =>
+        this.client.chat.completions.create({
+          model,
+          response_format: zodResponseFormat(schema, "receipt"),
+          // The gpt-5.6 family supports neither `temperature` (only the default 1)
+          // nor `logprobs`. Both were rejected with a 400 when this was first run.
+          // Determinism comes from the strict schema and a prompt that forbids
+          // inference; confidence comes from the model's own per-field self-report
+          // combined with deterministic validation. See confidence.ts.
+          max_completion_tokens: 1500,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Extract this receipt." },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${req.mimeType};base64,${base64}`,
+                    // Mandatory. On "low" the image is downsampled to 512px and
+                    // line items become unreadable — the most common cause of bad
+                    // receipt extraction.
+                    detail: "high",
+                  },
                 },
-              },
-            ],
-          },
-        ],
-      });
+              ],
+            },
+          ],
+        }),
+      );
     } catch (err) {
       throw new ExtractionError(
         `OpenAI request failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -105,12 +110,7 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
       throw new ExtractionError("Response failed schema validation", true, err);
     }
 
-    const tokens =
-      choice.logprobs?.content?.map((t: { token: string; logprob: number }) => ({
-        token: t.token,
-        logprob: t.logprob,
-      })) ?? [];
-    const fieldConfidence = fieldConfidenceFromTokens(tokens, CRITICAL_FIELDS);
+    const fieldConfidence = toFieldConfidence(parsed.confidence);
 
     const usage = completion.usage;
     const inputTokens = usage?.prompt_tokens ?? 0;
@@ -142,9 +142,32 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
 /**
  * Retry on rate limits and server errors. Never on 400 — a malformed schema request
  * fails identically every time and just burns the rate limit.
+ *
+ * 401 is included deliberately. It should mean "bad credentials" and be permanent,
+ * but live testing on 2026-07-19 produced intermittent
+ * "401 You have insufficient permissions" on a valid key: different files failed on
+ * each run, and files that failed once succeeded on the next attempt. A genuinely
+ * bad key still fails fast — it just costs three attempts to find out.
  */
 function isRetryable(err: unknown): boolean {
   const status = (err as { status?: number })?.status;
   if (status === undefined) return true; // network/timeout
-  return status === 429 || status >= 500;
+  return status === 401 || status === 408 || status === 429 || status >= 500;
+}
+
+const MAX_ATTEMPTS = 3;
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (!isRetryable(err) || attempt === MAX_ATTEMPTS) break;
+      // 0.5s, 1s — enough to ride out a transient without stalling a capture.
+      await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+    }
+  }
+  throw lastError;
 }

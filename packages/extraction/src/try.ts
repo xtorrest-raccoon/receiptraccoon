@@ -50,7 +50,14 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\nReading ${files.length} receipt${files.length === 1 ? "" : "s"}…\n`);
+  // The workspace's home currency matters: anything else is a foreign receipt that
+  // needs FX conversion and a human check before it can be reimbursed. Defaulting
+  // this to whatever the receipt said would hide that rule entirely.
+  const homeIdx = process.argv.indexOf("--home");
+  const homeCurrency = (homeIdx === -1 ? "USD" : process.argv[homeIdx + 1] ?? "USD").toUpperCase();
+
+  console.log(`\nReading ${files.length} receipt${files.length === 1 ? "" : "s"}…`);
+  console.log(`${DIM}home currency: ${homeCurrency} (change with --home EUR)${OFF}\n`);
 
   const provider = getProvider();
   let totalCostMinor = 0;
@@ -70,9 +77,7 @@ async function main() {
         categories: SEED_CATEGORIES,
       });
       const d = res.data;
-      const currency = d.currency ?? "USD";
-
-      const validation = validateExtraction(d, { homeCurrency: currency });
+      const validation = validateExtraction(d, { homeCurrency });
       const confidence = computeOverallConfidence({
         fieldConfidence: res.fieldConfidence,
         validationsPassed: validation.passed,

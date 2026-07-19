@@ -126,8 +126,15 @@ export function validateExtraction(
     }
   }
 
-  if (data.payment_last4 && !/^\d{4}$/.test(data.payment_last4)) {
-    issues.push({ field: "payment_last4", severity: "soft", message: "last4 is not 4 digits" });
+  // Card identifiers are frequently masked on real receipts — French terminals print
+  // "XX19", others print "**1234" or only the final two digits. Accept any of those
+  // rather than discarding information we did successfully read.
+  if (data.payment_last4 && !/^[0-9Xx*•#]{2,8}$/.test(data.payment_last4)) {
+    issues.push({
+      field: "payment_last4",
+      severity: "soft",
+      message: "Card identifier has an unexpected format",
+    });
   }
 
   const hard = issues.filter((i) => i.severity === "hard");

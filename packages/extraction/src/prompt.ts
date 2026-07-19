@@ -27,4 +27,9 @@ Rules:
 - legibility: "clear" fully readable · "partial" some fields obscured · "poor" mostly unreadable.
 - category: choose the single best fit from the provided list for a small-business
   expense context.
+- confidence: for vendor, receipt_date, total, and currency, report how certain you
+  are that the value you returned is exactly what is printed, from 0 to 1. Be
+  genuinely critical: use below 0.5 whenever the text is blurred, cut off, or
+  ambiguous. A low score routes the receipt to a human, which is cheap. An
+  overconfident score puts a wrong number into someone's accounts, which is not.
 `.trim();

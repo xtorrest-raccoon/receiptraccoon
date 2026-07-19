@@ -98,7 +98,10 @@ create table receipts (
   fx_source             text,
 
   payment_brand     text,
-  payment_last4     text check (payment_last4 ~ '^\d{4}$'),
+  -- Not always four digits. Real receipts mask cards as "XX19", "**1234", or print
+  -- only the final two. A stricter constraint rejected live French toll receipts
+  -- during first testing.
+  payment_last4     text check (payment_last4 ~ '^[0-9Xx*•#]{2,8}$'),
   payment_type      text check (payment_type in ('credit','debit','cash','other')),
 
   comment           text,          -- employee-entered, never extracted
