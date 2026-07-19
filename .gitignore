@@ -33,3 +33,7 @@ packages/extraction/eval/results/
 Thumbs.db
 .vscode/
 .idea/
+
+# expo/next build output
+apps/*/dist/
+apps/*/.expo/

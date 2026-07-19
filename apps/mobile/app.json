@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "ReceiptRaccoon",
+    "slug": "receiptraccoon-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "receiptraccoon",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.receiptraccoon.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "ReceiptRaccoon needs camera access to photograph and scan receipts."
+      }
+    },
+    "android": {
+      "package": "com.receiptraccoon.mobile",
+      "permissions": ["CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ReceiptRaccoon needs camera access to photograph and scan receipts."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

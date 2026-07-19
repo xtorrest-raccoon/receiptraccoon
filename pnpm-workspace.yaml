@@ -2,5 +2,7 @@ packages:
   - "packages/*"
   - "apps/*"
 # esbuild's postinstall fetches its platform-native binary; tsx depends on it.
+# sharp is Next.js's optional native image-optimization dependency.
 allowBuilds:
   esbuild: true
+  sharp: true
