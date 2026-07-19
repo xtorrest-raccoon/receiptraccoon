@@ -118,18 +118,29 @@ export function validateExtraction(
   }
 
   // Line items: partial capture is common and must not block the receipt.
-  if (data.line_items.length > 0 && subtotal !== null) {
+  //
+  // Compare against subtotal OR total, because the correct target depends on the
+  // tax regime. In VAT-inclusive countries — i.e. most of Europe, our home market —
+  // printed line prices are gross, so they sum to the TOTAL while `subtotal` is the
+  // net-of-VAT figure. Checking only against subtotal flagged every German and
+  // French receipt in the first run.
+  if (data.line_items.length > 0) {
     const sum = data.line_items.reduce((acc, li) => {
       const qty = Number.parseFloat(li.quantity);
       const unit = parseMoneyToMinor(li.unit_price, currency);
-      if (Number.isNaN(qty) || unit === null) return acc;
-      return acc + Math.round(qty * unit);
+      if (unit === null) return acc;
+      // Quantity is frequently blank on service lines; treat it as 1.
+      return acc + Math.round((Number.isNaN(qty) || qty === 0 ? 1 : qty) * unit);
     }, 0);
-    if (subtotal > 0 && Math.abs(sum - subtotal) / subtotal > 0.05) {
+
+    const within = (target: number | null) =>
+      target !== null && target > 0 && Math.abs(sum - target) / target <= 0.05;
+
+    if (sum > 0 && !within(subtotal) && !within(total)) {
       issues.push({
         field: "line_items",
         severity: "soft",
-        message: "Line items do not sum to subtotal",
+        message: "Line items do not sum to either subtotal or total",
       });
     }
   }

@@ -22,8 +22,13 @@ Rules:
 - Tips are not tax. If a tip line exists, exclude it from tax and note it in "notes".
 - line_items: only itemized product or service lines. Never include subtotal, tax,
   total, discount, or loyalty lines as items.
-- is_receipt: false if this is not a purchase receipt (a menu, an invoice, a business
-  card, a random photo).
+- is_receipt: true for ANY document evidencing a business purchase — a till receipt,
+  a card slip, an invoice, a booking confirmation, a toll or parking ticket. Set it
+  false only when the image is not a purchase document at all: a menu, a business
+  card, a price list, a screenshot of something else, a photo of a person or place.
+  Invoices are valid expense documents and must not be rejected.
+- When a document shows both a gross total and a net total after a discount, return
+  the amount actually payable as "total", and describe the discount in "notes".
 - legibility: "clear" fully readable · "partial" some fields obscured · "poor" mostly unreadable.
 - category: choose the single best fit from the provided list for a small-business
   expense context.

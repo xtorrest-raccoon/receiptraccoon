@@ -59,7 +59,10 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
           // Determinism comes from the strict schema and a prompt that forbids
           // inference; confidence comes from the model's own per-field self-report
           // combined with deterministic validation. See confidence.ts.
-          max_completion_tokens: 1500,
+          // 1500 truncated a real long-itemised receipt on the first ten-receipt
+          // run. Output tokens are only billed as used, so a generous cap costs
+          // nothing on short receipts and prevents a hard failure on long ones.
+          max_completion_tokens: 4000,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             {
