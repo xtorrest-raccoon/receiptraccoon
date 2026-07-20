@@ -3,8 +3,8 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { color, reimbursementAccent, reimbursementChip } from "@rr/ui-tokens";
-import { categoryAccent, formatMoney, summarizeProcessingStatus } from "@rr/shared";
+import { color } from "@rr/ui-tokens";
+import { categoryAccent, formatMoney, formatPaceComparison } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import {
   getAvailableMonths,
@@ -21,7 +21,7 @@ import {
 } from "../../lib/data";
 import type { DistanceUnit } from "@rr/shared";
 import { Text } from "../../components/Text";
-import { ProcessingRing } from "../../components/ProcessingRing";
+import { SpendPacingRing } from "../../components/SpendPacingRing";
 import { PickerSheet } from "../../components/PickerSheet";
 import { SettingsSheet } from "../../components/SettingsSheet";
 
@@ -70,16 +70,6 @@ export default function HomeScreen() {
   // describe different sets of receipts.
   const owedToUser = useMemo(() => getOwedToUserSummary(), [refreshKey]);
   const currency = dashboard.currency;
-  // One-line status under the ring. The decision (which case, and the raw
-  // numbers) comes from shared/processing.ts so mobile and web cannot describe
-  // the same data differently — only the money formatting happens here.
-  const processingStatus = summarizeProcessingStatus(dashboard.processing);
-  const processingStatusText =
-    processingStatus.kind === "empty"
-      ? "No receipts in the last 30 days."
-      : processingStatus.kind === "clear"
-        ? "All spend from the last 30 days has been resolved."
-        : `${Math.round(processingStatus.pct)}% of spend (${formatMoney(processingStatus.amountMinor, currency)}) is still awaiting reimbursement.`;
 
   const greeting = getGreeting();
   const breakdown = breakdownDashboard.categoryBreakdown.filter((c) => c.pct > 0);
@@ -136,46 +126,28 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Ring segments are each status's share of claimed spend in the
-            trailing 30 days; the legend below repeats the same figures as text,
-            same pairing as the category breakdown card underneath. */}
+        {/* Pacing ring: the full arc is last month's total, the fill is this
+            month so far, and the tick marks how far through the month we are. */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Spending vs Last Month</Text>
-          <Text style={styles.cardSubtitle}>Last 30 days</Text>
-          <View style={{ alignItems: "center", marginTop: 6 }}>
-            <ProcessingRing
-              segments={dashboard.processing.segments}
-              totalMinor={dashboard.processing.totalMinor}
+          <View style={{ alignItems: "center", marginTop: 10 }}>
+            <SpendPacingRing
+              monthToDateMinor={dashboard.stats.monthTotalMinor}
+              prevMonthTotalMinor={dashboard.pacing.prevMonthTotalMinor}
+              deltaPct={dashboard.stats.monthDeltaPct}
+              elapsedFraction={dashboard.pacing.elapsedFraction}
               currency={currency}
               size={220}
             />
           </View>
-          <Text style={styles.statusCaption}>{processingStatusText}</Text>
-
-          {dashboard.processing.segments.length === 0 ? null : (
-            <View style={{ gap: 10, marginTop: 8 }}>
-              {dashboard.processing.segments.map((seg) => {
-                const accent = rn(reimbursementAccent[seg.status]);
-                return (
-                  <View key={seg.status}>
-                    <View style={styles.breakdownRow}>
-                      <View style={styles.breakdownNameGroup}>
-                        <View style={[styles.dot, { backgroundColor: accent }]} />
-                        <Text style={styles.breakdownName}>{reimbursementChip[seg.status].label}</Text>
-                      </View>
-                      <View style={styles.breakdownAmountGroup}>
-                        <Text style={styles.breakdownPct}>{Math.round(seg.pct)}%</Text>
-                        <Text style={styles.breakdownAmount}>{formatMoney(seg.amountMinor, currency)}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.progressTrack}>
-                      <View style={[styles.progressFill, { width: `${Math.min(100, seg.pct)}%`, backgroundColor: accent }]} />
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+          <Text
+            style={[
+              styles.statusCaption,
+              { color: rn(dashboard.stats.monthDeltaPct > 0 ? color.up : color.down) },
+            ]}
+          >
+            {formatPaceComparison(dashboard.stats.monthDeltaPct)}
+          </Text>
         </View>
 
         {/* Category breakdown */}
@@ -289,9 +261,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   darkCardValue: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: "800",
-    marginTop: 8,
+    marginTop: 6,
     color: "#fff",
   },
   darkCardSub: {
@@ -317,10 +289,12 @@ const styles = StyleSheet.create({
     color: rn(color.textMuted),
     fontWeight: "600",
   },
+  // Shared by "Owed to you" (a formatted amount) and "Receipts" (a bare count),
+  // so this size has to suit both — the amount is the one that constrains it.
   statValue: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: "800",
-    marginTop: 5,
+    marginTop: 4,
     color: rn(color.text),
   },
   statCaption: {
@@ -347,16 +321,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cardSubtitle: {
-    fontSize: 12,
-    color: rn(color.textMuted),
-    marginTop: 2,
-  },
   statusCaption: {
     fontSize: 12,
-    color: rn(color.textMuted),
+    fontWeight: "600",
     textAlign: "center",
-    marginTop: 4,
+    marginTop: 8,
     lineHeight: 17,
   },
   breakdownHeader: {

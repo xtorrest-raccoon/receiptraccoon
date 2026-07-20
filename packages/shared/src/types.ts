@@ -116,6 +116,11 @@ export interface CategoryBreakdownRow {
 
 export interface DashboardStats {
   monthTotalMinor: number;
+  /**
+   * % change against the SAME DAY-OF-MONTH last month, not against last month's
+   * full total. A partial month compared to a complete one reads as a decrease
+   * almost every month until the last day — see SpendPacing.
+   */
   monthDeltaPct: number;
   ytdTotalMinor: number;
   ytdCount: number;
@@ -129,38 +134,43 @@ export interface DashboardStats {
 export interface DashboardResponse {
   currency: string;
   stats: DashboardStats;
+  pacing: SpendPacing;
   weeklySpend: { weekStart: string; totalMinor: number }[];
   categoryBreakdown: CategoryBreakdownRow[];
-  processing: ReceiptProcessing;
   tips: BudgetTip[];
   recentReceipts: Receipt[];
+}
+
+/**
+ * Inputs for the pacing ring: last month's spend is the ring's full circle, and
+ * this month's spend so far fills it. A full ring means this month has already
+ * matched last month's entire total.
+ *
+ * Carries only what DashboardStats does not already provide — the month-to-date
+ * figure is stats.monthTotalMinor and the comparison percentage is
+ * stats.monthDeltaPct, so neither is duplicated here.
+ */
+export interface SpendPacing {
+  /** Last month's FULL total — the ring's 100% mark. */
+  prevMonthTotalMinor: number;
+  /**
+   * Last month's spend up to the same day-of-month. This is the baseline
+   * stats.monthDeltaPct is measured against, and the only honest like-for-like
+   * comparison mid-month.
+   */
+  prevMonthToDateMinor: number;
+  /**
+   * 0-1 through the current month, where the ring's pace marker sits. A fill
+   * further round than this marker means spending is running ahead of last
+   * month. 1 for a month already complete.
+   */
+  elapsedFraction: number;
 }
 
 export interface BudgetTip {
   iconLetter: string;
   tone: "positive" | "warn" | "neutral" | "info";
   text: string;
-}
-
-/** One reimbursement-status slice of a ReceiptProcessing breakdown. */
-export interface ProcessingSegment {
-  status: ReimbursementStatus;
-  amountMinor: number;
-  /** 0-100, this segment's share of totalMinor. */
-  pct: number;
-}
-
-/**
- * What proportion of claimed spend sits in each stage of the reimbursement
- * pipeline, over a trailing window. Replaces the earlier financial-health score —
- * see processing.ts for why. Segments with a zero amount are omitted, and sum to
- * 100% of totalMinor (up to rounding) across whatever segments remain.
- */
-export interface ReceiptProcessing {
-  windowDays: number;
-  totalMinor: number;
-  receiptCount: number;
-  segments: ProcessingSegment[];
 }
 
 export interface TeamMemberSummary {

@@ -102,10 +102,45 @@ export function formatPaymentMethod(
   return `${brand} •${last4}`;
 }
 
-/** "↓ 12.4% vs last month" */
+/**
+ * Arrow boundary is `> 0`, not `>= 0`: flat spend (exactly 0.0%) reads as "not
+ * up", matching the colour convention already used on the web dashboard's stat
+ * card (`deltaUp = stats.monthDeltaPct > 0`) — otherwise flat spend would show
+ * an "up" arrow while being coloured as the good outcome.
+ */
+function deltaArrow(pct: number): "↑" | "↓" {
+  return pct > 0 ? "↑" : "↓";
+}
+
+/** "↓12.4%" — the bare figure, for tight spaces like a ring's centre. */
+export function formatDeltaCompact(pct: number): string {
+  return `${deltaArrow(pct)}${Math.abs(pct).toFixed(1)}%`;
+}
+
+/** "↓ 12.4% vs last month" — the full sentence, for a stat card's subtitle. */
 export function formatDelta(pct: number): string {
-  const arrow = pct >= 0 ? "↑" : "↓";
-  return `${arrow} ${Math.abs(pct).toFixed(1)}% vs last month`;
+  return `${deltaArrow(pct)} ${Math.abs(pct).toFixed(1)}% vs last month`;
+}
+
+/** Below this, the swing is noise and "more/less" would overstate it. */
+const PACE_FLAT_THRESHOLD_PCT = 0.5;
+
+/**
+ * "34% ahead of last month's pace".
+ *
+ * Says "pace" rather than a bare "vs last month" on purpose: the figure compares
+ * the month so far against the same day-of-month last month, not against last
+ * month's full total. Comparing a partial month to a complete one reads as a
+ * decrease almost every month until the very last day, so the wording has to
+ * carry that nuance without spelling out "at the same point", which is too long
+ * for a caption.
+ *
+ * Whole percentages — a tenth of a percent is noise at this size.
+ */
+export function formatPaceComparison(deltaPct: number): string {
+  if (Math.abs(deltaPct) < PACE_FLAT_THRESHOLD_PCT) return "On last month's pace";
+  const direction = deltaPct > 0 ? "ahead of" : "behind";
+  return `${Math.abs(deltaPct).toFixed(0)}% ${direction} last month's pace`;
 }
 
 export function daysBetween(fromIso: string, toIso: string): number {

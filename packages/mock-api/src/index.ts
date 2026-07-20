@@ -14,7 +14,6 @@
  */
 
 import {
-  computeReceiptProcessing,
   SEED_CATEGORIES,
   derivedHue,
   daysBetween,
@@ -252,6 +251,18 @@ const OUTSTANDING: ReimbursementStatus[] = ["pending", "approved"];
 const inMonth = (iso: string, yyyyMm: string) => iso.startsWith(yyyyMm);
 
 /**
+ * "2026-07" -> "2026-06", "2026-01" -> "2025-12". Computed rather than
+ * hardcoded: the "vs last month" comparison depends on this being right for
+ * whichever month is being viewed, not just the one month the seed data happens
+ * to be dated around.
+ */
+function prevMonthOf(yyyyMm: string): string {
+  const [year, month] = yyyyMm.split("-").map(Number) as [number, number];
+  const d = new Date(year, month - 2, 1); // JS Date months are 0-indexed
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
  * Members see only their own receipts; owners/admins see the workspace. Mirrors
  * RLS. The exact same rule applies to mileage trips (visibleTrips, below) —
  * kept as two functions rather than one generic one only because Receipt uses
@@ -365,12 +376,29 @@ function categoryBreakdown(receipts: Receipt[]): CategoryBreakdownRow[] {
 export function getDashboard(month = "2026-07"): DashboardResponse {
   const all = visibleReceipts();
   const monthReceipts = all.filter((r) => inMonth(r.receiptDate ?? "", month));
-  const prevReceipts = all.filter((r) => inMonth(r.receiptDate ?? "", "2026-06"));
+  const prevReceipts = all.filter((r) => inMonth(r.receiptDate ?? "", prevMonthOf(month)));
   const ytd = all.filter((r) => (r.receiptDate ?? "").startsWith("2026"));
 
   const monthTotal = monthReceipts.reduce((s, r) => s + reclaimMinor(r), 0);
   const prevTotal = prevReceipts.reduce((s, r) => s + reclaimMinor(r), 0);
-  const deltaPct = prevTotal ? ((monthTotal - prevTotal) / prevTotal) * 100 : 0;
+
+  // Like-for-like comparison. Measuring a part-finished month against a complete
+  // one shows a "decrease" almost every month until the final day, which is the
+  // opposite of what is actually happening — so the delta is measured against
+  // last month AT THE SAME DAY-OF-MONTH. A month that is already over compares
+  // in full, since there is no partial period to account for.
+  const isCurrentMonth = month === TODAY.slice(0, 7);
+  const todayDayOfMonth = Number(TODAY.slice(8, 10));
+  const cutoffDay = isCurrentMonth ? todayDayOfMonth : 31;
+  const prevToDate = prevReceipts
+    .filter((r) => Number((r.receiptDate ?? "").slice(8, 10)) <= cutoffDay)
+    .reduce((s, r) => s + reclaimMinor(r), 0);
+  const deltaPct = prevToDate ? ((monthTotal - prevToDate) / prevToDate) * 100 : 0;
+
+  // Day 0 of the following month is the last day of this one.
+  const [viewYear, viewMonth] = month.split("-").map(Number) as [number, number];
+  const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+  const elapsedFraction = isCurrentMonth ? todayDayOfMonth / daysInMonth : 1;
 
   const outstanding = monthReceipts.filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
   const reimbursableMinor = outstanding.reduce((s, r) => s + reclaimMinor(r), 0);
@@ -393,25 +421,6 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
     weeklySpend.push({ weekStart: weekStart.toISOString().slice(0, 10), totalMinor });
   }
 
-  // Rolling 30-day window from TODAY, not the calendar month the breakdown
-  // selector is showing — "last 30 days" is a fixed lookback, independent of
-  // which month the user happens to be looking at.
-  const last30 = all.filter((r) => {
-    if (!r.receiptDate) return false;
-    const age = daysBetween(r.receiptDate, TODAY);
-    return age >= 0 && age <= 30;
-  });
-  const processingEur = computeReceiptProcessing(
-    last30.map((r) => ({ reimbursementStatus: r.reimbursementStatus, amountMinor: reclaimMinor(r) })),
-  );
-  // pct is a ratio, unaffected by currency conversion (up to rounding) — only the
-  // absolute amounts need converting on the way out, same as everything else here.
-  const processing = {
-    ...processingEur,
-    totalMinor: toHome(processingEur.totalMinor),
-    segments: processingEur.segments.map((s) => ({ ...s, amountMinor: toHome(s.amountMinor) })),
-  };
-
   // Everything above is computed in EUR, the currency the seed data is stored in.
   // Convert on the way out, so percentages and counts stay currency-independent
   // and only the amounts move. Converting earlier would have meant rounding twice.
@@ -428,9 +437,13 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
       receiptCount: monthReceipts.length,
       needsReviewCount,
     },
+    pacing: {
+      prevMonthTotalMinor: toHome(prevTotal),
+      prevMonthToDateMinor: toHome(prevToDate),
+      elapsedFraction,
+    },
     weeklySpend: weeklySpend.map((w) => ({ ...w, totalMinor: toHome(w.totalMinor) })),
     categoryBreakdown: breakdown.map((c) => ({ ...c, amountMinor: toHome(c.amountMinor) })),
-    processing,
     tips: [
       {
         iconLetter: "$",

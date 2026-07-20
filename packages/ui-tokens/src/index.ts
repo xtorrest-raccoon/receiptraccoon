@@ -52,21 +52,6 @@ export const reimbursementChip = {
   rejected: { bg: "oklch(93% 0.06 20)", text: "oklch(45% 0.15 20)", label: "Rejected" },
 } as const;
 
-/**
- * Solid stroke colours for the reimbursement-status ring (Home / Dashboard
- * "Receipt processing" card). reimbursementChip's bg/text pair is a light-tint +
- * dark-text combination meant for a pill label, too pale to read as a filled ring
- * segment — these use the same four hues (65/230/152/20) at the same
- * lightness/chroma as color.brand and categoryAccent(), so the ring reads with
- * the same visual weight as everything else that draws a solid accent.
- */
-export const reimbursementAccent = {
-  pending: "oklch(60% 0.14 65)",
-  approved: "oklch(60% 0.14 230)",
-  reimbursed: "oklch(60% 0.14 152)",
-  rejected: "oklch(60% 0.14 20)",
-} as const;
-
 /** Extraction status chips. Keys match the receipt_status enum. */
 export const receiptStatusChip = {
   processed: { bg: "oklch(93% 0.05 152)", text: "oklch(40% 0.13 152)", label: "Processed" },

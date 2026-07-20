@@ -7,7 +7,7 @@ import { getDashboard, TODAY } from "../../lib/data";
 import { useDataStore } from "../../lib/store";
 import { StatCard } from "../../components/StatCard";
 import { SpendBarChart } from "../../components/SpendBarChart";
-import { ProcessingCard } from "../../components/ProcessingCard";
+import { SpendPacingCard } from "../../components/SpendPacingCard";
 import { CategoryBreakdownCard } from "../../components/CategoryBreakdownCard";
 import { TipsCard } from "../../components/TipsCard";
 import { RecentReceiptsTable } from "../../components/RecentReceiptsTable";
@@ -59,7 +59,13 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4" style={{ marginBottom: 16 }}>
         <SpendBarChart weeklySpend={dashboard.weeklySpend} currency={currency} />
-        <ProcessingCard processing={dashboard.processing} currency={currency} />
+        <SpendPacingCard
+          monthToDateMinor={stats.monthTotalMinor}
+          prevMonthTotalMinor={dashboard.pacing.prevMonthTotalMinor}
+          deltaPct={stats.monthDeltaPct}
+          elapsedFraction={dashboard.pacing.elapsedFraction}
+          currency={currency}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4" style={{ marginBottom: 16 }}>
