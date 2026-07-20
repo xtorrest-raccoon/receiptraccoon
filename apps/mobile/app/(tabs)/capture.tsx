@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,9 +14,14 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [busy, setBusy] = useState(false);
+  // The docs are explicit: taking a picture before onCameraReady fires is
+  // unsupported and can fail silently. Without this the shutter was tappable
+  // the instant the screen mounted, before the native camera had actually
+  // started — the failure mode was a shutter that just does nothing.
+  const [cameraReady, setCameraReady] = useState(false);
 
   const onShutter = async () => {
-    if (!cameraRef.current || busy) return;
+    if (!cameraRef.current || busy || !cameraReady) return;
     setBusy(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
@@ -24,6 +29,10 @@ export default function CaptureScreen() {
         setCapturedPhoto(photo.uri);
         router.push("/capture/processing");
       }
+    } catch (err) {
+      // Previously swallowed: a failed takePictureAsync looked identical to a
+      // shutter tap that did nothing at all, with no way to tell why.
+      Alert.alert("Couldn't take photo", err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
@@ -51,14 +60,23 @@ export default function CaptureScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        onCameraReady={() => setCameraReady(true)}
+      />
 
       <View style={styles.frameArea}>
         <View style={styles.frame} />
       </View>
 
-      <View style={styles.shutterArea}>
-        <Pressable onPress={onShutter} style={styles.shutterOuter} disabled={busy}>
+      <View style={[styles.shutterArea, { paddingBottom: 40 + insets.bottom }]}>
+        <Pressable
+          onPress={onShutter}
+          style={[styles.shutterOuter, !cameraReady && { opacity: 0.4 }]}
+          disabled={busy || !cameraReady}
+        >
           <View style={styles.shutterInner} />
         </Pressable>
       </View>

@@ -74,6 +74,17 @@ const ICON_SLOT = CAPTURE_SIZE;
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
+  // The capture screen is a full-screen live camera view — this floating bar
+  // (82px + the bottom inset) sits on top of every tab screen and was covering
+  // its shutter button entirely, not just visually crowding it. Screens opt out
+  // via the standard tabBarStyle:{display:"none"} option (set on the capture
+  // route in _layout.tsx) rather than hardcoding the route name here, so any
+  // future full-screen tab can do the same.
+  const focusedOptions = descriptors[state.routes[state.index]!.key]?.options;
+  if (focusedOptions?.tabBarStyle && (focusedOptions.tabBarStyle as { display?: string }).display === "none") {
+    return null;
+  }
+
   return (
     <View style={[styles.wrap, { height: layout.tabBarHeight + insets.bottom }]}>
       <BlurView intensity={40} tint="light" style={styles.chrome} />
