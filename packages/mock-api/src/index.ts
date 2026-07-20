@@ -251,10 +251,21 @@ const TRIPS: MileageTrip[] = [
 const OUTSTANDING: ReimbursementStatus[] = ["pending", "approved"];
 const inMonth = (iso: string, yyyyMm: string) => iso.startsWith(yyyyMm);
 
-/** Members see only their own receipts; admins see the workspace. Mirrors RLS. */
+/**
+ * Members see only their own receipts; owners/admins see the workspace. Mirrors
+ * RLS. The exact same rule applies to mileage trips (visibleTrips, below) —
+ * kept as two functions rather than one generic one only because Receipt uses
+ * `createdBy` and MileageTrip uses `userId`, not because the rule differs.
+ */
 function visibleReceipts(): Receipt[] {
   if (CURRENT_USER.role === "owner" || CURRENT_USER.role === "admin") return RECEIPTS;
   return RECEIPTS.filter((r) => r.createdBy === CURRENT_USER.id);
+}
+
+/** Same rule as visibleReceipts, for mileage trips. */
+function visibleTrips(): MileageTrip[] {
+  if (CURRENT_USER.role === "owner" || CURRENT_USER.role === "admin") return TRIPS;
+  return TRIPS.filter((t) => t.userId === CURRENT_USER.id);
 }
 
 /**
@@ -453,17 +464,20 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
  * than as two separately-computed numbers.
  */
 export function getOwedToUserSummary(): OwedToUserSummary {
-  const ownReceipts = RECEIPTS.filter(
-    (r) => r.createdBy === CURRENT_USER.id && OUTSTANDING.includes(r.reimbursementStatus),
-  );
-  const ownTrips = TRIPS.filter(
-    (t) => t.userId === CURRENT_USER.id && OUTSTANDING.includes(t.reimbursementStatus),
-  );
-  const receiptsMinor = ownReceipts.reduce((s, r) => s + reclaimMinor(r), 0);
-  const tripsMinor = ownTrips.reduce((s, t) => s + t.amountMinor, 0);
+  // visibleReceipts()/visibleTrips(): the same role rule as everywhere else in
+  // this file. A member's own claims; an owner/admin's whole workspace — an
+  // admin is the one responsible for clearing the backlog, so "owed to you" for
+  // them means "outstanding in the business", the same population getTeam's
+  // outstandingRefundMinor totals. Previously hardcoded to createdBy ===
+  // CURRENT_USER.id regardless of role, which undercounted an admin's figure
+  // down to just their own handful of receipts instead of the workspace's.
+  const outstandingReceipts = visibleReceipts().filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
+  const outstandingTrips = visibleTrips().filter((t) => OUTSTANDING.includes(t.reimbursementStatus));
+  const receiptsMinor = outstandingReceipts.reduce((s, r) => s + reclaimMinor(r), 0);
+  const tripsMinor = outstandingTrips.reduce((s, t) => s + t.amountMinor, 0);
   return {
     amountMinor: toHome(receiptsMinor + tripsMinor),
-    receiptCount: ownReceipts.length,
+    receiptCount: outstandingReceipts.length,
   };
 }
 
@@ -514,11 +528,7 @@ export function getTeam(month = "2026-07"): TeamResponse {
 }
 
 export function listMileage(userId?: string): MileageTrip[] {
-  const scoped =
-    CURRENT_USER.role === "member"
-      ? TRIPS.filter((t) => t.userId === CURRENT_USER.id)
-      : TRIPS;
-  return scoped
+  return visibleTrips()
     .filter((t) => (userId && userId !== "All" ? t.userId === userId : true))
     .sort((a, b) => b.tripDate.localeCompare(a.tripDate))
     .map(presentTrip);

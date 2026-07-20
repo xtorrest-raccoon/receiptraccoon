@@ -175,10 +175,15 @@ export interface TeamMemberSummary {
 }
 
 /**
- * Personal outstanding balance for the signed-in user — receipts and mileage they
- * submitted that are still pending or approved. Reimbursed and rejected are both
- * excluded: reimbursed because it has been paid, rejected because it is not
- * awaiting anything.
+ * "Owed to you" — outstanding receipts and mileage, still pending or approved.
+ * Reimbursed and rejected are both excluded: reimbursed because it has been
+ * paid, rejected because it is not awaiting anything.
+ *
+ * Scope follows the same role rule as everywhere else in this app: a member
+ * sees their own claims, an owner/admin sees the whole workspace. For an
+ * admin that is the same population as the Team page's outstandingRefundMinor
+ * — they are the one clearing the backlog, so "owed to you" means what the
+ * business owes, not just their own personal handful of receipts.
  *
  * amountMinor and receiptCount are returned together, from one filtered set,
  * specifically so a screen showing both can never have them describe two subtly

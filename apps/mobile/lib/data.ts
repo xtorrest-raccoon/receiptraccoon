@@ -157,9 +157,10 @@ export function getAvailableMonths(): { value: string; label: string }[] {
 }
 
 /**
- * Personal running balance: receipts plus mileage the signed-in user has
- * submitted that are still pending or approved. No date restriction — see
- * mock-api's getOwedToUserSummary for why a monthly scope would be wrong here.
+ * "Owed to you" running balance — pending + approved receipts and mileage, in
+ * whatever scope the signed-in user's role sees (own claims for a member, the
+ * whole workspace for an owner/admin). No date restriction — see mock-api's
+ * getOwedToUserSummary for why a monthly scope would be wrong here.
  *
  * amountMinor and receiptCount are paired deliberately — see OwedToUserSummary.
  */
