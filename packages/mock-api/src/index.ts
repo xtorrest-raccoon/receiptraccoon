@@ -127,6 +127,21 @@ function toHome(minorEur: number): number {
   return Math.round(minorEur * rate * scale);
 }
 
+/**
+ * Home-currency minor units -> EUR minor units (inverse of toHome).
+ *
+ * Receipts are stored in RECEIPTS as EUR, and only converted to the workspace's
+ * home currency at the read boundary (see present()). A setter that receives a
+ * value the user typed in the home currency has to convert it back before writing
+ * to RECEIPTS, or it silently double-applies the FX rate on the next read.
+ */
+function fromHome(minorHome: number): number {
+  if (homeCurrency === "EUR") return minorHome;
+  const rate = FX_FROM_EUR[homeCurrency] ?? 1;
+  const scale = homeCurrency === "JPY" ? 1 / 100 : 1;
+  return Math.round(minorHome / (rate * scale));
+}
+
 /** @deprecated Read getHomeCurrency() — this is only the initial value. */
 export const HOME_CURRENCY = "EUR";
 
@@ -353,6 +368,23 @@ export function deleteReceipt(id: string): boolean {
 export function setCategory(id: string, categoryName: string): void {
   const r = RECEIPTS.find((x) => x.id === id);
   if (r) r.categoryName = categoryName;
+}
+
+export function setComment(id: string, comment: string): void {
+  const r = RECEIPTS.find((x) => x.id === id);
+  if (r) r.comment = comment;
+}
+
+/**
+ * `minorHomeCurrency` is what the user typed, already in the workspace's home
+ * currency — the same units the screen validated against receipt.totalMinor.
+ * Converted back to EUR before writing so every aggregate that reads RECEIPTS
+ * directly (dashboard, owed-to-user, team, category breakdown) picks up the
+ * edit immediately, not just the screen that made it.
+ */
+export function setReclaimMinor(id: string, minorHomeCurrency: number): void {
+  const r = RECEIPTS.find((x) => x.id === id);
+  if (r) r.reclaimMinor = fromHome(minorHomeCurrency);
 }
 
 function categoryBreakdown(receipts: Receipt[]): CategoryBreakdownRow[] {

@@ -17,7 +17,14 @@ import {
   type Receipt,
 } from "@rr/shared";
 import { rn, rnAlpha } from "../../lib/colors";
-import { HOME_CURRENCY, getReceipt, listCategories, patchReceiptLocal } from "../../lib/data";
+import {
+  HOME_CURRENCY,
+  getReceipt,
+  listCategories,
+  setReceiptCategory,
+  setReceiptComment,
+  setReceiptReclaim,
+} from "../../lib/data";
 import { Text } from "../../components/Text";
 import { CategoryChip } from "../../components/CategoryChip";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -62,11 +69,11 @@ export default function ReceiptDetailScreen() {
 
   const commitComment = (value: string) => {
     setComment(value);
-    patchReceiptLocal(receipt.id, { comment: value });
+    setReceiptComment(receipt.id, value);
   };
 
   const commitCategory = (value: string) => {
-    patchReceiptLocal(receipt.id, { categoryName: value });
+    setReceiptCategory(receipt.id, value);
     setReceipt((prev) => (prev ? { ...prev, categoryName: value } : prev));
   };
 
@@ -76,7 +83,7 @@ export default function ReceiptDetailScreen() {
     // Reject a claim above the total rather than storing it — the database has the
     // same constraint, so accepting it here would only fail later at the API.
     if (minor !== null && minor >= 0 && minor <= receipt.totalMinor) {
-      patchReceiptLocal(receipt.id, { reclaimMinor: minor });
+      setReceiptReclaim(receipt.id, minor);
       setReceipt((prev) => (prev ? { ...prev, reclaimMinor: minor } : prev));
     }
   };
