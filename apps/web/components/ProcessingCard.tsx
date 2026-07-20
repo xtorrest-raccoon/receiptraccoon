@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReceiptProcessing } from "@rr/shared";
-import { formatMoney } from "@rr/shared";
+import { formatMoney, summarizeProcessingStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementAccent, reimbursementChip } from "@rr/ui-tokens";
 
 const RADIUS = 62;
@@ -49,6 +49,17 @@ export function ProcessingCard({ processing, currency }: { processing: ReceiptPr
 
   let cumulative = 0;
 
+  // Decision (which case, and the raw numbers) comes from shared/processing.ts
+  // so this card and mobile's cannot describe the same data differently — only
+  // the money formatting happens here.
+  const status = summarizeProcessingStatus(processing);
+  const statusText =
+    status.kind === "empty"
+      ? "No receipts in the last 30 days."
+      : status.kind === "clear"
+        ? "All spend from the last 30 days has been resolved."
+        : `${Math.round(status.pct)}% of spend (${formatMoney(status.amountMinor, currency)}) is still awaiting reimbursement.`;
+
   return (
     <div
       style={{
@@ -62,7 +73,7 @@ export function ProcessingCard({ processing, currency }: { processing: ReceiptPr
       }}
     >
       <div style={{ width: "100%", fontSize: fontSize.lg, fontWeight: fontWeight.bold, marginBottom: 4 }}>
-        Receipt processing
+        Spending vs Last Month
       </div>
       <div style={{ width: "100%", fontSize: fontSize.small, color: color.textMuted, marginBottom: 14 }}>
         Last 30 days
@@ -110,11 +121,11 @@ export function ProcessingCard({ processing, currency }: { processing: ReceiptPr
         </div>
       </div>
 
-      {processing.segments.length === 0 ? (
-        <div style={{ fontSize: fontSize.small, color: color.textFaint, marginTop: 14 }}>
-          No receipts in the last 30 days.
-        </div>
-      ) : (
+      <div style={{ fontSize: fontSize.small, color: color.textMuted, textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+        {statusText}
+      </div>
+
+      {processing.segments.length > 0 && (
         <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
           {processing.segments.map((seg) => (
             <div

@@ -4,7 +4,7 @@ import { useFocusEffect } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementAccent, reimbursementChip } from "@rr/ui-tokens";
-import { categoryAccent, formatMoney } from "@rr/shared";
+import { categoryAccent, formatMoney, summarizeProcessingStatus } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import {
   getAvailableMonths,
@@ -70,6 +70,16 @@ export default function HomeScreen() {
   // describe different sets of receipts.
   const owedToUser = useMemo(() => getOwedToUserSummary(), [refreshKey]);
   const currency = dashboard.currency;
+  // One-line status under the ring. The decision (which case, and the raw
+  // numbers) comes from shared/processing.ts so mobile and web cannot describe
+  // the same data differently — only the money formatting happens here.
+  const processingStatus = summarizeProcessingStatus(dashboard.processing);
+  const processingStatusText =
+    processingStatus.kind === "empty"
+      ? "No receipts in the last 30 days."
+      : processingStatus.kind === "clear"
+        ? "All spend from the last 30 days has been resolved."
+        : `${Math.round(processingStatus.pct)}% of spend (${formatMoney(processingStatus.amountMinor, currency)}) is still awaiting reimbursement.`;
 
   const greeting = getGreeting();
   const breakdown = breakdownDashboard.categoryBreakdown.filter((c) => c.pct > 0);
@@ -126,12 +136,11 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Receipt processing — replaces the earlier financial-health score.
-            Ring segments are each status's share of claimed spend in the
+        {/* Ring segments are each status's share of claimed spend in the
             trailing 30 days; the legend below repeats the same figures as text,
             same pairing as the category breakdown card underneath. */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Receipt processing</Text>
+          <Text style={styles.cardTitle}>Spending vs Last Month</Text>
           <Text style={styles.cardSubtitle}>Last 30 days</Text>
           <View style={{ alignItems: "center", marginTop: 6 }}>
             <ProcessingRing
@@ -141,10 +150,9 @@ export default function HomeScreen() {
               size={220}
             />
           </View>
+          <Text style={styles.statusCaption}>{processingStatusText}</Text>
 
-          {dashboard.processing.segments.length === 0 ? (
-            <Text style={styles.emptyText}>No receipts in the last 30 days.</Text>
-          ) : (
+          {dashboard.processing.segments.length === 0 ? null : (
             <View style={{ gap: 10, marginTop: 8 }}>
               {dashboard.processing.segments.map((seg) => {
                 const accent = rn(reimbursementAccent[seg.status]);
@@ -343,6 +351,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: rn(color.textMuted),
     marginTop: 2,
+  },
+  statusCaption: {
+    fontSize: 12,
+    color: rn(color.textMuted),
+    textAlign: "center",
+    marginTop: 4,
+    lineHeight: 17,
   },
   breakdownHeader: {
     flexDirection: "row",

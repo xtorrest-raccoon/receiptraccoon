@@ -44,3 +44,38 @@ export function computeReceiptProcessing(
 
   return { windowDays, totalMinor, receiptCount: entries.length, segments };
 }
+
+/**
+ * The one-line status caption shown under the ring.
+ *
+ * Deliberately currency-agnostic: it returns the DECISION (which case applies)
+ * and the raw numbers, not a formatted sentence. Formatting the amount is left to
+ * the caller, which knows the display currency — baking `formatMoney` in here
+ * would mean this function needs a currency argument for something that is
+ * otherwise pure aggregation, and every other figure in this app is formatted at
+ * the UI layer, not inside the shared aggregate.
+ *
+ * Takes the already-computed ReceiptProcessing (not raw entries) specifically so
+ * it can be called on the post-toHome-conversion segments each app already has —
+ * calling it earlier, on EUR amounts, would silently mismatch the currency the
+ * rest of the card is showing.
+ */
+export type ProcessingStatus =
+  | { kind: "empty" }
+  | { kind: "clear" }
+  | { kind: "outstanding"; pct: number; amountMinor: number };
+
+export function summarizeProcessingStatus(processing: ReceiptProcessing): ProcessingStatus {
+  if (processing.segments.length === 0) return { kind: "empty" };
+
+  const outstanding = processing.segments.filter(
+    (s) => s.status === "pending" || s.status === "approved",
+  );
+  if (outstanding.length === 0) return { kind: "clear" };
+
+  return {
+    kind: "outstanding",
+    pct: outstanding.reduce((sum, s) => sum + s.pct, 0),
+    amountMinor: outstanding.reduce((sum, s) => sum + s.amountMinor, 0),
+  };
+}
