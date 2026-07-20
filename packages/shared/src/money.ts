@@ -26,7 +26,14 @@ export function minorUnitsPerUnit(currency: string): number {
  */
 export function parseMoneyToMinor(value: string | null | undefined, currency: string): number | null {
   if (value === null || value === undefined) return null;
-  const cleaned = value.trim().replace(/[^0-9.\-]/g, "");
+  // A decimal-pad keyboard on some device locales emits "," for the decimal
+  // point, so typing "5.2" can land as "5,2". Treat "," as the decimal
+  // separator when no "." is present; otherwise it's a thousands separator
+  // ("1,234.56") and gets dropped like any other stray character. Without
+  // this, the character-class strip below silently deletes the comma and
+  // "5,2" becomes "52" — a 10x error, not a rejected input.
+  const withDot = value.includes(".") ? value.replace(/,/g, "") : value.replace(",", ".");
+  const cleaned = withDot.trim().replace(/[^0-9.\-]/g, "");
   if (cleaned === "" || cleaned === "-" || cleaned === ".") return null;
   try {
     const d = new Decimal(cleaned);
