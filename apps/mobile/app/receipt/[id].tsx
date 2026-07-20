@@ -12,14 +12,16 @@ import {
   currencySymbol,
   canEditReceiptAmount,
   canEditReceiptComment,
+  canEditReceiptCategory,
   reclaimMinor,
   type Receipt,
 } from "@rr/shared";
 import { rn, rnAlpha } from "../../lib/colors";
-import { HOME_CURRENCY, getReceipt, patchReceiptLocal } from "../../lib/data";
+import { HOME_CURRENCY, getReceipt, listCategories, patchReceiptLocal } from "../../lib/data";
 import { Text } from "../../components/Text";
 import { CategoryChip } from "../../components/CategoryChip";
 import { StatusBadge } from "../../components/StatusBadge";
+import { PickerSheet } from "../../components/PickerSheet";
 
 export default function ReceiptDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,6 +31,8 @@ export default function ReceiptDetailScreen() {
   const [receipt, setReceipt] = useState<Receipt | undefined>(undefined);
   const [comment, setComment] = useState("");
   const [reclaimText, setReclaimText] = useState("");
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const categories = useMemo(() => listCategories(), []);
 
   useEffect(() => {
     const r = getReceipt(id);
@@ -40,6 +44,7 @@ export default function ReceiptDetailScreen() {
   const currency = receipt?.currency ?? HOME_CURRENCY;
   const amountEditable = receipt ? canEditReceiptAmount(receipt.reimbursementStatus) : false;
   const commentEditable = receipt ? canEditReceiptComment(receipt.reimbursementStatus) : false;
+  const categoryEditable = receipt ? canEditReceiptCategory(receipt.reimbursementStatus) : false;
   const typedReclaim = parseMoneyToMinor(reclaimText, currency);
   const reclaimExceedsTotal =
     receipt !== undefined && typedReclaim !== null && typedReclaim > receipt.totalMinor;
@@ -58,6 +63,11 @@ export default function ReceiptDetailScreen() {
   const commitComment = (value: string) => {
     setComment(value);
     patchReceiptLocal(receipt.id, { comment: value });
+  };
+
+  const commitCategory = (value: string) => {
+    patchReceiptLocal(receipt.id, { categoryName: value });
+    setReceipt((prev) => (prev ? { ...prev, categoryName: value } : prev));
   };
 
   const commitReclaim = (value: string) => {
@@ -96,7 +106,10 @@ export default function ReceiptDetailScreen() {
       </View>
 
       <View style={styles.chipRow}>
-        <CategoryChip category={receipt.categoryName ?? "Other"} />
+        <CategoryChip
+          category={receipt.categoryName ?? "Other"}
+          onPress={categoryEditable ? () => setCategoryPickerOpen(true) : undefined}
+        />
         <StatusBadge status={receipt.reimbursementStatus} />
       </View>
 
@@ -213,6 +226,15 @@ export default function ReceiptDetailScreen() {
           </Text>
         )}
       </View>
+
+      <PickerSheet
+        visible={categoryPickerOpen}
+        title="Category"
+        options={categories.map((c) => ({ value: c, label: c }))}
+        selectedValue={receipt.categoryName ?? "Other"}
+        onSelect={commitCategory}
+        onClose={() => setCategoryPickerOpen(false)}
+      />
     </ScrollView>
   );
 }

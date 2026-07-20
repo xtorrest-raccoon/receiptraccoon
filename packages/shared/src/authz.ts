@@ -105,6 +105,11 @@ export function canEditReceiptComment(status: ReimbursementStatus): boolean {
   return status === "pending";
 }
 
+/** Category freezes on the same rule as amounts and comments — see canEditReceiptAmount. */
+export function canEditReceiptCategory(status: ReimbursementStatus): boolean {
+  return status === "pending";
+}
+
 /** Rejection is not terminal — an employee can correct and resubmit. */
 export const REIMBURSEMENT_TRANSITIONS: Record<ReimbursementStatus, ReimbursementStatus[]> = {
   pending: ["approved", "rejected"],

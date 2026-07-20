@@ -173,6 +173,7 @@ export function getOwedToUserSummary(): OwedToUserSummary {
 interface ReceiptEdit {
   comment?: string;
   reclaimMinor?: number;
+  categoryName?: string;
 }
 
 const receiptEdits = new Map<string, ReceiptEdit>();
@@ -184,6 +185,7 @@ function mergeReceiptEdits(r: Receipt): Receipt {
     ...r,
     comment: edit.comment !== undefined ? edit.comment : r.comment,
     reclaimMinor: edit.reclaimMinor !== undefined ? edit.reclaimMinor : r.reclaimMinor,
+    categoryName: edit.categoryName !== undefined ? edit.categoryName : r.categoryName,
   };
 }
 
