@@ -55,7 +55,6 @@ export default function CaptureScreen() {
 
       <View style={styles.frameArea}>
         <View style={styles.frame} />
-        <Text style={styles.caption}>Align receipt in frame</Text>
       </View>
 
       <View style={styles.shutterArea}>
@@ -93,17 +92,6 @@ const styles = StyleSheet.create({
     borderColor: AMBER_FRAME,
     borderStyle: "dashed",
     borderRadius: 16,
-  },
-  caption: {
-    position: "absolute",
-    top: 22,
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
-    opacity: 0.85,
   },
   shutterArea: {
     paddingVertical: 26,
