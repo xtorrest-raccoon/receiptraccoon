@@ -249,6 +249,65 @@ const RECEIPTS: Receipt[] = SEEDS.map((s) => ({
   createdAt: `${s.date}T10:00:00Z`,
 }));
 
+// Starts well past the seed ids (they only go up to r_44) so a newly captured
+// receipt can never collide with one already in RECEIPTS.
+let nextReceiptSeq = 1000;
+
+/**
+ * Add a manually- or OCR-filled receipt. Was missing entirely — the Confirm
+ * screen's "Save receipt" only wrote a summary for the confirmation toast, so a
+ * captured receipt never actually joined RECEIPTS and could not appear in the
+ * list, the dashboard, or any other aggregate.
+ *
+ * `totalMinor`/`taxMinor` arrive in the workspace's home currency (what the
+ * Confirm screen displayed and validated); converted back to the EUR base via
+ * fromHome(), same as setReclaimMinor.
+ */
+export function addReceipt(input: {
+  vendor: string;
+  receiptDate: string | null;
+  totalMinor: number;
+  taxMinor: number;
+  categoryName: string;
+  comment: string;
+  paymentBrand: string | null;
+  paymentLast4: string | null;
+}): Receipt {
+  const totalEur = fromHome(input.totalMinor);
+  const taxEur = fromHome(input.taxMinor);
+  const receipt: Receipt = {
+    id: `r_${nextReceiptSeq++}`,
+    workspaceId: WORKSPACE_ID,
+    createdBy: CURRENT_USER.id,
+    status: "processed",
+    imagePath: null,
+    vendor: input.vendor || null,
+    receiptDate: input.receiptDate,
+    categoryId: `cat_${input.categoryName.toLowerCase().replace(/\s+/g, "_")}`,
+    categoryName: input.categoryName,
+    currency: HOME_CURRENCY,
+    subtotalMinor: totalEur - taxEur,
+    taxMinor: taxEur,
+    totalMinor: totalEur,
+    reclaimMinor: null,
+    originalCurrency: null,
+    originalTotalMinor: null,
+    fxRate: null,
+    fxRateDate: null,
+    paymentBrand: input.paymentBrand,
+    paymentLast4: input.paymentLast4,
+    paymentType: null,
+    comment: input.comment || null,
+    reimbursementStatus: "pending",
+    rejectionReason: null,
+    extractionConfidence: null,
+    lineItems: [],
+    createdAt: new Date().toISOString(),
+  };
+  RECEIPTS.push(receipt);
+  return present(receipt);
+}
+
 // Thousandths of a euro: 0.700/mi. Three decimals because statutory mileage
 // rates are quoted that way.
 /** Rate the seed trips were logged at. New trips use the current workspace rate. */

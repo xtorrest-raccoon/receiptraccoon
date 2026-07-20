@@ -27,6 +27,7 @@ import {
   listReceipts as mockListReceipts,
   getReceipt as mockGetReceipt,
   deleteReceipt as mockDeleteReceipt,
+  addReceipt as mockAddReceipt,
   listMileage as mockListMileage,
   getOwedToUserSummary as mockGetOwedToUser,
   addMileageTrip as mockAddMileageTrip,
@@ -114,6 +115,20 @@ export function listReceipts(opts: { month?: string; categoryName?: string; q?: 
 
 export function getReceipt(id: string): Receipt | undefined {
   return mockGetReceipt(id);
+}
+
+/** Save a newly captured/filled-in receipt so it actually joins the workspace's records. */
+export function addReceipt(input: {
+  vendor: string;
+  receiptDate: string | null;
+  totalMinor: number;
+  taxMinor: number;
+  categoryName: string;
+  comment: string;
+  paymentBrand: string | null;
+  paymentLast4: string | null;
+}): Receipt {
+  return mockAddReceipt(input);
 }
 
 /** Persisted while the receipt is still pending — see canEditReceiptComment. */

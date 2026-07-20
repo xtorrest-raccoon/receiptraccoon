@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
 import { rn } from "../../lib/colors";
-import { HOME_CURRENCY, listCategories } from "../../lib/data";
+import { HOME_CURRENCY, addReceipt, listCategories } from "../../lib/data";
 import { getDraftReceipt, setSavedSummary } from "../../lib/captureStore";
 import type { DraftReceipt } from "../../lib/data";
 import { Text } from "../../components/Text";
@@ -51,6 +51,21 @@ export default function ConfirmScreen() {
 
   const onSave = () => {
     if (!canSave || totalMinor === null) return;
+    // "Visa •1234" -> brand "Visa", last4 "1234" — the inverse of
+    // formatPaymentMethod, which is what produced this shape in the first place.
+    const [paymentBrand, paymentLast4] = payment.includes("•")
+      ? payment.split("•").map((s) => s.trim())
+      : [payment.trim() || null, null];
+    addReceipt({
+      vendor: vendor.trim(),
+      receiptDate: date.trim() || null,
+      totalMinor,
+      taxMinor: parseMoneyToMinor(taxText, currency) ?? 0,
+      categoryName: category,
+      comment: comment.trim(),
+      paymentBrand: paymentBrand || null,
+      paymentLast4: paymentLast4 || null,
+    });
     setSavedSummary({ vendor: vendor.trim(), totalMinor, category, currency });
     router.replace("/capture/saved");
   };
