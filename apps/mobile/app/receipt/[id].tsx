@@ -9,6 +9,10 @@ import {
   formatShortDate,
   minorToDecimalString,
   parseMoneyToMinor,
+  currencySymbol,
+  canEditReceiptAmount,
+  canEditReceiptComment,
+  reclaimMinor,
   type Receipt,
 } from "@rr/shared";
 import { rn, rnAlpha } from "../../lib/colors";
@@ -24,16 +28,21 @@ export default function ReceiptDetailScreen() {
 
   const [receipt, setReceipt] = useState<Receipt | undefined>(undefined);
   const [comment, setComment] = useState("");
-  const [totalText, setTotalText] = useState("");
+  const [reclaimText, setReclaimText] = useState("");
 
   useEffect(() => {
     const r = getReceipt(id);
     setReceipt(r);
     setComment(r?.comment ?? "");
-    setTotalText(r ? minorToDecimalString(r.totalMinor, r.currency) : "");
+    setReclaimText(r ? minorToDecimalString(reclaimMinor(r), r.currency) : "");
   }, [id]);
 
   const currency = receipt?.currency ?? HOME_CURRENCY;
+  const amountEditable = receipt ? canEditReceiptAmount(receipt.reimbursementStatus) : false;
+  const commentEditable = receipt ? canEditReceiptComment(receipt.reimbursementStatus) : false;
+  const typedReclaim = parseMoneyToMinor(reclaimText, currency);
+  const reclaimExceedsTotal =
+    receipt !== undefined && typedReclaim !== null && typedReclaim > receipt.totalMinor;
 
   const lineItemsTotal = useMemo(() => receipt?.lineItems ?? [], [receipt]);
 
@@ -51,12 +60,14 @@ export default function ReceiptDetailScreen() {
     patchReceiptLocal(receipt.id, { comment: value });
   };
 
-  const commitTotal = (value: string) => {
-    setTotalText(value);
+  const commitReclaim = (value: string) => {
+    setReclaimText(value);
     const minor = parseMoneyToMinor(value, currency);
-    if (minor !== null) {
-      patchReceiptLocal(receipt.id, { totalMinor: minor });
-      setReceipt((prev) => (prev ? { ...prev, totalMinor: minor } : prev));
+    // Reject a claim above the total rather than storing it — the database has the
+    // same constraint, so accepting it here would only fail later at the API.
+    if (minor !== null && minor >= 0 && minor <= receipt.totalMinor) {
+      patchReceiptLocal(receipt.id, { reclaimMinor: minor });
+      setReceipt((prev) => (prev ? { ...prev, reclaimMinor: minor } : prev));
     }
   };
 
@@ -64,6 +75,13 @@ export default function ReceiptDetailScreen() {
     <ScrollView
       style={{ backgroundColor: rn(color.bgMobile) }}
       contentContainerStyle={[styles.container, { paddingTop: insets.top + 14 }]}
+      // Without these the numeric keyboard covers the Total and Comment fields:
+      // iOS insets the scroll view by the keyboard height so the focused field
+      // stays visible, taps outside a field still register, and dragging down
+      // dismisses the keyboard.
+      automaticallyAdjustKeyboardInsets
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
     >
       <BackLink onPress={() => router.back()} />
 
@@ -105,14 +123,22 @@ export default function ReceiptDetailScreen() {
 
       <View style={{ marginBottom: 14 }}>
         <Text style={styles.sectionLabel}>Comment</Text>
-        <TextInput
-          value={comment}
-          onChangeText={commitComment}
-          placeholder="Add a comment — e.g. attendees, purpose…"
-          placeholderTextColor={rn(color.textFaint)}
-          multiline
-          style={styles.commentInput}
-        />
+        {commentEditable ? (
+          <TextInput
+            value={comment}
+            onChangeText={commitComment}
+            placeholder="e.g. reason for exception, attendees, purpose…"
+            placeholderTextColor={rn(color.textFaint)}
+            multiline
+            style={styles.commentInput}
+          />
+        ) : (
+          <View style={styles.commentReadonly}>
+            <Text style={comment ? styles.commentReadonlyText : styles.commentEmptyText}>
+              {comment || "No comment was added."}
+            </Text>
+          </View>
+        )}
       </View>
 
       <Text style={styles.lineItemsTitle}>Line items</Text>
@@ -148,15 +174,44 @@ export default function ReceiptDetailScreen() {
             {receipt.taxMinor !== null ? formatMoney(receipt.taxMinor, currency) : "—"}
           </Text>
         </View>
+        {/* Total is a transcription of the document, never editable — correcting
+            a misread goes through re-extraction, not by typing over it. */}
         <View style={[styles.totalsRow, styles.totalsFinalRow]}>
           <Text style={styles.totalFinalLabel}>Total</Text>
-          <TextInput
-            value={totalText}
-            onChangeText={commitTotal}
-            keyboardType="decimal-pad"
-            style={styles.totalInput}
-          />
+          <Text style={styles.totalFinalValue}>{formatMoney(receipt.totalMinor, currency)}</Text>
         </View>
+
+        {/* What is actually being claimed. Defaults to the total; lower it for a
+            shared bill or a personal portion. This is the figure that feeds spend
+            reporting and reimbursement. */}
+        <View style={[styles.totalsRow, styles.reclaimRow]}>
+          {/* Past tense once the money has actually been paid out — "to reclaim"
+              reads as still outstanding, which it no longer is. */}
+          <Text style={styles.totalFinalLabel}>
+            {receipt.reimbursementStatus === "reimbursed" ? "Amount reclaimed" : "Amount to reclaim"}
+          </Text>
+          {amountEditable ? (
+            <View style={styles.totalInputRow}>
+              <Text style={styles.totalCurrency}>{currencySymbol(currency)}</Text>
+              <TextInput
+                value={reclaimText}
+                onChangeText={commitReclaim}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+                style={styles.totalInput}
+              />
+            </View>
+          ) : (
+            <Text style={styles.totalFinalValue}>
+              {formatMoney(reclaimMinor(receipt), currency)}
+            </Text>
+          )}
+        </View>
+        {reclaimExceedsTotal && (
+          <Text style={styles.reclaimError}>
+            Cannot reclaim more than the receipt total.
+          </Text>
+        )}
       </View>
     </ScrollView>
   );
@@ -246,6 +301,25 @@ const styles = StyleSheet.create({
     color: rn(color.text),
     textAlignVertical: "top",
   },
+  // Same footprint as commentInput but without the input chrome, so a reimbursed
+  // receipt reads as a record rather than as a disabled form field.
+  commentReadonly: {
+    minHeight: 60,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: rn(color.surfaceMuted),
+  },
+  commentReadonlyText: {
+    fontSize: 13,
+    color: rn(color.text),
+    lineHeight: 19,
+  },
+  commentEmptyText: {
+    fontSize: 13,
+    color: rn(color.textFaint),
+    fontStyle: "italic",
+  },
   lineItemsTitle: {
     fontSize: 13,
     fontWeight: "700",
@@ -303,6 +377,30 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     color: rn(color.text),
+  },
+  totalFinalValue: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: rn(color.text),
+  },
+  reclaimRow: {
+    paddingTop: 8,
+  },
+  reclaimError: {
+    fontSize: 11.5,
+    color: rn(color.up),
+    marginTop: 6,
+    textAlign: "right",
+  },
+  totalInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  totalCurrency: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: rn(color.textMuted),
   },
   totalInput: {
     width: 90,

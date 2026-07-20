@@ -43,11 +43,28 @@ export interface Receipt {
   categoryId: string | null;
   categoryName: string | null;
 
-  /** Workspace home currency. All reporting aggregates use these fields. */
+  /** Workspace home currency. */
   currency: string;
   subtotalMinor: number | null;
   taxMinor: number | null;
+
+  /**
+   * What the receipt says was paid. Read-only once extracted — it is a
+   * transcription of the document, not a decision.
+   */
   totalMinor: number;
+
+  /**
+   * What the employee is actually claiming back, which can be less than the total:
+   * a shared bill, a meal with a personal portion, a mixed business/personal trip.
+   *
+   * Null means "the whole total" — use reclaimMinor() rather than reading this
+   * directly, so the default is applied in one place.
+   *
+   * THIS is the figure that feeds spend reporting and reimbursement, not
+   * totalMinor. See reclaimMinor() in money.ts.
+   */
+  reclaimMinor: number | null;
 
   /** Populated only when the receipt was printed in a different currency. */
   originalCurrency: string | null;
@@ -78,8 +95,12 @@ export interface MileageTrip {
   purpose: string;
   distance: number;
   distanceUnit: DistanceUnit;
-  /** Frozen at entry, like fxRate. Never recomputed from workspace settings. */
-  rateMinor: number;
+  /**
+   * Thousandths of a currency unit (€0.675 -> 675), because statutory mileage
+   * rates carry three decimals. Frozen at entry, like fxRate — never recomputed
+   * from current workspace settings.
+   */
+  rateMilli: number;
   amountMinor: number;
   reimbursementStatus: ReimbursementStatus;
   rejectionReason: string | null;
@@ -110,7 +131,7 @@ export interface DashboardResponse {
   stats: DashboardStats;
   weeklySpend: { weekStart: string; totalMinor: number }[];
   categoryBreakdown: CategoryBreakdownRow[];
-  health: HealthResult;
+  processing: ReceiptProcessing;
   tips: BudgetTip[];
   recentReceipts: Receipt[];
 }
@@ -121,19 +142,25 @@ export interface BudgetTip {
   text: string;
 }
 
-export interface HealthFactor {
-  key: "trend" | "backlog" | "concentration" | "hygiene";
-  label: string;
-  weight: number;
-  score: number;
-  detail: string;
+/** One reimbursement-status slice of a ReceiptProcessing breakdown. */
+export interface ProcessingSegment {
+  status: ReimbursementStatus;
+  amountMinor: number;
+  /** 0-100, this segment's share of totalMinor. */
+  pct: number;
 }
 
-export interface HealthResult {
-  score: number;
-  label: "On track" | "Needs attention" | "At risk";
-  explanation: string;
-  factors: HealthFactor[];
+/**
+ * What proportion of claimed spend sits in each stage of the reimbursement
+ * pipeline, over a trailing window. Replaces the earlier financial-health score —
+ * see processing.ts for why. Segments with a zero amount are omitted, and sum to
+ * 100% of totalMinor (up to rounding) across whatever segments remain.
+ */
+export interface ReceiptProcessing {
+  windowDays: number;
+  totalMinor: number;
+  receiptCount: number;
+  segments: ProcessingSegment[];
 }
 
 export interface TeamMemberSummary {
@@ -145,6 +172,23 @@ export interface TeamMemberSummary {
   outstandingMinor: number;
   oldestPendingDays: number | null;
   topCategory: string | null;
+}
+
+/**
+ * Personal outstanding balance for the signed-in user — receipts and mileage they
+ * submitted that are still pending or approved. Reimbursed and rejected are both
+ * excluded: reimbursed because it has been paid, rejected because it is not
+ * awaiting anything.
+ *
+ * amountMinor and receiptCount are returned together, from one filtered set,
+ * specifically so a screen showing both can never have them describe two subtly
+ * different populations of receipts.
+ */
+export interface OwedToUserSummary {
+  /** Receipts (reclaim amount) plus mileage trips, both still outstanding. */
+  amountMinor: number;
+  /** Receipts only — mileage trips are not "receipts". */
+  receiptCount: number;
 }
 
 export interface TeamResponse {
@@ -159,6 +203,7 @@ export interface TeamResponse {
   topSpenderName: string | null;
   members: TeamMemberSummary[];
   mileage: MileageTrip[];
-  mileageRateMinor: number;
+  /** Thousandths of a currency unit. See MileageTrip.rateMilli. */
+  mileageRateMilli: number;
   mileageOutstandingMinor: number;
 }

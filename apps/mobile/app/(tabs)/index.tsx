@@ -1,44 +1,77 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useFocusEffect } from "expo-router";
+import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { color, healthChip } from "@rr/ui-tokens";
+import { color, reimbursementAccent, reimbursementChip } from "@rr/ui-tokens";
 import { categoryAccent, formatMoney } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import {
   getAvailableMonths,
   getCurrentUser,
   getDashboard,
-  getReimbursableInclMileageMinor,
+  getOwedToUserSummary,
   CURRENT_MONTH,
+  CURRENCIES,
+  setHomeCurrency,
+  getDistanceUnit,
+  setDistanceUnit,
+  getMileageRateMilli,
+  setMileageRateMilli,
 } from "../../lib/data";
+import type { DistanceUnit } from "@rr/shared";
 import { Text } from "../../components/Text";
-import { ArcGauge } from "../../components/ArcGauge";
-import { RaccoonMark } from "../../components/RaccoonMark";
+import { ProcessingRing } from "../../components/ProcessingRing";
 import { PickerSheet } from "../../components/PickerSheet";
+import { SettingsSheet } from "../../components/SettingsSheet";
 
-const HEALTH_CHIP: Record<string, { bg: string; text: string }> = {
-  "On track": healthChip.onTrack,
-  "Needs attention": healthChip.needsAttention,
-  "At risk": healthChip.atRisk,
-};
+function GearIcon({ tint }: { tint: string }) {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={3.2} stroke={tint} strokeWidth={1.8} />
+      <Path
+        d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9.1a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.03Z"
+        stroke={tint}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [breakdownMonth, setBreakdownMonth] = useState(CURRENT_MONTH);
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Mirrors the workspace setting so the sheet re-renders on change; the source of
+  // truth stays in the data layer, shared with the Mileage screen.
+  const [distanceUnit, setDistanceUnitState] = useState<DistanceUnit>(getDistanceUnit());
+  const [rateMilli, setRateMilliState] = useState(getMileageRateMilli());
+
+  // Bumped whenever the screen regains focus. Tab screens stay mounted, so
+  // without this the dashboard totals would not reflect a receipt edited on the
+  // detail screen or a trip added on Mileage.
+  const [refreshKey, setRefreshKey] = useState(0);
+  useFocusEffect(useCallback(() => setRefreshKey((n) => n + 1), []));
 
   const user = getCurrentUser();
-  const dashboard = useMemo(() => getDashboard(CURRENT_MONTH), []);
+  const dashboard = useMemo(() => getDashboard(CURRENT_MONTH), [refreshKey]);
   const breakdownDashboard = useMemo(
     () => (breakdownMonth === CURRENT_MONTH ? dashboard : getDashboard(breakdownMonth)),
     [breakdownMonth, dashboard],
   );
   const monthOptions = useMemo(() => getAvailableMonths(), []);
-  const reimbursableInclMileage = useMemo(() => getReimbursableInclMileageMinor(CURRENT_MONTH), []);
+  // Not month-scoped: this is a running balance, so it must not drop a pending
+  // claim the moment the calendar rolls into a new month. amountMinor and
+  // receiptCount come from the same underlying filter (pending + approved,
+  // reimbursed and rejected both excluded) so the two boxes below can never
+  // describe different sets of receipts.
+  const owedToUser = useMemo(() => getOwedToUserSummary(), [refreshKey]);
   const currency = dashboard.currency;
 
   const greeting = getGreeting();
-  const chip = HEALTH_CHIP[dashboard.health.label] ?? healthChip.needsAttention;
   const breakdown = breakdownDashboard.categoryBreakdown.filter((c) => c.pct > 0);
   const selectedMonthLabel =
     monthOptions.find((m) => m.value === breakdownMonth)?.label ?? breakdownMonth;
@@ -54,9 +87,14 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{greeting}</Text>
             <Text style={styles.name}>{user.name}</Text>
           </View>
-          <View style={styles.logoTile}>
-            <RaccoonMark size={34} />
-          </View>
+          <Pressable
+            style={styles.settingsButton}
+            onPress={() => setSettingsOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <GearIcon tint={rn(color.avatarText)} />
+          </Pressable>
         </View>
 
         {/* Spend / stats row */}
@@ -72,40 +110,62 @@ export default function HomeScreen() {
             <View style={styles.statCard}>
               <Text style={styles.statLabel}>Owed to you</Text>
               <Text style={styles.statValue}>
-                {formatMoney(reimbursableInclMileage, currency)}
+                {formatMoney(owedToUser.amountMinor, currency)}
               </Text>
               <Text style={styles.statCaption}>Incl. mileage</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statLabel}>Receipts</Text>
-              <Text style={styles.statValue}>{dashboard.stats.receiptCount}</Text>
+              {/* Count of the receipts behind "Owed to you" above, not the
+                  unrelated "receipts logged this month" figure — the two cards
+                  are stacked together specifically so this reads as "that
+                  amount, made up of this many receipts". */}
+              <Text style={styles.statValue}>{owedToUser.receiptCount}</Text>
+              <Text style={styles.statCaption}>Pending reimbursement</Text>
             </View>
           </View>
         </View>
 
-        {/* Financial health */}
+        {/* Receipt processing — replaces the earlier financial-health score.
+            Ring segments are each status's share of claimed spend in the
+            trailing 30 days; the legend below repeats the same figures as text,
+            same pairing as the category breakdown card underneath. */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Financial health</Text>
+          <Text style={styles.cardTitle}>Receipt processing</Text>
+          <Text style={styles.cardSubtitle}>Last 30 days</Text>
           <View style={{ alignItems: "center", marginTop: 6 }}>
-            <ArcGauge score={dashboard.health.score} size={220} />
+            <ProcessingRing
+              segments={dashboard.processing.segments}
+              totalMinor={dashboard.processing.totalMinor}
+              currency={currency}
+              size={220}
+            />
           </View>
-          <View style={{ alignItems: "center", marginTop: 2 }}>
-            <View style={[styles.healthChip, { backgroundColor: rn(chip.bg) }]}>
-              <Text style={[styles.healthChipLabel, { color: rn(chip.text) }]}>{dashboard.health.label}</Text>
-            </View>
-          </View>
-          <Text style={styles.explanation}>{dashboard.health.explanation}</Text>
 
-          {dashboard.health.factors.length > 0 && (
-            <View style={styles.factorList}>
-              {dashboard.health.factors.map((f) => (
-                <View key={f.key} style={styles.factorRow}>
-                  <Text style={styles.factorLabel}>
-                    {f.label} ({f.weight}%)
-                  </Text>
-                  <Text style={styles.factorScore}>{Math.round(f.score)}</Text>
-                </View>
-              ))}
+          {dashboard.processing.segments.length === 0 ? (
+            <Text style={styles.emptyText}>No receipts in the last 30 days.</Text>
+          ) : (
+            <View style={{ gap: 10, marginTop: 8 }}>
+              {dashboard.processing.segments.map((seg) => {
+                const accent = rn(reimbursementAccent[seg.status]);
+                return (
+                  <View key={seg.status}>
+                    <View style={styles.breakdownRow}>
+                      <View style={styles.breakdownNameGroup}>
+                        <View style={[styles.dot, { backgroundColor: accent }]} />
+                        <Text style={styles.breakdownName}>{reimbursementChip[seg.status].label}</Text>
+                      </View>
+                      <View style={styles.breakdownAmountGroup}>
+                        <Text style={styles.breakdownPct}>{Math.round(seg.pct)}%</Text>
+                        <Text style={styles.breakdownAmount}>{formatMoney(seg.amountMinor, currency)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressFill, { width: `${Math.min(100, seg.pct)}%`, backgroundColor: accent }]} />
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
@@ -156,6 +216,25 @@ export default function HomeScreen() {
         onSelect={setBreakdownMonth}
         onClose={() => setMonthPickerOpen(false)}
       />
+
+      <SettingsSheet
+        visible={settingsOpen}
+        currencies={CURRENCIES}
+        initial={{ distanceUnit, rateMilli, homeCurrency: currency }}
+        onSave={(draft) => {
+          setHomeCurrency(draft.homeCurrency);
+          // Unit first: setDistanceUnit converts the stored rate, and the explicit
+          // rate below must win over that conversion.
+          setDistanceUnit(draft.distanceUnit);
+          setMileageRateMilli(draft.rateMilli);
+
+          setDistanceUnitState(draft.distanceUnit);
+          setRateMilliState(draft.rateMilli);
+          // Currency change re-expresses every amount, so drop memoised totals.
+          setRefreshKey((n) => n + 1);
+        }}
+        onClose={() => setSettingsOpen(false)}
+      />
     </View>
   );
 }
@@ -184,14 +263,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: 2,
     color: rn(color.text),
-  },
-  logoTile: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    backgroundColor: rn(color.brandSoft),
-    alignItems: "center",
-    justifyContent: "center",
   },
   statsRow: {
     flexDirection: "row",
@@ -260,43 +331,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: rn(color.text),
   },
-  healthChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  healthChipLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  explanation: {
-    fontSize: 12,
-    color: rn(color.textMuted),
-    textAlign: "center",
-    marginTop: 10,
-    lineHeight: 18,
-  },
-  factorList: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: rn(color.borderSubtle),
-    gap: 8,
-  },
-  factorRow: {
-    flexDirection: "row",
+  settingsButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: rn(color.avatarBg),
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
-  factorLabel: {
-    fontSize: 11.5,
-    color: rn(color.text),
-    fontWeight: "500",
-  },
-  factorScore: {
-    fontSize: 11.5,
+  cardSubtitle: {
+    fontSize: 12,
     color: rn(color.textMuted),
-    fontWeight: "700",
+    marginTop: 2,
   },
   breakdownHeader: {
     flexDirection: "row",

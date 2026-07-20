@@ -67,6 +67,99 @@ export function convertMinor(
     .toNumber();
 }
 
+/**
+ * Mileage rates carry three decimals — statutory rates are quoted that way
+ * (France's barème kilométrique, the IRS's $0.655/mile), and rounding to cents
+ * would silently change what someone is owed over a long trip.
+ *
+ * So a rate is stored as an integer count of THOUSANDTHS of a currency unit:
+ * €0.675 is 675. Deliberately not a float, for the same reason amounts are not.
+ */
+export const RATE_SCALE = 1000;
+
+/** 675 -> "0.675" */
+export function rateToDecimalString(rateMilli: number): string {
+  return new Decimal(rateMilli).dividedBy(RATE_SCALE).toFixed(3);
+}
+
+/** "0.675" -> 675. Null when unparseable, so callers must handle it. */
+export function parseRateToMilli(value: string | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  // Accept the comma decimal separator: this is a euro-based product and a French
+  // user typing "0,675" means the same thing as "0.675".
+  const cleaned = value.trim().replace(",", ".").replace(/[^0-9.]/g, "");
+  if (cleaned === "" || cleaned === ".") return null;
+  try {
+    const d = new Decimal(cleaned);
+    if (!d.isFinite() || d.isNegative()) return null;
+    return d.times(RATE_SCALE).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
+  } catch {
+    return null;
+  }
+}
+
+/** Kilometres per mile. Lives here because it is part of the money calculation. */
+export const MI_TO_KM = 1.60934;
+
+/**
+ * What a trip is worth, in minor units.
+ *
+ * `distance` and `rateMilli` MUST be expressed in the same unit. Prefer
+ * mileageAmountForTrip below, which takes the unit explicitly — mixing a kilometre
+ * distance with a per-mile rate silently overpays by 61%, which is exactly the bug
+ * this signature allowed.
+ */
+export function mileageAmountMinor(
+  distance: number,
+  rateMilli: number,
+  currency: string,
+): number {
+  return new Decimal(distance)
+    .times(rateMilli)
+    .times(minorUnitsPerUnit(currency))
+    .dividedBy(RATE_SCALE)
+    .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+    .toNumber();
+}
+
+/**
+ * What a trip is worth, given the workspace's canonical PER-MILE rate and the unit
+ * the trip was actually logged in.
+ *
+ * One implementation so the mobile entry form, the web team table, and the server
+ * cannot disagree about someone's reimbursement.
+ */
+export function mileageAmountForTrip(
+  distance: number,
+  distanceUnit: "mi" | "km",
+  ratePerMileMilli: number,
+  currency: string,
+): number {
+  const distanceInMiles =
+    distanceUnit === "mi" ? new Decimal(distance) : new Decimal(distance).dividedBy(MI_TO_KM);
+
+  return distanceInMiles
+    .times(ratePerMileMilli)
+    .times(minorUnitsPerUnit(currency))
+    .dividedBy(RATE_SCALE)
+    .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+    .toNumber();
+}
+
+/**
+ * The claimable amount for a receipt.
+ *
+ * Defaults to the full total when no partial claim has been set. Every spend
+ * aggregate and every reimbursement figure must go through this — reading
+ * `totalMinor` directly is how a partial claim silently becomes a full one.
+ */
+export function reclaimMinor(receipt: {
+  totalMinor: number;
+  reclaimMinor: number | null;
+}): number {
+  return receipt.reclaimMinor ?? receipt.totalMinor;
+}
+
 /** subtotal + tax === total, within a one-minor-unit tolerance for rounding. */
 export function arithmeticChecks(
   subtotalMinor: number | null,

@@ -55,35 +55,30 @@ const TAB_META: Record<string, { label: string; icon: (tint: string) => ReactNod
 };
 
 /**
- * Custom bottom tab bar matching the design: blurred translucent background,
- * 82px tall, Capture raised as a green circular button in the centre with a
- * glow shadow. Passed as the `tabBar` render prop to expo-router's <Tabs>.
+ * Custom bottom tab bar: blurred translucent background, Capture as a green
+ * circular button in the centre. Passed as the `tabBar` render prop to
+ * expo-router's <Tabs>.
+ *
+ * Departs from the design in one respect: the mockup raises Capture 22px above
+ * the bar. That was drawn against a plain 82px bar in a fixed 390x844 frame; on a
+ * real device the bar also carries the home-indicator inset, and the raised button
+ * read as escaping the bar rather than sitting proud of it. It now sits flush.
+ *
+ * ICON_SLOT is what keeps all four labels on one baseline. The Capture circle is
+ * 36px while the other glyphs are 22px, so without a fixed-height slot each label
+ * would sit at a different vertical position.
  */
-/**
- * How far the Capture button rises above the bar. The wrap is extended upward by
- * this much and left transparent, rather than letting the button overflow the
- * container: a negative margin escaping its parent gets clipped, and even with
- * clipping disabled React Native does not reliably deliver touches outside a
- * parent's bounds — the top of the button would look right but not respond.
- */
-const CAPTURE_OVERHANG = 22;
+const CAPTURE_SIZE = 36;
+const ICON_SLOT = CAPTURE_SIZE;
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View
-      // box-none so the transparent overhang strip does not swallow taps meant
-      // for the screen content behind it.
-      pointerEvents="box-none"
-      style={[styles.wrap, { height: layout.tabBarHeight + insets.bottom + CAPTURE_OVERHANG }]}
-    >
-      <BlurView intensity={40} tint="light" style={[styles.chrome, { top: CAPTURE_OVERHANG }]} />
-      <View style={[styles.overlay, { top: CAPTURE_OVERHANG, borderTopColor: rn(color.border) }]} />
-      <View
-        pointerEvents="box-none"
-        style={[styles.row, { paddingTop: CAPTURE_OVERHANG + 10, paddingBottom: insets.bottom }]}
-      >
+    <View style={[styles.wrap, { height: layout.tabBarHeight + insets.bottom }]}>
+      <BlurView intensity={40} tint="light" style={styles.chrome} />
+      <View style={[styles.overlay, { borderTopColor: rn(color.border) }]} />
+      <View style={[styles.row, { paddingBottom: insets.bottom }]}>
         {state.routes.map((route, index) => {
           const meta = TAB_META[route.name];
           if (!meta) return null;
@@ -100,12 +95,14 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
           return (
             <Pressable key={route.key} onPress={onPress} style={styles.item} accessibilityRole="button">
-              {isCapture ? (
-                <View style={styles.captureButton}>{meta.icon(tint)}</View>
-              ) : (
-                meta.icon(tint)
-              )}
-              <Text style={[styles.tabLabel, { color: isCapture ? rn(color.brandSoftText) : tint, marginTop: isCapture ? 4 : 4 }]}>
+              <View style={styles.iconSlot}>
+                {isCapture ? (
+                  <View style={styles.captureButton}>{meta.icon(tint)}</View>
+                ) : (
+                  meta.icon(tint)
+                )}
+              </View>
+              <Text style={[styles.tabLabel, { color: isCapture ? rn(color.brandSoftText) : tint }]}>
                 {meta.label}
               </Text>
             </Pressable>
@@ -123,63 +120,75 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  // Blur and tint cover only the bar itself, not the transparent overhang above it.
   chrome: {
     position: "absolute",
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
   overlay: {
     position: "absolute",
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: rnAlpha(color.bgMobile, 0.75),
+    // Near-opaque. At 0.75 the blur was not enough to stop scrolling content
+    // reading through the bar and colliding with the tab labels on a real device.
+    backgroundColor: rnAlpha(color.bgMobile, 0.97),
     borderTopWidth: 1,
   },
   row: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-around",
-    alignItems: "flex-start",
+    // Centred rather than top-aligned, so the group sits lower in the bar and the
+    // home-indicator inset does not push it upward.
+    alignItems: "center",
   },
   item: {
     alignItems: "center",
-    gap: 4,
+    gap: 5,
     minWidth: 56,
+  },
+  // Fixed-height slot: this is what puts all four labels on the same baseline
+  // despite the Capture circle being larger than the other glyphs.
+  iconSlot: {
+    height: ICON_SLOT,
+    alignItems: "center",
+    justifyContent: "center",
   },
   tabLabel: {
     fontSize: 10,
     fontWeight: "700",
   },
   captureButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: CAPTURE_SIZE,
+    height: CAPTURE_SIZE,
+    borderRadius: CAPTURE_SIZE / 2,
     backgroundColor: ACTIVE,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -22,
     shadowColor: ACTIVE,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
     elevation: 8,
   },
+  // Scaled with CAPTURE_SIZE so the glyph keeps its proportion inside the circle.
   captureGlyphBox: {
-    width: 22,
-    height: 18,
-    borderWidth: 2.5,
+    width: 18,
+    height: 14,
+    borderWidth: 2,
     borderColor: "#fff",
-    borderRadius: 4,
+    borderRadius: 3,
   },
   captureGlyphBump: {
     position: "absolute",
-    top: -5,
-    left: 6,
-    width: 8,
-    height: 4,
+    top: -4,
+    left: 5,
+    width: 7,
+    height: 3,
     backgroundColor: "#fff",
     borderTopLeftRadius: 2,
     borderTopRightRadius: 2,

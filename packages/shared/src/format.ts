@@ -28,6 +28,45 @@ export function formatMoneyCompact(minor: number, currency: string, locale = "en
   }).format(minor / per);
 }
 
+/**
+ * Just the currency symbol ("€", "$", "£").
+ *
+ * For editable amount fields, where the value itself must stay a plain number the
+ * user can type into, but the field still needs to show which currency it is in.
+ *
+ * Deliberately avoids Intl.NumberFormat.formatToParts: it is not reliably
+ * implemented in Hermes, React Native's JS engine, and threw when opening a
+ * receipt on a real device. Formatting zero and stripping the numeric parts works
+ * on every engine. The whole thing is wrapped anyway — a missing symbol must never
+ * take down a screen.
+ */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  JPY: "¥",
+  CHF: "CHF",
+  CAD: "CA$",
+  AUD: "A$",
+};
+
+export function currencySymbol(currency: string, locale = "en-US"): string {
+  const code = currency.toUpperCase();
+  const known = CURRENCY_SYMBOLS[code];
+  if (known) return known;
+  try {
+    const formatted = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: code,
+    }).format(0);
+    // Strip digits, separators, and every flavour of space (incl. non-breaking).
+    const stripped = formatted.replace(/[\d\s  .,]/g, "");
+    return stripped || code;
+  } catch {
+    return code;
+  }
+}
+
 /** "Jul 18" — matches the design's fmtDate(). */
 export function formatShortDate(iso: string, locale = "en-US"): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(locale, {

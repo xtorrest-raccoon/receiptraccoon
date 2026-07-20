@@ -21,7 +21,9 @@ create table workspaces (
   -- Euro-based business travelling abroad, so foreign receipts are a normal path
   -- rather than an edge case. Onboarding must still ask rather than assume.
   home_currency      char(3) not null default 'EUR',
-  mileage_rate_minor int not null default 70,          -- minor units per mile
+  -- Thousandths of a currency unit (0.700/mi -> 700). Three decimals because
+  -- statutory mileage rates are quoted that way; cents would round the figure.
+  mileage_rate_milli int not null default 700,
   mileage_unit       text not null default 'mi' check (mileage_unit in ('mi','km')),
   created_at         timestamptz not null default now()
 );
@@ -91,6 +93,16 @@ create table receipts (
   total_minor       bigint generated always as
                       (coalesce(subtotal_minor,0) + coalesce(tax_minor,0)) stored,
 
+  -- What the employee is actually claiming back, which can be less than the total:
+  -- a shared bill, a meal with a personal portion, a mixed business/personal trip.
+  -- NULL means "the whole total".
+  --
+  -- This is the figure spend reporting and reimbursement read, NOT total_minor.
+  -- Cannot exceed the total: you may claim less than you paid, never more.
+  reclaim_minor     bigint check (reclaim_minor is null or reclaim_minor >= 0),
+  constraint reclaim_within_total
+    check (reclaim_minor is null or reclaim_minor <= coalesce(subtotal_minor,0) + coalesce(tax_minor,0)),
+
   -- Populated only for foreign-currency receipts. Rate frozen at scan time so a
   -- receipt's home-currency value never drifts. DESIGN_V2_DELTA.md §4.1.
   original_currency     char(3),
@@ -155,7 +167,7 @@ create table mileage_trips (
   distance_unit text not null check (distance_unit in ('mi','km')),
   -- Frozen at entry, like fx_rate. Changing the workspace rate must not silently
   -- restate what someone is already owed.
-  rate_minor    int not null,
+  rate_milli    int not null,          -- thousandths of a currency unit
   amount_minor  bigint not null,
   reimbursement_status reimbursement_status not null default 'pending',
   rejection_reason text,
@@ -315,6 +327,78 @@ end $$;
 create trigger trg_receipt_reimbursement_authority
   before update on receipts
   for each row execute function enforce_reimbursement_authority('receipt');
+
+-- ═══════════════════════════════════════════════════════════
+-- amounts and comments are frozen once a receipt leaves 'pending'
+--
+-- Editing the figure after approval would mean the amount on record no longer
+-- matches what was signed off, or in the reimbursed case what was actually paid.
+-- A rejected receipt is frozen too: the employee moves it back to pending to
+-- correct and resubmit, so the correction is visible in reimbursement_events
+-- rather than silent.
+--
+-- In the database rather than the API for the same reason as approval authority:
+-- mobile, web, and any future integration all write here.
+-- ═══════════════════════════════════════════════════════════
+
+create or replace function enforce_frozen_after_pending()
+returns trigger language plpgsql as $$
+begin
+  -- Only guard rows that were already past pending. The transition itself is
+  -- allowed to carry the final figures.
+  if old.reimbursement_status = 'pending' then
+    return new;
+  end if;
+
+  -- Past this point the receipt is no longer pending (see the early return above),
+  -- so the comment is part of what an approver acted on and freezes with the
+  -- amounts. Revising it means moving the receipt back to pending, which is a
+  -- visible transition rather than a silent edit.
+  if new.comment is distinct from old.comment then
+    raise exception 'Comments can only be changed while a receipt is pending (current status: %)',
+      old.reimbursement_status
+      using errcode = '42501';
+  end if;
+
+  if new.subtotal_minor is distinct from old.subtotal_minor
+     or new.tax_minor is distinct from old.tax_minor
+     or new.reclaim_minor is distinct from old.reclaim_minor
+     or new.currency is distinct from old.currency
+     or new.original_total_minor is distinct from old.original_total_minor
+     or new.fx_rate is distinct from old.fx_rate then
+    raise exception 'Amounts can only be changed while a receipt is pending (current status: %)',
+      old.reimbursement_status
+      using errcode = '42501';
+  end if;
+
+  return new;
+end $$;
+
+create trigger trg_receipt_frozen_after_pending
+  before update on receipts
+  for each row execute function enforce_frozen_after_pending();
+
+create or replace function enforce_mileage_amount_frozen()
+returns trigger language plpgsql as $$
+begin
+  if old.reimbursement_status = 'pending' then
+    return new;
+  end if;
+
+  if new.distance is distinct from old.distance
+     or new.rate_milli is distinct from old.rate_milli
+     or new.amount_minor is distinct from old.amount_minor then
+    raise exception 'Mileage amounts can only be changed while a trip is pending (current status: %)',
+      old.reimbursement_status
+      using errcode = '42501';
+  end if;
+
+  return new;
+end $$;
+
+create trigger trg_mileage_amount_frozen
+  before update on mileage_trips
+  for each row execute function enforce_mileage_amount_frozen();
 
 create trigger trg_mileage_reimbursement_authority
   before update on mileage_trips

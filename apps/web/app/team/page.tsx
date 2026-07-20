@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { canViewTeamPage, formatMoney, type ReimbursementStatus } from "@rr/shared";
+import {
+  canViewTeamPage,
+  formatMoney,
+  currencySymbol,
+  rateToDecimalString,
+  type ReimbursementStatus,
+} from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { getCurrentUser, getTeam, listMileage, listUsers } from "../../lib/data";
 import { useDataStore } from "../../lib/store";
@@ -119,7 +125,9 @@ export default function TeamPage() {
           <div>
             <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Mileage reimbursements</div>
             <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
-              Logged from the mobile app · rate {formatMoney(team.mileageRateMinor, team.currency)}/mi
+              {/* Rates carry three decimals; formatMoney would round 0.675 to 0.68. */}
+              Logged from the mobile app · rate {currencySymbol(team.currency)}
+              {rateToDecimalString(team.mileageRateMilli)}/mi
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>

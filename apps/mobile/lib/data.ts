@@ -24,16 +24,29 @@ import {
   getDashboard as mockGetDashboard,
   listReceipts as mockListReceipts,
   getReceipt as mockGetReceipt,
+  deleteReceipt as mockDeleteReceipt,
   listMileage as mockListMileage,
+  getOwedToUserSummary as mockGetOwedToUser,
   addMileageTrip as mockAddMileageTrip,
+  updateMileageTrip as mockUpdateMileageTrip,
+  deleteMileageTrip as mockDeleteMileageTrip,
   listCategories as mockListCategories,
   HOME_CURRENCY as MOCK_HOME_CURRENCY,
+  getHomeCurrency as mockGetHomeCurrency,
+  setHomeCurrency as mockSetHomeCurrency,
+  getDistanceUnit as mockGetDistanceUnit,
+  setDistanceUnit as mockSetDistanceUnit,
+  getMileageRateMilli as mockGetRate,
+  setMileageRateMilli as mockSetRate,
+  estimateMileageAmountMinor as mockEstimateMileage,
+  SUPPORTED_CURRENCIES,
   TODAY as MOCK_TODAY,
   CURRENT_USER,
 } from "@rr/mock-api";
 import {
   formatMonthLabel,
   type DashboardResponse,
+  type OwedToUserSummary,
   type Receipt,
   type MileageTrip,
   type DistanceUnit,
@@ -53,6 +66,43 @@ export function getDashboard(month?: string): DashboardResponse {
   return mockGetDashboard(month);
 }
 
+/**
+ * Workspace home currency. Changing it re-expresses every amount, so screens must
+ * re-read after setting it — that is what the focus/refresh keys are for.
+ */
+export function getHomeCurrency(): string {
+  return mockGetHomeCurrency();
+}
+
+export function setHomeCurrency(code: string): void {
+  mockSetHomeCurrency(code);
+}
+
+export const CURRENCIES = SUPPORTED_CURRENCIES;
+
+/** Distance unit for mileage. A workspace setting, shared across screens. */
+export function getDistanceUnit(): DistanceUnit {
+  return mockGetDistanceUnit();
+}
+
+export function setDistanceUnit(unit: DistanceUnit): void {
+  mockSetDistanceUnit(unit);
+}
+
+/** Workspace mileage rate, per the current distance unit. Edited from Settings. */
+export function getMileageRateMilli(): number {
+  return mockGetRate();
+}
+
+export function setMileageRateMilli(value: number): void {
+  mockSetRate(value);
+}
+
+/** What a trip would be worth if saved now — same rate the save itself will use. */
+export function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): number {
+  return mockEstimateMileage(distance, unit);
+}
+
 export function listReceipts(opts: { month?: string; categoryName?: string; q?: string } = {}): Receipt[] {
   return mockListReceipts(opts).map(mergeReceiptEdits);
 }
@@ -60,6 +110,11 @@ export function listReceipts(opts: { month?: string; categoryName?: string; q?: 
 export function getReceipt(id: string): Receipt | undefined {
   const r = mockGetReceipt(id);
   return r ? mergeReceiptEdits(r) : undefined;
+}
+
+/** Delete a receipt. Returns false when not permitted — see mock-api for the rule. */
+export function deleteReceipt(id: string): boolean {
+  return mockDeleteReceipt(id);
 }
 
 export function listMileage(): MileageTrip[] {
@@ -75,6 +130,19 @@ export function addMileageTrip(input: {
   return mockAddMileageTrip(input);
 }
 
+/** Edit a pending trip. Returns null when not permitted. */
+export function updateMileageTrip(
+  id: string,
+  patch: { tripDate?: string; purpose?: string; distance?: number },
+): MileageTrip | null {
+  return mockUpdateMileageTrip(id, patch);
+}
+
+/** Delete a pending trip. Returns false when not permitted. */
+export function deleteMileageTrip(id: string): boolean {
+  return mockDeleteMileageTrip(id);
+}
+
 export function listCategories(): string[] {
   return mockListCategories();
 }
@@ -88,30 +156,22 @@ export function getAvailableMonths(): { value: string; label: string }[] {
   return months.map((m) => ({ value: m, label: formatMonthLabel(m) }));
 }
 
-/** Reimbursement statuses that still owe the employee money. Mirrors mock-api's
- * internal (unexported) OUTSTANDING list — a plain filter over the public
- * ReimbursementStatus enum, not a re-derivation of business logic. */
-const OUTSTANDING_STATUSES: ReadonlySet<string> = new Set(["pending", "approved"]);
-
 /**
- * `getDashboard().stats.reimbursableMinor` only totals outstanding receipts —
- * the design's home-screen caption says "Incl. mileage", so this adds
- * outstanding mileage trips for the same month on top, the same way the design
- * intends the number to read.
+ * Personal running balance: receipts plus mileage the signed-in user has
+ * submitted that are still pending or approved. No date restriction — see
+ * mock-api's getOwedToUserSummary for why a monthly scope would be wrong here.
+ *
+ * amountMinor and receiptCount are paired deliberately — see OwedToUserSummary.
  */
-export function getReimbursableInclMileageMinor(month: string): number {
-  const dashboard = mockGetDashboard(month);
-  const mileageOutstanding = mockListMileage()
-    .filter((t) => t.tripDate.startsWith(month) && OUTSTANDING_STATUSES.has(t.reimbursementStatus))
-    .reduce((sum, t) => sum + t.amountMinor, 0);
-  return dashboard.stats.reimbursableMinor + mileageOutstanding;
+export function getOwedToUserSummary(): OwedToUserSummary {
+  return mockGetOwedToUser();
 }
 
 // ── In-session local overlay for edits the mock API can't persist yet ──────
 
 interface ReceiptEdit {
   comment?: string;
-  totalMinor?: number;
+  reclaimMinor?: number;
 }
 
 const receiptEdits = new Map<string, ReceiptEdit>();
@@ -122,7 +182,7 @@ function mergeReceiptEdits(r: Receipt): Receipt {
   return {
     ...r,
     comment: edit.comment !== undefined ? edit.comment : r.comment,
-    totalMinor: edit.totalMinor !== undefined ? edit.totalMinor : r.totalMinor,
+    reclaimMinor: edit.reclaimMinor !== undefined ? edit.reclaimMinor : r.reclaimMinor,
   };
 }
 

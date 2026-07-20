@@ -1,49 +1,67 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
-import { formatMoney, formatShortDate, minorToDecimalString, parseMoneyToMinor, type DistanceUnit, type MileageTrip } from "@rr/shared";
+import {
+  formatMoney,
+  formatShortDate,
+  currencySymbol,
+  rateToDecimalString,
+  type DistanceUnit,
+  type MileageTrip,
+} from "@rr/shared";
 import { rn } from "../../lib/colors";
-import { convertDistance, convertRateMinor, formatDistance } from "../../lib/units";
-import { HOME_CURRENCY, CURRENT_MONTH, TODAY, addMileageTrip, listMileage } from "../../lib/data";
+import { convertDistance, formatDistance } from "../../lib/units";
+import {
+  CURRENT_MONTH,
+  TODAY,
+  addMileageTrip,
+  updateMileageTrip,
+  deleteMileageTrip,
+  listMileage,
+  getHomeCurrency,
+  getDistanceUnit,
+  getMileageRateMilli,
+  estimateMileageAmountMinor,
+} from "../../lib/data";
+import { useFocusEffect } from "expo-router";
 import { Text } from "../../components/Text";
 import { TripRow } from "../../components/TripRow";
+import { SwipeToDelete } from "../../components/SwipeToDelete";
 
 export default function MileageScreen() {
   const insets = useSafeAreaInsets();
-  const currency = HOME_CURRENCY;
 
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState<MileageTrip[]>([]);
-  const [unit, setUnit] = useState<DistanceUnit>("mi");
+  // Currency and distance unit are workspace settings, changed from the gear on
+  // the Home screen. Re-read on focus so returning here picks up a change.
+  const [currency, setCurrency] = useState(getHomeCurrency());
+  const [unit, setUnit] = useState<DistanceUnit>(getDistanceUnit());
 
-  const [rateEditorOpen, setRateEditorOpen] = useState(false);
-  const [rateEditorValue, setRateEditorValue] = useState("");
-  const [customRateMinor, setCustomRateMinor] = useState<number | null>(null);
+  const [rateMilli, setRateMilliState] = useState(getMileageRateMilli());
 
   const [addTripOpen, setAddTripOpen] = useState(false);
+  /** Non-null when the form is editing an existing trip rather than adding one. */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newPurpose, setNewPurpose] = useState("");
   const [newDate, setNewDate] = useState(TODAY);
   const [newDistance, setNewDistance] = useState("");
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setTrips(listMileage());
-      setLoading(false);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setCurrency(getHomeCurrency());
+      setUnit(getDistanceUnit());
+      setRateMilliState(getMileageRateMilli());
+      const timer = setTimeout(() => {
+        setTrips(listMileage());
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    }, []),
+  );
 
-  // The rate is frozen per-trip in the mock data (rateMinor, always quoted per
-  // mile). Reset any local preview override when the display unit changes so it
-  // never shows a rate that was typed for the other unit.
-  useEffect(() => {
-    setCustomRateMinor(null);
-    setRateEditorOpen(false);
-  }, [unit]);
-
-  const baseRatePerMileMinor = trips[0]?.rateMinor ?? 0;
-  const effectiveRateMinor = customRateMinor ?? convertRateMinor(baseRatePerMileMinor, "mi", unit);
+  // The rate is stored per the workspace's own distance unit, so no conversion.
 
   const monthTrips = useMemo(() => trips.filter((t) => t.tripDate.startsWith(CURRENT_MONTH)), [trips]);
   const monthReimbMinor = monthTrips.reduce((sum, t) => sum + t.amountMinor, 0);
@@ -52,53 +70,87 @@ export default function MileageScreen() {
     0,
   );
 
-  const openRateEditor = () => {
-    setRateEditorValue(minorToDecimalString(effectiveRateMinor, currency));
-    setRateEditorOpen(true);
-  };
-
-  const saveRate = () => {
-    const minor = parseMoneyToMinor(rateEditorValue, currency);
-    if (minor !== null && minor > 0) {
-      setCustomRateMinor(minor);
-    }
-    setRateEditorOpen(false);
-  };
-
-  const distanceValue = parseFloat(newDistance);
+  const distanceValue = parseFloat(newDistance.replace(",", "."));
+  // Asks the API what this would be worth, rather than computing it here from a
+  // cached rate. The screen's copy of the rate can go stale; the API's cannot
+  // disagree with itself, so the estimate always matches what gets saved.
   const estimateMinor =
-    !isNaN(distanceValue) && distanceValue > 0 ? Math.round(distanceValue * effectiveRateMinor) : null;
+    !isNaN(distanceValue) && distanceValue > 0
+      ? estimateMileageAmountMinor(distanceValue, unit)
+      : null;
+
+  const closeForm = () => {
+    setAddTripOpen(false);
+    setEditingId(null);
+    setNewPurpose("");
+    setNewDistance("");
+    setNewDate(TODAY);
+  };
+
+  /** Tapping a pending trip loads it into the same form used to add one. */
+  const startEdit = (trip: MileageTrip) => {
+    setEditingId(trip.id);
+    setNewPurpose(trip.purpose);
+    setNewDate(trip.tripDate);
+    setNewDistance(String(trip.distance));
+    setAddTripOpen(true);
+  };
 
   const saveTrip = () => {
     if (!newPurpose.trim() || isNaN(distanceValue) || distanceValue <= 0) return;
-    const trip = addMileageTrip({
-      tripDate: newDate,
-      purpose: newPurpose.trim(),
-      distance: distanceValue,
-      distanceUnit: unit,
-    });
-    setTrips((prev) => [trip, ...prev]);
-    setAddTripOpen(false);
-    setNewPurpose("");
-    setNewDistance("");
+
+    if (editingId) {
+      const updated = updateMileageTrip(editingId, {
+        tripDate: newDate,
+        purpose: newPurpose.trim(),
+        distance: distanceValue,
+      });
+      if (updated) {
+        setTrips((prev) => prev.map((t) => (t.id === editingId ? { ...updated } : t)));
+      } else {
+        Alert.alert("Could not save", "Only pending trips can be edited.");
+      }
+    } else {
+      const trip = addMileageTrip({
+        tripDate: newDate,
+        purpose: newPurpose.trim(),
+        distance: distanceValue,
+        distanceUnit: unit,
+      });
+      setTrips((prev) => [trip, ...prev]);
+    }
+    closeForm();
+  };
+
+  const confirmDelete = (trip: MileageTrip) => {
+    Alert.alert(
+      "Delete trip?",
+      `"${trip.purpose}" will be permanently removed. This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            if (deleteMileageTrip(trip.id)) {
+              setTrips((prev) => prev.filter((t) => t.id !== trip.id));
+              if (editingId === trip.id) closeForm();
+            } else {
+              Alert.alert("Could not delete", "Only pending trips can be deleted.");
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
+        {/* The mi/km toggle lives in Settings (gear on Home) — it is a workspace
+            setting the Team page also reads, not a per-screen display preference. */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Mileage</Text>
-          <View style={styles.unitToggle}>
-            {(["mi", "km"] as DistanceUnit[]).map((u) => (
-              <Pressable
-                key={u}
-                onPress={() => setUnit(u)}
-                style={[styles.unitOption, unit === u && { backgroundColor: rn(color.brand) }]}
-              >
-                <Text style={[styles.unitOptionLabel, { color: unit === u ? "#fff" : rn(color.textFaint) }]}>{u}</Text>
-              </Pressable>
-            ))}
-          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -107,44 +159,32 @@ export default function MileageScreen() {
             <Text style={styles.darkCardValue}>{formatMoney(monthReimbMinor, currency)}</Text>
             <Text style={styles.darkCardSub}>{formatDistance(monthDistanceInUnit, unit)} logged</Text>
           </View>
-          <Pressable style={styles.rateCard} onPress={openRateEditor}>
-            <Text style={styles.statLabel}>Rate ✎</Text>
-            <Text style={styles.statValue}>{formatMoney(effectiveRateMinor, currency)}</Text>
-            <Text style={styles.statCaption}>per {unit}</Text>
-          </Pressable>
-        </View>
-
-        {rateEditorOpen && (
-          <View style={styles.editorCard}>
-            <Text style={styles.editorTitle}>Reimbursement rate per {unit} ({currency})</Text>
-            <View style={styles.editorRow}>
-              <TextInput
-                value={rateEditorValue}
-                onChangeText={setRateEditorValue}
-                placeholder="0.70"
-                keyboardType="decimal-pad"
-                style={styles.editorInput}
-              />
-              <Pressable style={styles.saveButton} onPress={saveRate}>
-                <Text style={styles.saveButtonLabel}>Save</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.editorHint}>
-              Preview only — used to estimate new trips below. Saved trips keep the rate on record at the
-              time they were logged.
+          {/* Read-only. The rate is a workspace setting, edited in Settings. */}
+          <View style={styles.rateCard}>
+            <Text style={styles.statLabel}>Rate</Text>
+            {/* Not formatMoney: that rounds to two decimals and would show a
+                0.675 rate as 0.68, understating what a long trip is worth. */}
+            <Text style={styles.statValue}>
+              {currencySymbol(currency)}
+              {rateToDecimalString(rateMilli)}
             </Text>
+            <Text style={styles.statCaption}>per {unit}</Text>
           </View>
-        )}
+        </View>
 
         <View style={styles.tripsHeaderRow}>
           <Text style={styles.tripsHeaderTitle}>Recent trips</Text>
-          <Pressable style={styles.addTripButton} onPress={() => setAddTripOpen((v) => !v)}>
-            <Text style={styles.addTripLabel}>+ Add trip</Text>
+          <Pressable
+            style={styles.addTripButton}
+            onPress={() => (addTripOpen ? closeForm() : setAddTripOpen(true))}
+          >
+            <Text style={styles.addTripLabel}>{addTripOpen ? "Close" : "+ Add trip"}</Text>
           </Pressable>
         </View>
 
         {addTripOpen && (
           <View style={styles.addTripCard}>
+            <Text style={styles.formTitle}>{editingId ? "Edit trip" : "New trip"}</Text>
             <TextInput
               value={newPurpose}
               onChangeText={setNewPurpose}
@@ -173,11 +213,13 @@ export default function MileageScreen() {
               <Text style={styles.estimateText}>Estimated reimbursement: {formatMoney(estimateMinor, currency)}</Text>
             )}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
-              <Pressable style={styles.cancelButton} onPress={() => setAddTripOpen(false)}>
+              <Pressable style={styles.cancelButton} onPress={closeForm}>
                 <Text style={styles.cancelButtonLabel}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.saveTripButton} onPress={saveTrip}>
-                <Text style={styles.saveButtonLabel}>Save trip</Text>
+                <Text style={styles.saveButtonLabel}>
+                  {editingId ? "Save changes" : "Save trip"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -191,9 +233,19 @@ export default function MileageScreen() {
           <Text style={styles.emptyText}>No trips logged yet.</Text>
         ) : (
           <View style={{ gap: 8 }}>
-            {trips.map((t) => (
-              <TripRow key={t.id} trip={t} currency={currency} displayUnit={unit} />
-            ))}
+            {trips.map((t) => {
+              const editable = t.reimbursementStatus === "pending";
+              return (
+                <SwipeToDelete key={t.id} enabled={editable} onDelete={() => confirmDelete(t)}>
+                  <TripRow
+                    trip={t}
+                    currency={currency}
+                    displayUnit={unit}
+                    {...(editable ? { onPress: () => startEdit(t) } : {})}
+                  />
+                </SwipeToDelete>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -212,21 +264,6 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: "800",
     color: rn(color.text),
-  },
-  unitToggle: {
-    flexDirection: "row",
-    backgroundColor: rn(color.surfaceMuted),
-    borderRadius: 20,
-    padding: 3,
-  },
-  unitOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
-  },
-  unitOptionLabel: {
-    fontSize: 11.5,
-    fontWeight: "700",
   },
   statsRow: {
     flexDirection: "row",
@@ -323,6 +360,12 @@ const styles = StyleSheet.create({
     color: rn(color.textMuted),
     marginTop: 8,
     lineHeight: 16,
+  },
+  formTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: rn(color.text),
+    marginBottom: 2,
   },
   tripsHeaderRow: {
     flexDirection: "row",

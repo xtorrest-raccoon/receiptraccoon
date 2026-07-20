@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
-import { minorToDecimalString, parseMoneyToMinor } from "@rr/shared";
+import { minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import { HOME_CURRENCY, listCategories } from "../../lib/data";
 import { getDraftReceipt, setSavedSummary } from "../../lib/captureStore";
@@ -57,7 +57,14 @@ export default function ConfirmScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 18, paddingBottom: 24 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 18, paddingBottom: 24 }}
+        // Same reason as the receipt detail screen: the keyboard would otherwise
+        // cover the Total, Tax and Comment fields on this form.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
         <Text style={styles.title}>Review receipt</Text>
         <Text style={styles.subtitle}>Confirm the details we found</Text>
 
@@ -81,7 +88,7 @@ export default function ConfirmScreen() {
               </Field>
             </View>
             <View style={{ flex: 1 }}>
-              <Field label="Total">
+              <Field label={`Total (${currencySymbol(HOME_CURRENCY)})`}>
                 <TextInput
                   value={totalText}
                   onChangeText={setTotalText}
@@ -94,7 +101,7 @@ export default function ConfirmScreen() {
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <Field label="Tax">
+              <Field label={`Tax (${currencySymbol(HOME_CURRENCY)})`}>
                 <TextInput value={taxText} onChangeText={setTaxText} keyboardType="decimal-pad" style={styles.input} />
               </Field>
             </View>
@@ -118,7 +125,7 @@ export default function ConfirmScreen() {
             <TextInput
               value={comment}
               onChangeText={setComment}
-              placeholder="e.g. Client meeting with 2 attendees…"
+              placeholder="e.g. reason for exception, attendees, purpose…"
               placeholderTextColor={rn(color.textFaint)}
               multiline
               style={styles.commentInput}

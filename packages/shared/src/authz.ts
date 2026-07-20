@@ -73,6 +73,38 @@ export function canSetReimbursementStatus(ctx: ApprovalContext): ApprovalDecisio
   return { allowed: true };
 }
 
+/**
+ * Amounts are editable only while a receipt is still pending.
+ *
+ * Once it is approved or reimbursed the figure has been signed off and, in the
+ * reimbursed case, actually paid — editing it afterwards would mean the amount on
+ * record no longer matches what was approved or transferred. A rejected receipt is
+ * frozen too: the employee moves it back to pending to correct and resubmit, which
+ * makes the correction visible in reimbursement_events rather than silent.
+ *
+ * Enforced in the database as well as here — see the receipt amount trigger in
+ * 0001_init.sql. This function is for UI affordances only.
+ */
+export function canEditReceiptAmount(status: ReimbursementStatus): boolean {
+  return status === "pending";
+}
+
+/**
+ * Comments freeze on the same rule as amounts: editable only while pending.
+ *
+ * Once a claim has been approved, paid, or rejected, the comment is part of what
+ * an approver acted on. Letting it change afterwards would mean the justification
+ * on record is not the one that was reviewed. To revise it, the receipt goes back
+ * to pending, which is a visible transition in reimbursement_events rather than a
+ * silent edit.
+ *
+ * Enforced in the database as well as here — this function is for UI affordances
+ * only.
+ */
+export function canEditReceiptComment(status: ReimbursementStatus): boolean {
+  return status === "pending";
+}
+
 /** Rejection is not terminal — an employee can correct and resubmit. */
 export const REIMBURSEMENT_TRANSITIONS: Record<ReimbursementStatus, ReimbursementStatus[]> = {
   pending: ["approved", "rejected"],

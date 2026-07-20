@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { color } from "@rr/ui-tokens";
 import { categoryChipColor, formatMoney, formatShortDate, type MileageTrip, type DistanceUnit } from "@rr/shared";
@@ -33,14 +33,18 @@ export function TripRow({
   trip,
   currency,
   displayUnit,
+  onPress,
 }: {
   trip: MileageTrip;
   currency: string;
   displayUnit: DistanceUnit;
+  /** Omitted for trips that cannot be edited, which leaves the row inert. */
+  onPress?: () => void;
 }) {
   const distance = convertDistance(trip.distance, trip.distanceUnit, displayUnit);
+  const Container = onPress ? Pressable : View;
   return (
-    <View style={styles.row}>
+    <Container onPress={onPress} style={styles.row}>
       <View style={styles.iconBox}>
         <CarGlyph />
       </View>
@@ -56,7 +60,7 @@ export function TripRow({
         <Text style={styles.amount}>{formatMoney(trip.amountMinor, currency)}</Text>
         <StatusBadge status={trip.reimbursementStatus} />
       </View>
-    </View>
+    </Container>
   );
 }
 

@@ -1,11 +1,14 @@
-import type { DistanceUnit } from "@rr/shared";
+import { MI_TO_KM, type DistanceUnit } from "@rr/shared";
 
 /**
- * Miles <-> kilometres. This is a physical constant, not business logic, so it
- * lives here rather than in `@rr/shared` (which owns money, categories, health —
- * things that must not drift between web and mobile).
+ * Re-exported from @rr/shared rather than defined here.
+ *
+ * It was previously a local constant on the grounds that a physical constant is
+ * not business logic. That was wrong: it converts distances that get multiplied by
+ * a per-mile rate, so it IS part of the money calculation, and having a second copy
+ * is how the km/mile reimbursement bug survived.
  */
-export const MI_TO_KM = 1.60934;
+export { MI_TO_KM };
 
 export function convertDistance(distance: number, from: DistanceUnit, to: DistanceUnit): number {
   if (from === to) return distance;
@@ -17,12 +20,14 @@ export function formatDistance(distance: number, unit: DistanceUnit): string {
 }
 
 /**
- * Convert a per-mile (or per-km) reimbursement rate, still in integer minor
- * units, to the equivalent rate in the other unit. Stays in minor units the
- * whole way through so the result can still be handed to `formatMoney` —
- * nothing here divides a minor amount into major units by hand.
+ * Convert a per-mile (or per-km) reimbursement rate between units.
+ *
+ * Rates are integer thousandths of a currency unit, not minor units — statutory
+ * mileage rates carry three decimals and rounding to cents would change what
+ * someone is owed. Converting mi -> km at cent precision was especially lossy:
+ * €0.700/mi is €0.435/km, and only the third decimal keeps that honest.
  */
-export function convertRateMinor(rateMinor: number, from: DistanceUnit, to: DistanceUnit): number {
-  if (from === to) return rateMinor;
-  return Math.round(from === "mi" ? rateMinor / MI_TO_KM : rateMinor * MI_TO_KM);
+export function convertRateMilli(rateMilli: number, from: DistanceUnit, to: DistanceUnit): number {
+  if (from === to) return rateMilli;
+  return Math.round(from === "mi" ? rateMilli / MI_TO_KM : rateMilli * MI_TO_KM);
 }
