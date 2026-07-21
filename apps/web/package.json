@@ -16,6 +16,7 @@
     "@rr/shared": "workspace:*",
     "@rr/ui-tokens": "workspace:*",
     "@supabase/supabase-js": "^2.48.0",
+    "@tanstack/react-query": "^5.101.3",
     "next": "^15.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

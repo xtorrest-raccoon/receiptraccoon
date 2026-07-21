@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
 import { formatDelta, formatMoney } from "@rr/shared";
 import { color, fontSize, fontWeight } from "@rr/ui-tokens";
-import { getDashboard, TODAY } from "../../lib/data";
-import { useDataStore } from "../../lib/store";
+import { TODAY } from "../../lib/data";
+import { useDashboard } from "../../lib/queries";
 import { StatCard } from "../../components/StatCard";
 import { SpendBarChart } from "../../components/SpendBarChart";
 import { SpendPacingCard } from "../../components/SpendPacingCard";
@@ -22,8 +21,8 @@ const TODAY_LABEL = new Date(`${TODAY}T00:00:00`).toLocaleDateString("en-US", {
 const CURRENT_MONTH = TODAY.slice(0, 7);
 
 export default function DashboardPage() {
-  const { version } = useDataStore();
-  const dashboard = useMemo(() => getDashboard(CURRENT_MONTH), [version]);
+  const { data: dashboard } = useDashboard(CURRENT_MONTH);
+  if (!dashboard) return null;
   const { stats, currency } = dashboard;
 
   const deltaUp = stats.monthDeltaPct > 0;

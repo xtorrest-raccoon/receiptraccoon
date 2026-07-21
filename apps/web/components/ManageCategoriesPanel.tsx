@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { addCategoryName, removeCategoryName } from "../lib/data";
+import { useAddCategoryName, useRemoveCategoryName } from "../lib/queries";
 
-export function ManageCategoriesPanel({ categories, onChanged }: { categories: string[]; onChanged: () => void }) {
+export function ManageCategoriesPanel({ categories }: { categories: string[] }) {
   const [input, setInput] = useState("");
+  const addCategory = useAddCategoryName();
+  const removeCategory = useRemoveCategoryName();
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, marginTop: 16 }}>
@@ -20,9 +22,8 @@ export function ManageCategoriesPanel({ categories, onChanged }: { categories: s
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              addCategoryName(input);
+              addCategory.mutate(input);
               setInput("");
-              onChanged();
             }
           }}
           style={{
@@ -37,9 +38,8 @@ export function ManageCategoriesPanel({ categories, onChanged }: { categories: s
         <button
           type="button"
           onClick={() => {
-            addCategoryName(input);
+            addCategory.mutate(input);
             setInput("");
-            onChanged();
           }}
           style={{
             padding: "9px 16px",
@@ -73,10 +73,7 @@ export function ManageCategoriesPanel({ categories, onChanged }: { categories: s
             {c}
             <button
               type="button"
-              onClick={() => {
-                removeCategoryName(c);
-                onChanged();
-              }}
+              onClick={() => removeCategory.mutate(c)}
               aria-label={`Remove ${c}`}
               style={{
                 width: 18,

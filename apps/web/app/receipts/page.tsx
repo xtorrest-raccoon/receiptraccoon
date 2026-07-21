@@ -1,20 +1,21 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
-import { formatMoney, isAdmin } from "@rr/shared";
+import { useState } from "react";
+import { formatMoney, isAdmin, type Receipt } from "@rr/shared";
+import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { getCategoryList, getCurrentUser, listReceipts, listUsers, subscribeCategoryList, userName } from "../../lib/data";
-import { useDataStore } from "../../lib/store";
+import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
 import { DownloadIcon } from "../../components/icons";
 
-function exportCsv(rows: ReturnType<typeof listReceipts>) {
+function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
+  const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
   const header = ["Date", "Vendor", "User", "Category", "Total", "Reimbursement"];
   const lines = [header, ...rows.map((r) => [
     r.receiptDate ?? "",
     r.vendor ?? "",
-    userName(r.createdBy),
+    nameOf(r.createdBy),
     r.categoryName ?? "Other",
     formatMoney(r.totalMinor, r.currency),
     r.reimbursementStatus,
@@ -32,24 +33,19 @@ function exportCsv(rows: ReturnType<typeof listReceipts>) {
 }
 
 export default function ReceiptsPage() {
-  const { version, bump } = useDataStore();
-  const categories = useSyncExternalStore(subscribeCategoryList, getCategoryList, getCategoryList);
-  const admin = isAdmin(getCurrentUser().role);
-  const users = listUsers();
+  const { data: categories } = useCategories();
+  const { data: currentUser } = useCurrentUser();
+  const { data: users } = useUsers();
+  const admin = currentUser ? isAdmin(currentUser.role) : false;
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [userFilter, setUserFilter] = useState("All");
 
-  const receipts = useMemo(() => {
-    void version;
-    return listReceipts({ q: search || undefined, categoryName: categoryFilter, userId: userFilter });
-  }, [version, search, categoryFilter, userFilter]);
+  const { data: receipts } = useReceipts({ q: search || undefined, categoryName: categoryFilter, userId: userFilter });
+  const { data: allForExport } = useReceipts({ categoryName: categoryFilter, userId: userFilter });
 
-  const allForExport = useMemo(() => {
-    void version;
-    return listReceipts({ categoryName: categoryFilter, userId: userFilter });
-  }, [version, categoryFilter, userFilter]);
+  if (!categories || !users) return null;
 
   return (
     <div>
@@ -57,7 +53,7 @@ export default function ReceiptsPage() {
         <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em" }}>Receipts</div>
         <button
           type="button"
-          onClick={() => exportCsv(allForExport)}
+          onClick={() => exportCsv(allForExport ?? [], users)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -137,9 +133,9 @@ export default function ReceiptsPage() {
         ) : null}
       </div>
 
-      <ReceiptsTable receipts={receipts} categories={categories} onChanged={bump} />
+      <ReceiptsTable receipts={receipts ?? []} categories={categories} users={users} />
 
-      <ManageCategoriesPanel categories={categories} onChanged={bump} />
+      <ManageCategoriesPanel categories={categories} />
     </div>
   );
 }

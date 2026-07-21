@@ -2,28 +2,36 @@
 
 import { formatMoney, formatShortDate, isAdmin, type MileageTrip, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
-import { getCurrentUser, userName } from "../lib/data";
+import type { WorkspaceUser } from "@rr/api";
+import { useCurrentUser } from "../lib/queries";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
+function nameOf(users: WorkspaceUser[], id: string): string {
+  return users.find((u) => u.id === id)?.name ?? "Unknown";
+}
+
 /**
- * @rr/mock-api has no mutator for mileage trip status (only setReimbursementStatus
- * for receipts). The status control here therefore updates local page state only,
- * same as the design's own localStorage-backed prototype — neither persists to a
- * real backend, since one doesn't exist yet for mileage.
+ * The real backend has no mutator for mileage trip status yet (only
+ * setReimbursementStatus for receipts). The status control here therefore
+ * updates local page state only, same as the design's own localStorage-backed
+ * prototype — neither persists.
  */
 export function MileageTable({
   trips,
   currency,
+  users,
   statusOverrides,
   onStatusChange,
 }: {
   trips: MileageTrip[];
   currency: string;
+  users: WorkspaceUser[];
   statusOverrides: Record<string, ReimbursementStatus>;
   onStatusChange: (tripId: string, status: ReimbursementStatus) => void;
 }) {
-  const admin = isAdmin(getCurrentUser().role);
+  const { data: currentUser } = useCurrentUser();
+  const admin = currentUser ? isAdmin(currentUser.role) : false;
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden" }}>
@@ -66,7 +74,7 @@ export function MileageTable({
                 }}
               >
                 <div style={{ color: color.textMuted }}>{formatShortDate(t.tripDate)}</div>
-                <div style={{ fontWeight: fontWeight.semibold }}>{userName(t.userId)}</div>
+                <div style={{ fontWeight: fontWeight.semibold }}>{nameOf(users, t.userId)}</div>
                 <div style={{ color: color.textStrong }}>{t.purpose}</div>
                 <div style={{ color: color.textMuted }}>
                   {t.distance.toFixed(1)} {t.distanceUnit}
@@ -115,7 +123,7 @@ export function MileageTable({
                 style={{ flexDirection: "column", gap: 6, padding: "11px 20px", borderBottom: `1px solid ${color.borderSubtle}`, fontSize: fontSize.body }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: fontWeight.semibold }}>{userName(t.userId)}</span>
+                  <span style={{ fontWeight: fontWeight.semibold }}>{nameOf(users, t.userId)}</span>
                   <span style={{ fontWeight: fontWeight.bold }}>{formatMoney(t.amountMinor, currency)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", color: color.textMuted, fontSize: fontSize.small }}>

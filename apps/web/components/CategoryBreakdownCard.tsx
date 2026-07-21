@@ -3,19 +3,21 @@
 import { useMemo, useState } from "react";
 import { categoryAccent, formatMoney, formatMonthLabel } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { getDashboard, listReceipts } from "../lib/data";
+import { useDashboard, useReceipts } from "../lib/queries";
 
 export function CategoryBreakdownCard({ currency, defaultMonth }: { currency: string; defaultMonth: string }) {
+  const { data: allReceipts } = useReceipts({});
   const monthOptions = useMemo(() => {
     const months = new Set<string>();
-    for (const r of listReceipts({})) {
+    for (const r of allReceipts ?? []) {
       if (r.receiptDate) months.add(r.receiptDate.slice(0, 7));
     }
     return [...months].sort();
-  }, []);
+  }, [allReceipts]);
 
   const [month, setMonth] = useState(defaultMonth);
-  const breakdown = useMemo(() => getDashboard(month).categoryBreakdown, [month]);
+  const { data: dashboard } = useDashboard(month);
+  const breakdown = dashboard?.categoryBreakdown ?? [];
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 22 }}>

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractReceipt } from "@rr/extraction";
-import { parseMoneyToMinor } from "@rr/shared";
-import { getHomeCurrency, listCategories } from "../../../lib/data";
+import { SEED_CATEGORIES, parseMoneyToMinor } from "@rr/shared";
 
 /**
  * Server-side extraction endpoint. OPENAI_API_KEY never reaches a client bundle
@@ -24,8 +23,15 @@ export async function POST(request: NextRequest) {
   }
 
   const image = Buffer.from(await file.arrayBuffer());
-  const homeCurrency = getHomeCurrency();
-  const categories = listCategories();
+  // Stopgap until the next step (authenticating this route with the caller's
+  // real session): lib/data.ts's getHomeCurrency()/listCategories() now hit
+  // the real Supabase-backed workspace and require an authenticated client
+  // this route doesn't have yet — resolving "which workspace" needs the
+  // caller's identity, which isn't wired through here yet either. Falls back
+  // to a fixed default and the seed category list rather than being broken
+  // outright in the meantime.
+  const homeCurrency = "EUR";
+  const categories = SEED_CATEGORIES as unknown as string[];
 
   try {
     const outcome = await extractReceipt({

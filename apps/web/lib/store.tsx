@@ -2,16 +2,23 @@
 
 /**
  * App-wide client state that has to survive across pages: the receipt detail
- * drawer (openable from a table row on any page), the rejection modal it can
- * spawn, and a version counter that lets pages know mutations happened
- * elsewhere so they re-read from lib/data.
+ * drawer (openable from a table row on any page) and the rejection modal it
+ * can spawn.
  *
- * This never imports @rr/mock-api directly — only lib/data.ts.
+ * The `version` counter this used to carry is gone — that existed only to
+ * tell useMemo-based reads in each screen "something changed, recompute",
+ * which is exactly what TanStack Query's cache invalidation now does on its
+ * own (see lib/queries.ts's mutation hooks). Reimbursement-status changes
+ * route through useSetReimbursementStatus() here instead of calling
+ * lib/data.ts directly, so they invalidate the same way any other mutation
+ * does.
+ *
+ * This never imports @rr/api directly — only lib/data.ts / lib/queries.ts.
  */
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { ReimbursementStatus } from "@rr/shared";
-import * as data from "./data";
+import { useSetReimbursementStatus } from "./queries";
 
 interface RejectionModalState {
   receiptId: string;
@@ -20,10 +27,6 @@ interface RejectionModalState {
 }
 
 interface DataStoreValue {
-  /** Bump after any mutation so consumers re-derive from lib/data. */
-  version: number;
-  bump: () => void;
-
   selectedReceiptId: string | null;
   openReceipt: (id: string) => void;
   closeReceipt: () => void;
@@ -44,8 +47,7 @@ interface DataStoreValue {
 const DataStoreContext = createContext<DataStoreValue | null>(null);
 
 export function DataStoreProvider({ children }: { children: ReactNode }) {
-  const [version, setVersion] = useState(0);
-  const bump = useCallback(() => setVersion((v) => v + 1), []);
+  const setReimbursementStatus = useSetReimbursementStatus();
 
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const openReceipt = useCallback((id: string) => setSelectedReceiptId(id), []);
@@ -58,11 +60,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       if (status === "rejected") {
         setRejectionModal({ receiptId, vendor, reason: currentReason ?? "" });
       } else {
-        data.setReimbursementStatus(receiptId, status);
-        setVersion((v) => v + 1);
+        setReimbursementStatus.mutate({ id: receiptId, status });
       }
     },
-    [],
+    [setReimbursementStatus],
   );
 
   const setRejectionReason = useCallback((reason: string) => {
@@ -71,18 +72,15 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   const confirmRejection = useCallback(() => {
     setRejectionModal((m) => {
-      if (m) data.setReimbursementStatus(m.receiptId, "rejected", m.reason.trim());
+      if (m) setReimbursementStatus.mutate({ id: m.receiptId, status: "rejected", reason: m.reason.trim() });
       return null;
     });
-    setVersion((v) => v + 1);
-  }, []);
+  }, [setReimbursementStatus]);
 
   const cancelRejection = useCallback(() => setRejectionModal(null), []);
 
   const value = useMemo<DataStoreValue>(
     () => ({
-      version,
-      bump,
       selectedReceiptId,
       openReceipt,
       closeReceipt,
@@ -92,18 +90,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       confirmRejection,
       cancelRejection,
     }),
-    [
-      version,
-      bump,
-      selectedReceiptId,
-      openReceipt,
-      closeReceipt,
-      rejectionModal,
-      requestReimbursementChange,
-      setRejectionReason,
-      confirmRejection,
-      cancelRejection,
-    ],
+    [selectedReceiptId, openReceipt, closeReceipt, rejectionModal, requestReimbursementChange, setRejectionReason, confirmRejection, cancelRejection],
   );
 
   return <DataStoreContext.Provider value={value}>{children}</DataStoreContext.Provider>;

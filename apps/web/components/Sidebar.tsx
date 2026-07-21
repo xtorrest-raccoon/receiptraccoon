@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { canViewTeamPage } from "@rr/shared";
 import { signOut } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
-import { CURRENCIES, getCurrentUser, getHomeCurrency, setHomeCurrency } from "../lib/data";
-import { useDataStore } from "../lib/store";
+import { CURRENCIES } from "../lib/data";
+import { useCurrentUser, useHomeCurrency, useSetHomeCurrency } from "../lib/queries";
 import { DashboardIcon, LogoMark, ReceiptsIcon, TeamIcon } from "./icons";
 
 interface NavItem {
@@ -25,23 +24,11 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  // Lazy initializer so the very first render already reflects the mock API's
-  // current currency instead of always starting from a hardcoded "EUR" — the
-  // previous version was local-only state that never read from or wrote back
-  // to mockApi at all, so choosing a currency here didn't do anything.
-  const [homeCurrency, setLocalHomeCurrency] = useState(() => getHomeCurrency());
-  const { bump } = useDataStore();
-  const role = getCurrentUser().role;
-  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || canViewTeamPage(role));
-
-  const onChangeCurrency = (code: string) => {
-    setHomeCurrency(code);
-    setLocalHomeCurrency(code);
-    // Every dashboard/receipts/team read is scoped by version (see store.tsx),
-    // so this is what makes the rest of the app actually re-render in the new
-    // currency instead of just updating the select box.
-    bump();
-  };
+  const { data: currentUser } = useCurrentUser();
+  const { data: homeCurrency } = useHomeCurrency();
+  const setHomeCurrency = useSetHomeCurrency();
+  const role = currentUser?.role;
+  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (role && canViewTeamPage(role)));
 
   return (
     <div
@@ -112,8 +99,8 @@ export function Sidebar() {
             Home currency
           </div>
           <select
-            value={homeCurrency}
-            onChange={(e) => onChangeCurrency(e.target.value)}
+            value={homeCurrency ?? "EUR"}
+            onChange={(e) => setHomeCurrency.mutate(e.target.value)}
             style={{
               width: "100%",
               border: `1px solid ${color.borderStrong}`,
@@ -168,8 +155,9 @@ export function Sidebar() {
 
 export function MobileTopBar() {
   const pathname = usePathname();
-  const role = getCurrentUser().role;
-  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || canViewTeamPage(role));
+  const { data: currentUser } = useCurrentUser();
+  const role = currentUser?.role;
+  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (role && canViewTeamPage(role)));
 
   return (
     <div

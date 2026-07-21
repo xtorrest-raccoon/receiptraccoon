@@ -2,17 +2,32 @@
 
 import { categoryChipColor, formatMoney, formatShortDate, isAdmin, type ReimbursementStatus } from "@rr/shared";
 import type { Receipt } from "@rr/shared";
+import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
-import { getCurrentUser, setCategory, userName } from "../lib/data";
+import { useCurrentUser, useSetCategory } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 import { Avatar } from "./Avatar";
 import { CategoryChip } from "./Chips";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
-export function ReceiptsTable({ receipts, categories, onChanged }: { receipts: Receipt[]; categories: string[]; onChanged: () => void }) {
+function nameOf(users: WorkspaceUser[], id: string): string {
+  return users.find((u) => u.id === id)?.name ?? "Unknown";
+}
+
+export function ReceiptsTable({
+  receipts,
+  categories,
+  users,
+}: {
+  receipts: Receipt[];
+  categories: string[];
+  users: WorkspaceUser[];
+}) {
   const { openReceipt, requestReimbursementChange } = useDataStore();
-  const admin = isAdmin(getCurrentUser().role);
+  const { data: currentUser } = useCurrentUser();
+  const admin = currentUser ? isAdmin(currentUser.role) : false;
+  const setCategory = useSetCategory();
 
   if (receipts.length === 0) {
     return (
@@ -87,14 +102,11 @@ export function ReceiptsTable({ receipts, categories, onChanged }: { receipts: R
               <Avatar name={r.vendor ?? "?"} size={28} />
               {r.vendor}
             </button>
-            <div style={{ color: color.textMuted }}>{userName(r.createdBy)}</div>
+            <div style={{ color: color.textMuted }}>{nameOf(users, r.createdBy)}</div>
             <div>
               <select
                 value={r.categoryName ?? "Other"}
-                onChange={(e) => {
-                  setCategory(r.id, e.target.value);
-                  onChanged();
-                }}
+                onChange={(e) => setCategory.mutate({ id: r.id, categoryName: e.target.value })}
                 style={{
                   border: `1px solid ${color.border}`,
                   borderRadius: radius.sm,
@@ -177,7 +189,7 @@ export function ReceiptsTable({ receipts, categories, onChanged }: { receipts: R
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: color.textMuted, fontSize: fontSize.small }}>
               <span>
-                {r.receiptDate ? formatShortDate(r.receiptDate) : "—"} · {userName(r.createdBy)}
+                {r.receiptDate ? formatShortDate(r.receiptDate) : "—"} · {nameOf(users, r.createdBy)}
               </span>
               <CategoryChip category={r.categoryName ?? "Other"} />
             </div>

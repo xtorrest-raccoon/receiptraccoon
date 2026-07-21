@@ -1,134 +1,90 @@
 /**
- * Single wrapper around @rr/mock-api.
+ * Single wrapper around @rr/api (the real Supabase-backed implementation —
+ * see PHASE1.md: "Do not import the backend package directly into
+ * components"). Every screen and component in apps/web goes through this
+ * module instead.
  *
- * Per PHASE1.md: "Do not import @rr/mock-api directly into components." Every
- * screen and component in apps/web goes through this module instead, so that
- * swapping the mock for the real Supabase-backed API later touches one file.
- *
- * The mock API is a synchronous, in-memory, module-level singleton — that is
- * fine for this phase and lets pages call these functions directly from client
- * components without any loading state beyond "receipts.length === 0".
+ * Every function here is async, unlike the @rr/mock-api version this
+ * replaced — Postgrest is a real network call. Screens read these through
+ * the query hooks in lib/queries.ts, not by calling them directly.
  */
 
-import * as mockApi from "@rr/mock-api";
-import type {
-  DashboardResponse,
-  MileageTrip,
-  Receipt,
-  ReimbursementStatus,
-  TeamResponse,
-} from "@rr/shared";
+import * as api from "@rr/api";
+import type { DashboardResponse, MileageTrip, Receipt, ReimbursementStatus, TeamResponse } from "@rr/shared";
 
-export type { MockUser } from "@rr/mock-api";
+export type { CurrentUser, WorkspaceUser } from "@rr/api";
 
-export const TODAY = mockApi.TODAY;
-export const HOME_CURRENCY = mockApi.HOME_CURRENCY;
-/** Same list mobile's Settings screen offers — see mock-api's FX_FROM_EUR. */
-export const CURRENCIES = mockApi.SUPPORTED_CURRENCIES;
+/** Anchored once at load — "today" doesn't change meaningfully within a session. */
+export const TODAY = new Date().toISOString().slice(0, 10);
+export const CURRENCIES = api.SUPPORTED_CURRENCIES;
 
-export function getDashboard(month?: string): DashboardResponse {
-  return mockApi.getDashboard(month);
+export function getDashboard(month?: string): Promise<DashboardResponse> {
+  return api.getDashboard(month);
 }
 
 export function listReceipts(
   opts: { month?: string | undefined; categoryName?: string | undefined; userId?: string | undefined; q?: string | undefined } = {},
-): Receipt[] {
-  // Rebuilt without explicit `undefined` values: mock-api's own opts type
-  // predates exactOptionalPropertyTypes-safe callers, so a value must be
-  // omitted entirely rather than assigned undefined.
+): Promise<Receipt[]> {
   const clean: { month?: string; categoryName?: string; userId?: string; q?: string } = {};
   if (opts.month !== undefined) clean.month = opts.month;
   if (opts.categoryName !== undefined) clean.categoryName = opts.categoryName;
   if (opts.userId !== undefined) clean.userId = opts.userId;
   if (opts.q !== undefined) clean.q = opts.q;
-  return mockApi.listReceipts(clean);
+  return api.listReceipts(clean);
 }
 
-export function getReceipt(id: string): Receipt | undefined {
-  return mockApi.getReceipt(id);
+export function getReceipt(id: string): Promise<Receipt | undefined> {
+  return api.getReceipt(id);
 }
 
-export function setReimbursementStatus(id: string, status: ReimbursementStatus, reason?: string): void {
-  mockApi.setReimbursementStatus(id, status, reason);
+export function setReimbursementStatus(id: string, status: ReimbursementStatus, reason?: string): Promise<void> {
+  return api.setReimbursementStatus(id, status, reason);
 }
 
-export function setCategory(id: string, categoryName: string): void {
-  mockApi.setCategory(id, categoryName);
+export function setCategory(id: string, categoryName: string): Promise<void> {
+  return api.setCategory(id, categoryName);
 }
 
-export function getTeam(month?: string): TeamResponse {
-  return mockApi.getTeam(month);
+export function getTeam(month?: string): Promise<TeamResponse> {
+  return api.getTeam(month);
 }
 
-export function listMileage(userId?: string): MileageTrip[] {
-  return mockApi.listMileage(userId);
+export function listMileage(userId?: string): Promise<MileageTrip[]> {
+  return api.listMileage(userId);
 }
 
-export function addMileageTrip(input: { tripDate: string; purpose: string; distance: number; distanceUnit: "mi" | "km" }): MileageTrip {
-  return mockApi.addMileageTrip(input);
+export function addMileageTrip(input: { tripDate: string; purpose: string; distance: number; distanceUnit: "mi" | "km" }): Promise<MileageTrip> {
+  return api.addMileageTrip(input);
 }
 
-export function listCategories(): string[] {
-  return mockApi.listCategories();
+export function listCategories(): Promise<string[]> {
+  return api.listCategories();
 }
 
-export function getHomeCurrency(): string {
-  return mockApi.getHomeCurrency();
+export function addCategoryName(name: string): Promise<void> {
+  return api.addCategoryName(name);
 }
 
-export function setHomeCurrency(code: string): void {
-  mockApi.setHomeCurrency(code);
+export function removeCategoryName(name: string): Promise<void> {
+  return api.removeCategoryName(name);
 }
 
-export function userName(id: string): string {
-  return mockApi.userName(id);
+export function getHomeCurrency(): Promise<string> {
+  return api.getHomeCurrency();
 }
 
-export function getCurrentUser(): mockApi.MockUser {
-  return mockApi.CURRENT_USER;
+export function setHomeCurrency(code: string): Promise<void> {
+  return api.setHomeCurrency(code);
 }
 
-export function listUsers(): mockApi.MockUser[] {
-  return mockApi.USERS;
+export function userName(id: string): Promise<string> {
+  return api.userName(id);
 }
 
-export function setCurrentUser(id: string): void {
-  mockApi.setCurrentUser(id);
+export function getCurrentUser(): Promise<api.CurrentUser> {
+  return api.getCurrentUser();
 }
 
-/**
- * Local, in-memory management of the workspace category list. The mock API does
- * not model workspace-level category CRUD, so this small piece of state lives
- * here rather than being invented inside a component. Receipts in a removed
- * category are reassigned to "Other", mirroring the design's `removeCategory`.
- */
-let categoryList: string[] = mockApi.listCategories();
-const categoryListeners = new Set<() => void>();
-
-function notifyCategoryListeners(): void {
-  for (const l of categoryListeners) l();
-}
-
-export function getCategoryList(): string[] {
-  return categoryList;
-}
-
-export function addCategoryName(name: string): void {
-  const trimmed = name.trim();
-  if (!trimmed || categoryList.includes(trimmed)) return;
-  categoryList = [...categoryList, trimmed];
-  notifyCategoryListeners();
-}
-
-export function removeCategoryName(name: string): void {
-  categoryList = categoryList.filter((c) => c !== name);
-  for (const r of mockApi.listReceipts({})) {
-    if (r.categoryName === name) mockApi.setCategory(r.id, "Other");
-  }
-  notifyCategoryListeners();
-}
-
-export function subscribeCategoryList(listener: () => void): () => void {
-  categoryListeners.add(listener);
-  return () => categoryListeners.delete(listener);
+export function listUsers(): Promise<api.WorkspaceUser[]> {
+  return api.listUsers();
 }

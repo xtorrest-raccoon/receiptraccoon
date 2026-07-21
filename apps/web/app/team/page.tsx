@@ -10,8 +10,7 @@ import {
   type ReimbursementStatus,
 } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { getCurrentUser, getTeam, listMileage, listUsers } from "../../lib/data";
-import { useDataStore } from "../../lib/store";
+import { useCurrentUser, useMileage, useTeam, useUsers } from "../../lib/queries";
 import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
@@ -21,22 +20,18 @@ import { MileageTable } from "../../components/MileageTable";
 const AGED_ALERT_BG = `color-mix(in oklch, ${color.up} 28%, transparent)`;
 
 export default function TeamPage() {
-  const currentUser = getCurrentUser();
-  const allowed = canViewTeamPage(currentUser.role);
+  const { data: currentUser } = useCurrentUser();
+  const allowed = currentUser ? canViewTeamPage(currentUser.role) : false;
 
-  // Hooks run unconditionally — canViewTeamPage(role) never changes mid-mount
-  // (there's no in-app role switcher), but keeping hook order fixed regardless
-  // of the auth branch is the safe pattern.
-  const { version } = useDataStore();
-  const team = useMemo(() => (allowed ? getTeam() : null), [version, allowed]);
   const [mileageUserFilter, setMileageUserFilter] = useState("All");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, ReimbursementStatus>>({});
-  const users = listUsers();
 
-  const mileage = useMemo(() => (allowed ? listMileage(mileageUserFilter) : []), [mileageUserFilter, version, allowed]);
+  const { data: team } = useTeam();
+  const { data: users } = useUsers();
+  const { data: mileage } = useMileage(mileageUserFilter === "All" ? undefined : mileageUserFilter);
 
   const mileageOutstandingMinor = useMemo(() => {
-    return mileage
+    return (mileage ?? [])
       .filter((t) => {
         const s = statusOverrides[t.id] ?? t.reimbursementStatus;
         return s === "pending" || s === "approved";
@@ -44,12 +39,13 @@ export default function TeamPage() {
       .reduce((sum, t) => sum + t.amountMinor, 0);
   }, [mileage, statusOverrides]);
 
-  if (!allowed || !team) {
+  if (!currentUser || !allowed) {
     return (
       <div style={{ maxWidth: 480, margin: "60px auto", textAlign: "center" }}>
         <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, marginBottom: 8 }}>403 — Not authorized</div>
         <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 20, lineHeight: 1.6 }}>
-          The Team page is only visible to workspace owners and admins. Signed in as {currentUser.name} ({currentUser.role}).
+          The Team page is only visible to workspace owners and admins.
+          {currentUser ? ` Signed in as ${currentUser.name} (${currentUser.role}).` : ""}
         </div>
         <Link href="/dashboard" style={{ color: color.brand, fontWeight: fontWeight.bold, fontSize: fontSize.body }}>
           ← Back to dashboard
@@ -57,6 +53,8 @@ export default function TeamPage() {
       </div>
     );
   }
+
+  if (!team || !users) return null;
 
   return (
     <div>
@@ -156,8 +154,9 @@ export default function TeamPage() {
         </div>
 
         <MileageTable
-          trips={mileage}
+          trips={mileage ?? []}
           currency={team.currency}
+          users={users}
           statusOverrides={statusOverrides}
           onStatusChange={(id, status) => setStatusOverrides((prev) => ({ ...prev, [id]: status }))}
         />

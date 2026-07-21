@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSession, onAuthStateChange } from "@rr/api";
 import { color } from "@rr/ui-tokens";
@@ -19,6 +20,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [session, setSession] = useState<Session | null | "loading">("loading");
+  // Lazy-initialized so Fast Refresh doesn't recreate the client (and its
+  // cache) on every re-render of this component.
+  const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     getSession().then(setSession);
@@ -35,6 +39,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [session, pathname, router]);
 
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppShellBody pathname={pathname} session={session}>
+        {children}
+      </AppShellBody>
+    </QueryClientProvider>
+  );
+}
+
+function AppShellBody({
+  pathname,
+  session,
+  children,
+}: {
+  pathname: string;
+  session: Session | null | "loading";
+  children: ReactNode;
+}) {
   // The login page renders its own full-screen layout — no sidebar/top bar
   // around it, same reason the mobile app's (auth) group sits outside the
   // tab navigator.

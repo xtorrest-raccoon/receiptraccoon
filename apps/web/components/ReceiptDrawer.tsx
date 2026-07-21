@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
 import { formatMoney, formatPaymentMethod, formatShortDate, isAdmin, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, layout, radius, reimbursementChip } from "@rr/ui-tokens";
-import { getCurrentUser, getReceipt, userName } from "../lib/data";
+import { useCurrentUser, useReceipt, useUsers } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 import { CategoryChip, ReceiptStatusChip } from "./Chips";
 
@@ -12,18 +11,15 @@ const BACKDROP = `color-mix(in oklch, ${color.text} 45%, transparent)`;
 const STATUS_ORDER: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
 export function ReceiptDrawer() {
-  const { selectedReceiptId, closeReceipt, requestReimbursementChange, version } = useDataStore();
+  const { selectedReceiptId, closeReceipt, requestReimbursementChange } = useDataStore();
+  const { data: receipt } = useReceipt(selectedReceiptId);
+  const { data: currentUser } = useCurrentUser();
+  const { data: users } = useUsers();
 
-  const receipt = useMemo(() => {
-    if (!selectedReceiptId) return undefined;
-    // `version` is read only to force this memo to re-run after a mutation.
-    void version;
-    return getReceipt(selectedReceiptId);
-  }, [selectedReceiptId, version]);
+  if (!selectedReceiptId || !receipt || !currentUser || !users) return null;
 
-  if (!selectedReceiptId || !receipt) return null;
-
-  const admin = isAdmin(getCurrentUser().role);
+  const admin = isAdmin(currentUser.role);
+  const creatorName = users.find((u) => u.id === receipt.createdBy)?.name ?? "Unknown";
   const paymentMethod = formatPaymentMethod(receipt.paymentBrand, receipt.paymentLast4);
 
   return (
@@ -47,7 +43,7 @@ export function ReceiptDrawer() {
             <div style={{ fontSize: fontSize.xl + 1, fontWeight: fontWeight.heavy }}>{receipt.vendor}</div>
             <div style={{ fontSize: fontSize.small + 0.5, color: color.textMuted, marginTop: 2 }}>
               {receipt.receiptDate ? formatShortDate(receipt.receiptDate) : "—"}
-              {paymentMethod ? ` · ${paymentMethod}` : ""} · {userName(receipt.createdBy)}
+              {paymentMethod ? ` · ${paymentMethod}` : ""} · {creatorName}
             </div>
           </div>
           <button
