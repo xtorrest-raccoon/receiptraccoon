@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatMoney, formatPaymentMethod, formatShortDate, isAdmin, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, layout, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCurrentUser, useReceipt, useReceiptPhotoUrl, useUsers } from "../lib/queries";
@@ -16,6 +17,7 @@ export function ReceiptDrawer() {
   const { data: currentUser } = useCurrentUser();
   const { data: users } = useUsers();
   const { data: photoUrl } = useReceiptPhotoUrl(receipt?.imagePath ?? null);
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
 
   if (!selectedReceiptId || !receipt || !currentUser || !users) return null;
 
@@ -76,6 +78,7 @@ export function ReceiptDrawer() {
           <img
             src={photoUrl}
             alt={`Receipt from ${receipt.vendor ?? "unknown vendor"}`}
+            onClick={() => setPhotoViewerOpen(true)}
             style={{
               width: "100%",
               height: 200,
@@ -83,6 +86,7 @@ export function ReceiptDrawer() {
               borderRadius: radius.xl,
               marginBottom: 18,
               border: `1px solid ${color.border}`,
+              cursor: "zoom-in",
             }}
           />
         ) : (
@@ -271,6 +275,57 @@ export function ReceiptDrawer() {
           </div>
         </div>
       </div>
+
+      {photoViewerOpen && photoUrl ? (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setPhotoViewerOpen(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            zIndex: 30,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- same signed-URL reasoning as the thumbnail above */}
+          <img
+            src={photoUrl}
+            alt={`Receipt from ${receipt.vendor ?? "unknown vendor"}`}
+            style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: radius.md }}
+          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPhotoViewerOpen(false);
+            }}
+            aria-label="Close"
+            style={{
+              position: "absolute",
+              top: 20,
+              right: 20,
+              width: 36,
+              height: 36,
+              borderRadius: radius.pill,
+              background: "rgba(255, 255, 255, 0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              fontSize: fontSize.lg + 1,
+              color: "#fff",
+              border: "none",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
