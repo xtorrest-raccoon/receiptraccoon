@@ -23,6 +23,8 @@ export type { MockUser } from "@rr/mock-api";
 
 export const TODAY = mockApi.TODAY;
 export const HOME_CURRENCY = mockApi.HOME_CURRENCY;
+/** Same list mobile's Settings screen offers — see mock-api's FX_FROM_EUR. */
+export const CURRENCIES = mockApi.SUPPORTED_CURRENCIES;
 
 export function getDashboard(month?: string): DashboardResponse {
   return mockApi.getDashboard(month);
@@ -72,6 +74,10 @@ export function listCategories(): string[] {
 
 export function getHomeCurrency(): string {
   return mockApi.getHomeCurrency();
+}
+
+export function setHomeCurrency(code: string): void {
+  mockApi.setHomeCurrency(code);
 }
 
 export function userName(id: string): string {

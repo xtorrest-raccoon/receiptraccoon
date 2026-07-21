@@ -5,16 +5,9 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { canViewTeamPage } from "@rr/shared";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
-import { getCurrentUser } from "../lib/data";
+import { CURRENCIES, getCurrentUser, getHomeCurrency, setHomeCurrency } from "../lib/data";
+import { useDataStore } from "../lib/store";
 import { DashboardIcon, LogoMark, ReceiptsIcon, TeamIcon } from "./icons";
-
-/**
- * Cosmetic only: the mock API is EUR-denominated end to end (see PHASE1.md,
- * "Home currency is EUR") and has no per-currency exchange rates to convert
- * arbitrary amounts against. This selector reflects the design's affordance
- * without inventing FX math that doesn't exist anywhere in @rr/shared.
- */
-const DISPLAY_CURRENCIES = ["EUR", "USD", "GBP", "CAD", "AUD", "CHF"];
 
 interface NavItem {
   href: string;
@@ -31,9 +24,23 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [homeCurrency, setHomeCurrency] = useState("EUR");
+  // Lazy initializer so the very first render already reflects the mock API's
+  // current currency instead of always starting from a hardcoded "EUR" — the
+  // previous version was local-only state that never read from or wrote back
+  // to mockApi at all, so choosing a currency here didn't do anything.
+  const [homeCurrency, setLocalHomeCurrency] = useState(() => getHomeCurrency());
+  const { bump } = useDataStore();
   const role = getCurrentUser().role;
   const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || canViewTeamPage(role));
+
+  const onChangeCurrency = (code: string) => {
+    setHomeCurrency(code);
+    setLocalHomeCurrency(code);
+    // Every dashboard/receipts/team read is scoped by version (see store.tsx),
+    // so this is what makes the rest of the app actually re-render in the new
+    // currency instead of just updating the select box.
+    bump();
+  };
 
   return (
     <div
@@ -105,7 +112,7 @@ export function Sidebar() {
           </div>
           <select
             value={homeCurrency}
-            onChange={(e) => setHomeCurrency(e.target.value)}
+            onChange={(e) => onChangeCurrency(e.target.value)}
             style={{
               width: "100%",
               border: `1px solid ${color.borderStrong}`,
@@ -117,7 +124,7 @@ export function Sidebar() {
               color: color.text,
             }}
           >
-            {DISPLAY_CURRENCIES.map((cur) => (
+            {CURRENCIES.map((cur) => (
               <option key={cur} value={cur}>
                 {cur}
               </option>
