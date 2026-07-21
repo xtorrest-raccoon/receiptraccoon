@@ -33,12 +33,14 @@ export function SettingsSheet({
   initial,
   onSave,
   onClose,
+  onSignOut,
 }: {
   visible: boolean;
   currencies: readonly string[];
   initial: SettingsDraft;
   onSave: (draft: SettingsDraft) => void;
   onClose: () => void;
+  onSignOut: () => void;
 }) {
   const [unit, setUnit] = useState<DistanceUnit>(initial.distanceUnit);
   const [currency, setCurrency] = useState(initial.homeCurrency);
@@ -140,6 +142,9 @@ export function SettingsSheet({
                 </Pressable>
               );
             })}
+            <Pressable style={styles.signOutRow} onPress={onSignOut}>
+              <Text style={styles.signOutLabel}>Sign out</Text>
+            </Pressable>
           </ScrollView>
 
           <View style={styles.actions}>
@@ -161,6 +166,16 @@ export function SettingsSheet({
 }
 
 const styles = StyleSheet.create({
+  signOutRow: {
+    marginTop: 24,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  signOutLabel: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: rn(color.up),
+  },
   backdrop: {
     flex: 1,
     backgroundColor: rnAlpha(color.text, 0.35),

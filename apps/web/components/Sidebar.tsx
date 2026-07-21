@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { canViewTeamPage } from "@rr/shared";
+import { signOut } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
 import { CURRENCIES, getCurrentUser, getHomeCurrency, setHomeCurrency } from "../lib/data";
 import { useDataStore } from "../lib/store";
@@ -142,6 +143,24 @@ export function Sidebar() {
             Photos taken on the mobile app show up here automatically once parsed.
           </div>
         </div>
+        <button
+          type="button"
+          // No router push here — AppShell's own session subscription
+          // redirects to /login once signOut() resolves.
+          onClick={() => signOut()}
+          style={{
+            padding: "8px 0",
+            border: "none",
+            background: "none",
+            color: color.textFaint,
+            fontWeight: fontWeight.semibold,
+            fontSize: fontSize.tiny + 0.5,
+            textAlign: "left",
+            cursor: "pointer",
+          }}
+        >
+          Sign out
+        </button>
       </div>
     </div>
   );

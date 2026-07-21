@@ -5,6 +5,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { categoryAccent, formatMoney, formatPaceComparison } from "@rr/shared";
+import { signOut } from "@rr/api";
 import { rn } from "../../lib/colors";
 import {
   getAvailableMonths,
@@ -214,6 +215,12 @@ export default function HomeScreen() {
           setRefreshKey((n) => n + 1);
         }}
         onClose={() => setSettingsOpen(false)}
+        onSignOut={() => {
+          setSettingsOpen(false);
+          // No navigation call needed — app/_layout.tsx's AuthGate is
+          // subscribed to the session and redirects to /(auth)/login itself.
+          signOut();
+        }}
       />
     </View>
   );

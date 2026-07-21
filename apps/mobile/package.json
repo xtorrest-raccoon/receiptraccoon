@@ -11,10 +11,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.18.11",
+    "@rr/api": "workspace:*",
     "@rr/mock-api": "workspace:*",
     "@rr/shared": "workspace:*",
     "@rr/ui-tokens": "workspace:*",
+    "@supabase/supabase-js": "^2.48.0",
     "expo": "54.0.36",
     "expo-blur": "~15.0.8",
     "expo-camera": "~17.0.10",
