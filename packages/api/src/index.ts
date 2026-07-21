@@ -40,11 +40,13 @@ import {
   type DashboardResponse,
   type DistanceUnit,
   type MileageTrip,
+  type MyPendingInvite,
   type Receipt,
   type ReimbursementStatus,
   type Role,
   type TeamResponse,
   type OwedToUserSummary,
+  type WorkspaceInvite,
 } from "@rr/shared";
 
 // ── client wiring ────────────────────────────────────────────────────────
@@ -180,6 +182,85 @@ export async function userName(id: string): Promise<string> {
   const { data, error } = await client().from("profiles").select("display_name").eq("id", id).single();
   if (error) throw error;
   return (data as { display_name: string }).display_name ?? "Unknown";
+}
+
+// ── invites ──────────────────────────────────────────────────────────────
+//
+// Every signup gets its own solo workspace (0001_init.sql's handle_new_user).
+// Inviting someone in means migrating them off whatever workspace they're
+// currently in onto the inviter's — see 0004_workspace_invites.sql's
+// accept_workspace_invite(), which does the actual data move.
+
+interface InviteRow {
+  id: string;
+  email: string;
+  role: Role;
+  status: "pending" | "accepted" | "revoked";
+  created_at: string;
+}
+
+/** Pending invites for the caller's own workspace — admin-only, enforced by RLS. */
+export async function listWorkspaceInvites(): Promise<WorkspaceInvite[]> {
+  const wsId = await getCurrentWorkspaceId();
+  const { data, error } = await client()
+    .from("workspace_invites")
+    .select("id, email, role, status, created_at")
+    .eq("workspace_id", wsId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as InviteRow[]).map((r) => ({ id: r.id, email: r.email, role: r.role, status: r.status, createdAt: r.created_at }));
+}
+
+export async function inviteTeammate(email: string, role: Role): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const userId = await getCurrentUserId();
+  const { error } = await client()
+    .from("workspace_invites")
+    .insert({ workspace_id: wsId, email: email.trim().toLowerCase(), role, invited_by: userId });
+  if (error) throw error;
+}
+
+export async function revokeInvite(id: string): Promise<void> {
+  const { error } = await client().from("workspace_invites").update({ status: "revoked" }).eq("id", id);
+  if (error) throw error;
+}
+
+/** The signed-in user's own pending invite, if any — checked wherever the app gates on session (see apps/*\/lib/queries.ts). */
+export async function getMyPendingInvite(): Promise<MyPendingInvite | null> {
+  const session = await getSession();
+  const email = session?.user.email;
+  if (!email) return null;
+  const { data, error } = await client()
+    .from("workspace_invites")
+    .select("id, email, role, status, created_at, workspaces(name)")
+    .eq("status", "pending")
+    .ilike("email", email)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as unknown as InviteRow & { workspaces: { name: string } | null };
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    status: row.status,
+    createdAt: row.created_at,
+    workspaceName: row.workspaces?.name ?? "the workspace",
+  };
+}
+
+/**
+ * Accepts an invite: migrates the caller's own membership, receipts, and
+ * mileage trips onto the invite's workspace (see accept_workspace_invite()
+ * in 0004_workspace_invites.sql for exactly what moves). No Storage step is
+ * needed here — receipt photo visibility follows the receipt's current
+ * workspace_id, not the object's folder prefix, via the
+ * receipts_bucket_select_via_receipt policy in that same migration.
+ */
+export async function acceptInvite(inviteId: string): Promise<void> {
+  const { error } = await client().rpc("accept_workspace_invite", { p_invite_id: inviteId });
+  if (error) throw error;
 }
 
 // ── workspace settings ───────────────────────────────────────────────────

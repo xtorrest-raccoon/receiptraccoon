@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSession, onAuthStateChange } from "@rr/api";
+import { AcceptInviteModal } from "../components/AcceptInviteModal";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
@@ -39,7 +40,12 @@ function AuthGate({ children }: { children: ReactNode }) {
   }, [session, segments, router]);
 
   if (session === "loading") return null;
-  return <>{children}</>;
+  return (
+    <>
+      {session ? <AcceptInviteModal /> : null}
+      {children}
+    </>
+  );
 }
 
 export default function RootLayout() {

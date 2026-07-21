@@ -22,6 +22,21 @@ export interface WorkspaceMember {
   displayName: string;
 }
 
+export type InviteStatus = "pending" | "accepted" | "revoked";
+
+export interface WorkspaceInvite {
+  id: string;
+  email: string;
+  role: Role;
+  status: InviteStatus;
+  createdAt: string;
+}
+
+/** The caller's own pending invite, plus the workspace it's inviting them into — see getMyPendingInvite. */
+export interface MyPendingInvite extends WorkspaceInvite {
+  workspaceName: string;
+}
+
 export interface LineItem {
   id: string;
   description: string;

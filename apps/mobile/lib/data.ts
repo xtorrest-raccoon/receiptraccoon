@@ -19,7 +19,15 @@
 import Constants from "expo-constants";
 import { File } from "expo-file-system";
 import * as api from "@rr/api";
-import { formatMonthLabel, type DashboardResponse, type DistanceUnit, type MileageTrip, type OwedToUserSummary, type Receipt } from "@rr/shared";
+import {
+  formatMonthLabel,
+  type DashboardResponse,
+  type DistanceUnit,
+  type MileageTrip,
+  type MyPendingInvite,
+  type OwedToUserSummary,
+  type Receipt,
+} from "@rr/shared";
 
 export type { CurrentUser, WorkspaceUser } from "@rr/api";
 
@@ -98,6 +106,16 @@ export async function uploadReceiptPhoto(localUri: string): Promise<string> {
 /** Exchanges a receipt's stored path for a short-lived URL actually usable in an <Image>. */
 export function getReceiptPhotoUrl(imagePath: string | null): Promise<string | null> {
   return api.getReceiptPhotoUrl(imagePath);
+}
+
+/** The signed-in user's own pending invite, if any — see AcceptInviteModal. */
+export function getMyPendingInvite(): Promise<MyPendingInvite | null> {
+  return api.getMyPendingInvite();
+}
+
+/** Accepts an invite: migrates the caller's own membership, receipts and mileage trips onto the invite's workspace. */
+export function acceptInvite(inviteId: string): Promise<void> {
+  return api.acceptInvite(inviteId);
 }
 
 /** Save a newly captured/filled-in receipt so it actually joins the workspace's records. */

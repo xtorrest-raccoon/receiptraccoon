@@ -10,7 +10,7 @@
  */
 
 import * as api from "@rr/api";
-import type { DashboardResponse, MileageTrip, Receipt, ReimbursementStatus, TeamResponse } from "@rr/shared";
+import type { DashboardResponse, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
 
 export type { CurrentUser, WorkspaceUser } from "@rr/api";
 
@@ -92,4 +92,24 @@ export function getCurrentUser(): Promise<api.CurrentUser> {
 
 export function listUsers(): Promise<api.WorkspaceUser[]> {
   return api.listUsers();
+}
+
+export function listWorkspaceInvites(): Promise<WorkspaceInvite[]> {
+  return api.listWorkspaceInvites();
+}
+
+export function inviteTeammate(email: string, role: Role): Promise<void> {
+  return api.inviteTeammate(email, role);
+}
+
+export function revokeInvite(id: string): Promise<void> {
+  return api.revokeInvite(id);
+}
+
+export function getMyPendingInvite(): Promise<MyPendingInvite | null> {
+  return api.getMyPendingInvite();
+}
+
+export function acceptInvite(inviteId: string): Promise<void> {
+  return api.acceptInvite(inviteId);
 }

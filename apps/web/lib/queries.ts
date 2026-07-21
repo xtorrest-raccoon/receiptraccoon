@@ -12,7 +12,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ReimbursementStatus } from "@rr/shared";
+import type { ReimbursementStatus, Role } from "@rr/shared";
 import * as data from "./data";
 
 export function useCurrentUser() {
@@ -67,8 +67,17 @@ export function useMileage(userId?: string) {
   return useQuery({ queryKey: ["mileage", userId ?? null], queryFn: () => data.listMileage(userId) });
 }
 
+export function useWorkspaceInvites() {
+  return useQuery({ queryKey: ["workspaceInvites"], queryFn: data.listWorkspaceInvites });
+}
+
+/** The caller's own pending invite, if any — checked once at the app shell level, same insertion point as the session check. */
+export function useMyPendingInvite() {
+  return useQuery({ queryKey: ["myPendingInvite"], queryFn: data.getMyPendingInvite });
+}
+
 /** Every read that a write anywhere in the app can affect. Coarse on purpose — see module doc. */
-const ALL_QUERY_KEYS = ["dashboard", "team", "receipts", "receipt", "mileage", "categories", "homeCurrency"];
+const ALL_QUERY_KEYS = ["dashboard", "team", "receipts", "receipt", "mileage", "categories", "homeCurrency", "workspaceInvites"];
 
 function useInvalidateAll() {
   const queryClient = useQueryClient();
@@ -124,5 +133,35 @@ export function useRemoveCategoryName() {
   return useMutation({
     mutationFn: (name: string) => data.removeCategoryName(name),
     onSuccess: invalidateAll,
+  });
+}
+
+export function useInviteTeammate() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ email, role }: { email: string; role: Role }) => data.inviteTeammate(email, role),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useRevokeInvite() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: string) => data.revokeInvite(id),
+    onSuccess: invalidateAll,
+  });
+}
+
+/**
+ * Accepting an invite changes the caller's entire workspace — clears the
+ * whole cache rather than invalidating known keys, since every query result
+ * currently cached describes the OLD workspace, not just a subset a
+ * targeted invalidation would catch.
+ */
+export function useAcceptInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteId: string) => data.acceptInvite(inviteId),
+    onSuccess: () => queryClient.clear(),
   });
 }

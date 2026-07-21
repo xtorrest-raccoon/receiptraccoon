@@ -70,6 +70,11 @@ export function useReceiptPhotoUrl(imagePath: string | null) {
   });
 }
 
+/** The caller's own pending invite, if any — checked once from AuthGate, same insertion point as the session check. */
+export function useMyPendingInvite() {
+  return useQuery({ queryKey: ["myPendingInvite"], queryFn: data.getMyPendingInvite });
+}
+
 /** Every read that a write anywhere in the app can affect. Coarse on purpose — see module doc. */
 const ALL_QUERY_KEYS = [
   "dashboard",
@@ -162,4 +167,17 @@ export function useUpdateMileageTrip() {
 export function useDeleteMileageTrip() {
   const invalidateAll = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => data.deleteMileageTrip(id), onSuccess: invalidateAll });
+}
+
+/**
+ * Accepting an invite changes the caller's entire workspace — clears the
+ * whole cache rather than invalidating known keys, since every query result
+ * currently cached describes the OLD workspace.
+ */
+export function useAcceptInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteId: string) => data.acceptInvite(inviteId),
+    onSuccess: () => queryClient.clear(),
+  });
 }

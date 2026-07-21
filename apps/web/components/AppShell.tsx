@@ -10,6 +10,7 @@ import { DataStoreProvider } from "../lib/store";
 import { MobileTopBar, Sidebar } from "./Sidebar";
 import { ReceiptDrawer } from "./ReceiptDrawer";
 import { RejectionModal } from "./RejectionModal";
+import { AcceptInviteBanner } from "./AcceptInviteBanner";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
@@ -69,6 +70,7 @@ function AppShellBody({
   return (
     <DataStoreProvider>
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: color.bgWeb, color: color.text }}>
+        <AcceptInviteBanner />
         <MobileTopBar />
         <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
           <Sidebar />
