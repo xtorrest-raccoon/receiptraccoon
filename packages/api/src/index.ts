@@ -331,8 +331,13 @@ export async function removeCategoryName(name: string): Promise<void> {
  * receipt — not a URL. No crypto.randomUUID() here: it's not universally
  * available across the environments this package runs in (browser vs
  * Hermes), so a plain timestamp+random string stands in for a unique name.
+ *
+ * Accepts raw bytes as well as Blob: fetch(localUri).blob() silently
+ * produces a 0-byte blob for a local file:// URI under Hermes (works fine
+ * in a browser, not in React Native) — the mobile caller reads the file
+ * directly via expo-file-system's File.bytes() instead.
  */
-export async function uploadReceiptPhoto(photo: Blob, contentType: string): Promise<string> {
+export async function uploadReceiptPhoto(photo: Blob | Uint8Array, contentType: string): Promise<string> {
   const wsId = await getCurrentWorkspaceId();
   const ext = contentType === "image/png" ? "png" : "jpg";
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;

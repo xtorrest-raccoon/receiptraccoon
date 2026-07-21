@@ -17,6 +17,7 @@
  */
 
 import Constants from "expo-constants";
+import { File } from "expo-file-system";
 import * as api from "@rr/api";
 import { formatMonthLabel, type DashboardResponse, type DistanceUnit, type MileageTrip, type OwedToUserSummary, type Receipt } from "@rr/shared";
 
@@ -83,11 +84,15 @@ export function getReceipt(id: string): Promise<Receipt | undefined> {
  * returns the storage PATH to store on the receipt — not the local URI, which
  * only exists on this device, and not a URL either, since the bucket is
  * private (see @rr/api's uploadReceiptPhoto).
+ *
+ * Reads the file directly via expo-file-system's File.bytes() rather than
+ * fetch(localUri).blob() — that silently produced a 0-byte blob for a local
+ * file:// URI under Hermes (a real bug caught live: the upload "succeeded"
+ * and the receipt saved fine, but the stored photo was empty).
  */
 export async function uploadReceiptPhoto(localUri: string): Promise<string> {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-  return api.uploadReceiptPhoto(blob, blob.type || "image/jpeg");
+  const bytes = await new File(localUri).bytes();
+  return api.uploadReceiptPhoto(bytes, "image/jpeg");
 }
 
 /** Exchanges a receipt's stored path for a short-lived URL actually usable in an <Image>. */
