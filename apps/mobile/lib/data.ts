@@ -1,118 +1,81 @@
 /**
- * The single seam between the app and `@rr/mock-api`.
+ * The single seam between the app and `@rr/api` (the real Supabase-backed
+ * implementation).
  *
  * Per PHASE1.md: "Wrap every call in a thin per-app data module ... so swapping to
  * the real API later touches one file, not every screen." No screen or component
- * may `import ... from "@rr/mock-api"` directly — everything goes through here.
+ * may import the backend package directly — everything goes through here.
+ *
+ * Every function is async, unlike the @rr/mock-api version this replaced —
+ * Postgrest is a real network call. Screens read these through the query
+ * hooks in lib/queries.ts, not by calling them directly.
  *
  * `extractReceiptFromPhoto` calls out to apps/web's /api/extract rather than
- * mock-api, since OCR (see OCR_PLAN.md) needs OPENAI_API_KEY held server-side —
+ * @rr/api, since OCR (see OCR_PLAN.md) needs OPENAI_API_KEY held server-side —
  * that key must never reach this bundle. `blankDraftReceipt` is the fallback
  * when extraction fails or the user skips it.
- *
- * Receipt edits (comment, category, reclaim amount) go straight through to
- * mock-api's setters below, which mutate its RECEIPTS array in place — the same
- * store every aggregate (dashboard, owed-to-user, team, category breakdown)
- * reads from. An in-memory overlay kept only in this module used to stand in for
- * these, but every aggregate bypassed it by reading mock-api directly, so an
- * edited reclaim amount changed the receipt list yet left "Owed to you" showing
- * the old figure.
  */
 
 import Constants from "expo-constants";
-import {
-  getDashboard as mockGetDashboard,
-  listReceipts as mockListReceipts,
-  getReceipt as mockGetReceipt,
-  deleteReceipt as mockDeleteReceipt,
-  addReceipt as mockAddReceipt,
-  listMileage as mockListMileage,
-  getOwedToUserSummary as mockGetOwedToUser,
-  addMileageTrip as mockAddMileageTrip,
-  updateMileageTrip as mockUpdateMileageTrip,
-  deleteMileageTrip as mockDeleteMileageTrip,
-  listCategories as mockListCategories,
-  setCategory as mockSetCategory,
-  setComment as mockSetComment,
-  setReclaimMinor as mockSetReclaimMinor,
-  HOME_CURRENCY as MOCK_HOME_CURRENCY,
-  getHomeCurrency as mockGetHomeCurrency,
-  setHomeCurrency as mockSetHomeCurrency,
-  getDistanceUnit as mockGetDistanceUnit,
-  setDistanceUnit as mockSetDistanceUnit,
-  getMileageRateMilli as mockGetRate,
-  setMileageRateMilli as mockSetRate,
-  estimateMileageAmountMinor as mockEstimateMileage,
-  SUPPORTED_CURRENCIES,
-  TODAY as MOCK_TODAY,
-  CURRENT_USER,
-} from "@rr/mock-api";
-import {
-  formatMonthLabel,
-  type DashboardResponse,
-  type OwedToUserSummary,
-  type Receipt,
-  type MileageTrip,
-  type DistanceUnit,
-} from "@rr/shared";
+import * as api from "@rr/api";
+import { formatMonthLabel, type DashboardResponse, type DistanceUnit, type MileageTrip, type OwedToUserSummary, type Receipt } from "@rr/shared";
 
-export const HOME_CURRENCY = MOCK_HOME_CURRENCY;
-/** Anchor "today" to the mock data's own reference date, not the device clock — the
- * seed receipts and trips are dated relative to it. */
-export const TODAY = MOCK_TODAY;
+export type { CurrentUser, WorkspaceUser } from "@rr/api";
+
+/** Anchored once at load — "today" doesn't change meaningfully within a session. */
+export const TODAY = new Date().toISOString().slice(0, 10);
 export const CURRENT_MONTH = TODAY.slice(0, 7);
+export const CURRENCIES = api.SUPPORTED_CURRENCIES;
 
-export function getCurrentUser() {
-  return CURRENT_USER;
+export function getCurrentUser(): Promise<api.CurrentUser> {
+  return api.getCurrentUser();
 }
 
-export function getDashboard(month?: string): DashboardResponse {
-  return mockGetDashboard(month);
+export function getDashboard(month?: string): Promise<DashboardResponse> {
+  return api.getDashboard(month);
 }
 
 /**
  * Workspace home currency. Changing it re-expresses every amount, so screens must
  * re-read after setting it — that is what the focus/refresh keys are for.
  */
-export function getHomeCurrency(): string {
-  return mockGetHomeCurrency();
+export function getHomeCurrency(): Promise<string> {
+  return api.getHomeCurrency();
 }
 
-export function setHomeCurrency(code: string): void {
-  mockSetHomeCurrency(code);
+export function setHomeCurrency(code: string): Promise<void> {
+  return api.setHomeCurrency(code);
 }
-
-export const CURRENCIES = SUPPORTED_CURRENCIES;
 
 /** Distance unit for mileage. A workspace setting, shared across screens. */
-export function getDistanceUnit(): DistanceUnit {
-  return mockGetDistanceUnit();
+export function getDistanceUnit(): Promise<DistanceUnit> {
+  return api.getDistanceUnit();
 }
 
-export function setDistanceUnit(unit: DistanceUnit): void {
-  mockSetDistanceUnit(unit);
+export function setDistanceUnit(unit: DistanceUnit): Promise<void> {
+  return api.setDistanceUnit(unit);
 }
 
 /** Workspace mileage rate, per the current distance unit. Edited from Settings. */
-export function getMileageRateMilli(): number {
-  return mockGetRate();
+export function getMileageRateMilli(): Promise<number> {
+  return api.getMileageRateMilli();
 }
 
-export function setMileageRateMilli(value: number): void {
-  mockSetRate(value);
+export function setMileageRateMilli(value: number): Promise<void> {
+  return api.setMileageRateMilli(value);
 }
 
 /** What a trip would be worth if saved now — same rate the save itself will use. */
-export function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): number {
-  return mockEstimateMileage(distance, unit);
+export function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): Promise<number> {
+  return api.estimateMileageAmountMinor(distance, unit);
 }
 
-export function listReceipts(opts: { month?: string; categoryName?: string; q?: string } = {}): Receipt[] {
-  return mockListReceipts(opts);
+export function listReceipts(opts: { month?: string; categoryName?: string; q?: string } = {}): Promise<Receipt[]> {
+  return api.listReceipts(opts);
 }
 
-export function getReceipt(id: string): Receipt | undefined {
-  return mockGetReceipt(id);
+export function getReceipt(id: string): Promise<Receipt | undefined> {
+  return api.getReceipt(id);
 }
 
 /** Save a newly captured/filled-in receipt so it actually joins the workspace's records. */
@@ -126,18 +89,18 @@ export function addReceipt(input: {
   paymentBrand: string | null;
   paymentLast4: string | null;
   imagePath: string | null;
-}): Receipt {
-  return mockAddReceipt(input);
+}): Promise<Receipt> {
+  return api.addReceipt(input);
 }
 
 /** Persisted while the receipt is still pending — see canEditReceiptComment. */
-export function setReceiptComment(id: string, comment: string): void {
-  mockSetComment(id, comment);
+export function setReceiptComment(id: string, comment: string): Promise<void> {
+  return api.setComment(id, comment);
 }
 
 /** Persisted while the receipt is still pending — see canEditReceiptCategory. */
-export function setReceiptCategory(id: string, categoryName: string): void {
-  mockSetCategory(id, categoryName);
+export function setReceiptCategory(id: string, categoryName: string): Promise<void> {
+  return api.setCategory(id, categoryName);
 }
 
 /**
@@ -145,17 +108,17 @@ export function setReceiptCategory(id: string, categoryName: string): void {
  * same units the receipt's own totalMinor/reclaimMinor are displayed in.
  * Persisted while the receipt is still pending — see canEditReceiptAmount.
  */
-export function setReceiptReclaim(id: string, minorHomeCurrency: number): void {
-  mockSetReclaimMinor(id, minorHomeCurrency);
+export function setReceiptReclaim(id: string, minorHomeCurrency: number): Promise<void> {
+  return api.setReclaimMinor(id, minorHomeCurrency);
 }
 
-/** Delete a receipt. Returns false when not permitted — see mock-api for the rule. */
-export function deleteReceipt(id: string): boolean {
-  return mockDeleteReceipt(id);
+/** Delete a receipt. Returns false when not permitted — see @rr/api for the rule. */
+export function deleteReceipt(id: string): Promise<boolean> {
+  return api.deleteReceipt(id);
 }
 
-export function listMileage(): MileageTrip[] {
-  return mockListMileage();
+export function listMileage(): Promise<MileageTrip[]> {
+  return api.listMileage();
 }
 
 export function addMileageTrip(input: {
@@ -163,46 +126,44 @@ export function addMileageTrip(input: {
   purpose: string;
   distance: number;
   distanceUnit: DistanceUnit;
-}): MileageTrip {
-  return mockAddMileageTrip(input);
+}): Promise<MileageTrip> {
+  return api.addMileageTrip(input);
 }
 
 /** Edit a pending trip. Returns null when not permitted. */
 export function updateMileageTrip(
   id: string,
   patch: { tripDate?: string; purpose?: string; distance?: number },
-): MileageTrip | null {
-  return mockUpdateMileageTrip(id, patch);
+): Promise<MileageTrip | null> {
+  return api.updateMileageTrip(id, patch);
 }
 
 /** Delete a pending trip. Returns false when not permitted. */
-export function deleteMileageTrip(id: string): boolean {
-  return mockDeleteMileageTrip(id);
+export function deleteMileageTrip(id: string): Promise<boolean> {
+  return api.deleteMileageTrip(id);
 }
 
-export function listCategories(): string[] {
-  return mockListCategories();
+export function listCategories(): Promise<string[]> {
+  return api.listCategories();
 }
 
 /** Months that have at least one receipt, oldest first — powers the month picker. */
-export function getAvailableMonths(): { value: string; label: string }[] {
-  const all = mockListReceipts({});
-  const months = Array.from(
-    new Set(all.map((r) => (r.receiptDate ?? "").slice(0, 7)).filter(Boolean)),
-  ).sort();
+export async function getAvailableMonths(): Promise<{ value: string; label: string }[]> {
+  const all = await api.listReceipts({});
+  const months = Array.from(new Set(all.map((r) => (r.receiptDate ?? "").slice(0, 7)).filter(Boolean))).sort();
   return months.map((m) => ({ value: m, label: formatMonthLabel(m) }));
 }
 
 /**
  * "Owed to you" running balance — pending + approved receipts and mileage, in
  * whatever scope the signed-in user's role sees (own claims for a member, the
- * whole workspace for an owner/admin). No date restriction — see mock-api's
+ * whole workspace for an owner/admin). No date restriction — see @rr/api's
  * getOwedToUserSummary for why a monthly scope would be wrong here.
  *
  * amountMinor and receiptCount are paired deliberately — see OwedToUserSummary.
  */
-export function getOwedToUserSummary(): OwedToUserSummary {
-  return mockGetOwedToUser();
+export function getOwedToUserSummary(): Promise<OwedToUserSummary> {
+  return api.getOwedToUserSummary();
 }
 
 // ── Capture flow: real OCR extraction (packages/extraction via apps/web) ───
@@ -222,7 +183,8 @@ export interface DraftReceipt {
 /**
  * The blank, user-fillable draft used when extraction fails or the user
  * chooses to skip it — never fabricates a vendor/total, which would be
- * misleading in a receipts app.
+ * misleading in a receipts app. "Other" is always a valid category — every
+ * workspace is seeded with it (see 0001_init.sql's handle_new_user).
  */
 export function blankDraftReceipt(photoUri: string, today: string): DraftReceipt {
   return {
@@ -233,7 +195,7 @@ export function blankDraftReceipt(photoUri: string, today: string): DraftReceipt
     taxMinor: 0,
     paymentBrand: null,
     paymentLast4: null,
-    category: mockListCategories()[0] ?? "Other",
+    category: "Other",
     comment: "",
   };
 }
@@ -287,7 +249,7 @@ export async function extractReceiptFromPhoto(photoUri: string, today: string): 
     taxMinor: data.taxMinor ?? 0,
     paymentBrand: data.paymentBrand ?? null,
     paymentLast4: data.paymentLast4 ?? null,
-    category: data.category ?? (mockListCategories()[0] ?? "Other"),
+    category: data.category ?? "Other",
     comment: "",
   };
 }

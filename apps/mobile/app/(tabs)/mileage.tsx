@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
@@ -7,24 +7,22 @@ import {
   formatShortDate,
   currencySymbol,
   rateToDecimalString,
+  mileageAmountForTrip,
   type DistanceUnit,
   type MileageTrip,
 } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import { convertDistance, formatDistance } from "../../lib/units";
+import { CURRENT_MONTH, TODAY } from "../../lib/data";
 import {
-  CURRENT_MONTH,
-  TODAY,
-  addMileageTrip,
-  updateMileageTrip,
-  deleteMileageTrip,
-  listMileage,
-  getHomeCurrency,
-  getDistanceUnit,
-  getMileageRateMilli,
-  estimateMileageAmountMinor,
-} from "../../lib/data";
-import { useFocusEffect } from "expo-router";
+  useAddMileageTrip,
+  useDeleteMileageTrip,
+  useDistanceUnit,
+  useHomeCurrency,
+  useMileage,
+  useMileageRateMilli,
+  useUpdateMileageTrip,
+} from "../../lib/queries";
 import { Text } from "../../components/Text";
 import { TripRow } from "../../components/TripRow";
 import { SwipeToDelete } from "../../components/SwipeToDelete";
@@ -32,14 +30,13 @@ import { SwipeToDelete } from "../../components/SwipeToDelete";
 export default function MileageScreen() {
   const insets = useSafeAreaInsets();
 
-  const [loading, setLoading] = useState(true);
-  const [trips, setTrips] = useState<MileageTrip[]>([]);
-  // Currency and distance unit are workspace settings, changed from the gear on
-  // the Home screen. Re-read on focus so returning here picks up a change.
-  const [currency, setCurrency] = useState(getHomeCurrency());
-  const [unit, setUnit] = useState<DistanceUnit>(getDistanceUnit());
-
-  const [rateMilli, setRateMilliState] = useState(getMileageRateMilli());
+  const { data: currency } = useHomeCurrency();
+  const { data: unit } = useDistanceUnit();
+  const { data: rateMilli } = useMileageRateMilli();
+  const { data: trips, isLoading } = useMileage();
+  const addMileageTrip = useAddMileageTrip();
+  const updateMileageTrip = useUpdateMileageTrip();
+  const deleteMileageTrip = useDeleteMileageTrip();
 
   const [addTripOpen, setAddTripOpen] = useState(false);
   /** Non-null when the form is editing an existing trip rather than adding one. */
@@ -48,22 +45,15 @@ export default function MileageScreen() {
   const [newDate, setNewDate] = useState(TODAY);
   const [newDistance, setNewDistance] = useState("");
 
-  useFocusEffect(
-    useCallback(() => {
-      setCurrency(getHomeCurrency());
-      setUnit(getDistanceUnit());
-      setRateMilliState(getMileageRateMilli());
-      const timer = setTimeout(() => {
-        setTrips(listMileage());
-        setLoading(false);
-      }, 0);
-      return () => clearTimeout(timer);
-    }, []),
-  );
+  if (!currency || !unit || rateMilli === undefined || isLoading || !trips) {
+    return (
+      <View style={{ flex: 1, backgroundColor: rn(color.bgMobile), alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={rn(color.brand)} />
+      </View>
+    );
+  }
 
-  // The rate is stored per the workspace's own distance unit, so no conversion.
-
-  const monthTrips = useMemo(() => trips.filter((t) => t.tripDate.startsWith(CURRENT_MONTH)), [trips]);
+  const monthTrips = trips.filter((t) => t.tripDate.startsWith(CURRENT_MONTH));
   const monthReimbMinor = monthTrips.reduce((sum, t) => sum + t.amountMinor, 0);
   const monthDistanceInUnit = monthTrips.reduce(
     (sum, t) => sum + convertDistance(t.distance, t.distanceUnit, unit),
@@ -71,12 +61,12 @@ export default function MileageScreen() {
   );
 
   const distanceValue = parseFloat(newDistance.replace(",", "."));
-  // Asks the API what this would be worth, rather than computing it here from a
-  // cached rate. The screen's copy of the rate can go stale; the API's cannot
-  // disagree with itself, so the estimate always matches what gets saved.
+  // Computed locally from the same rate/currency already loaded for this
+  // screen, rather than a round-trip per keystroke — mathematically identical
+  // to what addMileageTrip will save, since both read the same workspace rate.
   const estimateMinor =
     !isNaN(distanceValue) && distanceValue > 0
-      ? estimateMileageAmountMinor(distanceValue, unit)
+      ? mileageAmountForTrip(distanceValue, unit, rateMilli, currency)
       : null;
 
   const closeForm = () => {
@@ -100,24 +90,21 @@ export default function MileageScreen() {
     if (!newPurpose.trim() || isNaN(distanceValue) || distanceValue <= 0) return;
 
     if (editingId) {
-      const updated = updateMileageTrip(editingId, {
-        tripDate: newDate,
-        purpose: newPurpose.trim(),
-        distance: distanceValue,
-      });
-      if (updated) {
-        setTrips((prev) => prev.map((t) => (t.id === editingId ? { ...updated } : t)));
-      } else {
-        Alert.alert("Could not save", "Only pending trips can be edited.");
-      }
+      updateMileageTrip.mutate(
+        { id: editingId, patch: { tripDate: newDate, purpose: newPurpose.trim(), distance: distanceValue } },
+        {
+          onSuccess: (updated) => {
+            if (!updated) Alert.alert("Could not save", "Only pending trips can be edited.");
+          },
+        },
+      );
     } else {
-      const trip = addMileageTrip({
+      addMileageTrip.mutate({
         tripDate: newDate,
         purpose: newPurpose.trim(),
         distance: distanceValue,
         distanceUnit: unit,
       });
-      setTrips((prev) => [trip, ...prev]);
     }
     closeForm();
   };
@@ -132,12 +119,15 @@ export default function MileageScreen() {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            if (deleteMileageTrip(trip.id)) {
-              setTrips((prev) => prev.filter((t) => t.id !== trip.id));
-              if (editingId === trip.id) closeForm();
-            } else {
-              Alert.alert("Could not delete", "Only pending trips can be deleted.");
-            }
+            deleteMileageTrip.mutate(trip.id, {
+              onSuccess: (ok) => {
+                if (ok) {
+                  if (editingId === trip.id) closeForm();
+                } else {
+                  Alert.alert("Could not delete", "Only pending trips can be deleted.");
+                }
+              },
+            });
           },
         },
       ],
@@ -225,11 +215,7 @@ export default function MileageScreen() {
           </View>
         )}
 
-        {loading ? (
-          <View style={{ paddingVertical: 40, alignItems: "center" }}>
-            <ActivityIndicator color={rn(color.brand)} />
-          </View>
-        ) : trips.length === 0 ? (
+        {trips.length === 0 ? (
           <Text style={styles.emptyText}>No trips logged yet.</Text>
         ) : (
           <View style={{ gap: 8 }}>

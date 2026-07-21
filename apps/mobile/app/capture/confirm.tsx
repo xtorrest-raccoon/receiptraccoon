@@ -1,23 +1,24 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Image } from "expo-image";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
 import { rn } from "../../lib/colors";
-import { HOME_CURRENCY, addReceipt, listCategories } from "../../lib/data";
-import { getDraftReceipt, setSavedSummary } from "../../lib/captureStore";
 import type { DraftReceipt } from "../../lib/data";
+import { useAddReceipt, useCategories, useHomeCurrency } from "../../lib/queries";
+import { getDraftReceipt, setSavedSummary } from "../../lib/captureStore";
 import { Text } from "../../components/Text";
 import { CategoryChip } from "../../components/CategoryChip";
 import { PickerSheet } from "../../components/PickerSheet";
 
-const currency = HOME_CURRENCY;
-
 export default function ConfirmScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { data: currency } = useHomeCurrency();
+  const { data: categories } = useCategories();
+  const addReceipt = useAddReceipt();
 
   const [draft, setDraft] = useState<DraftReceipt | null>(null);
   const [vendor, setVendor] = useState("");
@@ -30,6 +31,7 @@ export default function ConfirmScreen() {
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
 
   useEffect(() => {
+    if (!currency) return;
     const d = getDraftReceipt();
     setDraft(d);
     if (d) {
@@ -43,11 +45,19 @@ export default function ConfirmScreen() {
       setCategory(d.category);
       setComment(d.comment);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currency]);
 
-  const categories = listCategories();
+  if (!currency || !categories) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + 16, alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator color={rn(color.brand)} />
+      </View>
+    );
+  }
+
   const totalMinor = parseMoneyToMinor(totalText, currency);
-  const canSave = vendor.trim().length > 0 && totalMinor !== null && totalMinor > 0;
+  const canSave = vendor.trim().length > 0 && totalMinor !== null && totalMinor > 0 && !addReceipt.isPending;
 
   const onSave = () => {
     if (!canSave || totalMinor === null) return;
@@ -56,23 +66,29 @@ export default function ConfirmScreen() {
     const [paymentBrand, paymentLast4] = payment.includes("•")
       ? payment.split("•").map((s) => s.trim())
       : [payment.trim() || null, null];
-    addReceipt({
-      vendor: vendor.trim(),
-      receiptDate: date.trim() || null,
-      totalMinor,
-      taxMinor: parseMoneyToMinor(taxText, currency) ?? 0,
-      categoryName: category,
-      comment: comment.trim(),
-      paymentBrand: paymentBrand || null,
-      paymentLast4: paymentLast4 || null,
-      imagePath: draft?.photoUri ?? null,
-    });
-    setSavedSummary({ vendor: vendor.trim(), totalMinor, category, currency });
-    router.replace("/capture/saved");
+    addReceipt.mutate(
+      {
+        vendor: vendor.trim(),
+        receiptDate: date.trim() || null,
+        totalMinor,
+        taxMinor: parseMoneyToMinor(taxText, currency) ?? 0,
+        categoryName: category,
+        comment: comment.trim(),
+        paymentBrand: paymentBrand || null,
+        paymentLast4: paymentLast4 || null,
+        imagePath: draft?.photoUri ?? null,
+      },
+      {
+        onSuccess: () => {
+          setSavedSummary({ vendor: vendor.trim(), totalMinor, category, currency });
+          router.replace("/capture/saved");
+        },
+      },
+    );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 18, paddingBottom: 24 }}
         // Same reason as the receipt detail screen: the keyboard would otherwise
@@ -104,7 +120,7 @@ export default function ConfirmScreen() {
               </Field>
             </View>
             <View style={{ flex: 1 }}>
-              <Field label={`Total (${currencySymbol(HOME_CURRENCY)})`}>
+              <Field label={`Total (${currencySymbol(currency)})`}>
                 <TextInput
                   value={totalText}
                   onChangeText={setTotalText}
@@ -117,7 +133,7 @@ export default function ConfirmScreen() {
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <Field label={`Tax (${currencySymbol(HOME_CURRENCY)})`}>
+              <Field label={`Tax (${currencySymbol(currency)})`}>
                 <TextInput value={taxText} onChangeText={setTaxText} keyboardType="decimal-pad" style={styles.input} />
               </Field>
             </View>
@@ -154,7 +170,11 @@ export default function ConfirmScreen() {
           disabled={!canSave}
           style={[styles.saveButton, !canSave && { opacity: 0.5 }]}
         >
-          <Text style={styles.saveButtonLabel}>Save receipt</Text>
+          {addReceipt.isPending ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonLabel}>Save receipt</Text>
+          )}
         </Pressable>
       </ScrollView>
 
@@ -180,6 +200,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: rn(color.bgMobile),
+  },
   title: {
     fontSize: 18,
     fontWeight: "800",

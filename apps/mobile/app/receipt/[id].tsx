@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,17 +15,15 @@ import {
   canEditReceiptComment,
   canEditReceiptCategory,
   reclaimMinor,
-  type Receipt,
 } from "@rr/shared";
 import { rn, rnAlpha } from "../../lib/colors";
 import {
-  HOME_CURRENCY,
-  getReceipt,
-  listCategories,
-  setReceiptCategory,
-  setReceiptComment,
-  setReceiptReclaim,
-} from "../../lib/data";
+  useCategories,
+  useReceipt,
+  useSetReceiptCategory,
+  useSetReceiptComment,
+  useSetReceiptReclaim,
+} from "../../lib/queries";
 import { Text } from "../../components/Text";
 import { CategoryChip } from "../../components/CategoryChip";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -36,29 +34,31 @@ export default function ReceiptDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [receipt, setReceipt] = useState<Receipt | undefined>(undefined);
+  const { data: receipt, isLoading } = useReceipt(id ?? null);
+  const { data: categories } = useCategories();
+  const setReceiptComment = useSetReceiptComment();
+  const setReceiptCategory = useSetReceiptCategory();
+  const setReceiptReclaim = useSetReceiptReclaim();
+
   const [comment, setComment] = useState("");
   const [reclaimText, setReclaimText] = useState("");
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
-  const categories = useMemo(() => listCategories(), []);
 
   useEffect(() => {
-    const r = getReceipt(id);
-    setReceipt(r);
-    setComment(r?.comment ?? "");
-    setReclaimText(r ? minorToDecimalString(reclaimMinor(r), r.currency) : "");
-  }, [id]);
-
-  const currency = receipt?.currency ?? HOME_CURRENCY;
-  const amountEditable = receipt ? canEditReceiptAmount(receipt.reimbursementStatus) : false;
-  const commentEditable = receipt ? canEditReceiptComment(receipt.reimbursementStatus) : false;
-  const categoryEditable = receipt ? canEditReceiptCategory(receipt.reimbursementStatus) : false;
-  const typedReclaim = parseMoneyToMinor(reclaimText, currency);
-  const reclaimExceedsTotal =
-    receipt !== undefined && typedReclaim !== null && typedReclaim > receipt.totalMinor;
+    setComment(receipt?.comment ?? "");
+    setReclaimText(receipt ? minorToDecimalString(reclaimMinor(receipt), receipt.currency) : "");
+  }, [receipt]);
 
   const lineItemsTotal = useMemo(() => receipt?.lineItems ?? [], [receipt]);
+
+  if (isLoading || (receipt && !categories)) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + 14, alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator color={rn(color.brand)} />
+      </View>
+    );
+  }
 
   if (!receipt) {
     return (
@@ -69,14 +69,20 @@ export default function ReceiptDetailScreen() {
     );
   }
 
+  const currency = receipt.currency;
+  const amountEditable = canEditReceiptAmount(receipt.reimbursementStatus);
+  const commentEditable = canEditReceiptComment(receipt.reimbursementStatus);
+  const categoryEditable = canEditReceiptCategory(receipt.reimbursementStatus);
+  const typedReclaim = parseMoneyToMinor(reclaimText, currency);
+  const reclaimExceedsTotal = typedReclaim !== null && typedReclaim > receipt.totalMinor;
+
   const commitComment = (value: string) => {
     setComment(value);
-    setReceiptComment(receipt.id, value);
+    setReceiptComment.mutate({ id: receipt.id, comment: value });
   };
 
   const commitCategory = (value: string) => {
-    setReceiptCategory(receipt.id, value);
-    setReceipt((prev) => (prev ? { ...prev, categoryName: value } : prev));
+    setReceiptCategory.mutate({ id: receipt.id, categoryName: value });
   };
 
   const commitReclaim = (value: string) => {
@@ -85,8 +91,7 @@ export default function ReceiptDetailScreen() {
     // Reject a claim above the total rather than storing it — the database has the
     // same constraint, so accepting it here would only fail later at the API.
     if (minor !== null && minor >= 0 && minor <= receipt.totalMinor) {
-      setReceiptReclaim(receipt.id, minor);
-      setReceipt((prev) => (prev ? { ...prev, reclaimMinor: minor } : prev));
+      setReceiptReclaim.mutate({ id: receipt.id, minor });
     }
   };
 
@@ -245,7 +250,7 @@ export default function ReceiptDetailScreen() {
       <PickerSheet
         visible={categoryPickerOpen}
         title="Category"
-        options={categories.map((c) => ({ value: c, label: c }))}
+        options={(categories ?? []).map((c) => ({ value: c, label: c }))}
         selectedValue={receipt.categoryName ?? "Other"}
         onSelect={commitCategory}
         onClose={() => setCategoryPickerOpen(false)}

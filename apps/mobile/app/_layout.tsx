@@ -3,11 +3,14 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSession, onAuthStateChange } from "@rr/api";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
+
+const queryClient = new QueryClient();
 
 /**
  * Redirects to the login screen when signed out, and away from it when
@@ -44,6 +47,7 @@ export default function RootLayout() {
     // Required for any gesture-handler component to receive touches — without it
     // the swipe-to-delete rows silently do nothing.
     <GestureHandlerRootView style={{ flex: 1 }}>
+    <QueryClientProvider client={queryClient}>
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AuthGate>
@@ -57,6 +61,7 @@ export default function RootLayout() {
         </Stack>
       </AuthGate>
     </SafeAreaProvider>
+    </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }

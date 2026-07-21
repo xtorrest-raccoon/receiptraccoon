@@ -1,11 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import type { Receipt } from "@rr/shared";
 import { rn } from "../../lib/colors";
-import { getHomeCurrency, listReceipts, deleteReceipt } from "../../lib/data";
+import { useDeleteReceipt, useHomeCurrency, useReceipts } from "../../lib/queries";
 import { Text } from "../../components/Text";
 import { ReceiptRow } from "../../components/ReceiptRow";
 import { SwipeToDelete } from "../../components/SwipeToDelete";
@@ -13,25 +13,18 @@ import { SwipeToDelete } from "../../components/SwipeToDelete";
 export default function ReceiptsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [currency, setCurrency] = useState(getHomeCurrency());
+  const { data: currency } = useHomeCurrency();
+  const { data: receipts, isLoading, refetch } = useReceipts();
+  const deleteReceipt = useDeleteReceipt();
 
-  // useFocusEffect, not useEffect: tab screens stay mounted in expo-router, so a
-  // mount-only effect never re-reads after the user edits a receipt on the detail
-  // screen and navigates back — the list would keep showing the old total.
+  // Tab screens stay mounted in expo-router, so a mutation made on another
+  // screen already invalidates this query in the background — this refetch
+  // on focus is just a cheap extra guarantee, not the only thing keeping the
+  // list current.
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      setCurrency(getHomeCurrency());
-      // listReceipts is synchronous today (in-memory mock), but the load is kept
-      // async-shaped so this screen doesn't need to change when it starts hitting
-      // a real network call.
-      const timer = setTimeout(() => {
-        setReceipts(listReceipts());
-        setLoading(false);
-      }, 0);
-      return () => clearTimeout(timer);
+      refetch();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );
 
@@ -45,14 +38,13 @@ export default function ReceiptsScreen() {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            const ok = deleteReceipt(receipt.id);
-            if (ok) {
-              setReceipts((prev) => prev.filter((r) => r.id !== receipt.id));
-            } else {
-              // Should be unreachable — only pending rows swipe — but report it
-              // rather than appearing to succeed.
-              Alert.alert("Could not delete", "Only pending receipts can be deleted.");
-            }
+            deleteReceipt.mutate(receipt.id, {
+              onSuccess: (ok) => {
+                // Should be unreachable — only pending rows swipe — but report it
+                // rather than appearing to succeed.
+                if (!ok) Alert.alert("Could not delete", "Only pending receipts can be deleted.");
+              },
+            });
           },
         },
       ],
@@ -65,11 +57,11 @@ export default function ReceiptsScreen() {
         <Text style={styles.title}>Receipts</Text>
       </View>
 
-      {loading ? (
+      {isLoading || !currency ? (
         <View style={styles.centerFill}>
           <ActivityIndicator color={rn(color.brand)} />
         </View>
-      ) : receipts.length === 0 ? (
+      ) : !receipts || receipts.length === 0 ? (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>No receipts yet. Tap Capture to add one.</Text>
         </View>

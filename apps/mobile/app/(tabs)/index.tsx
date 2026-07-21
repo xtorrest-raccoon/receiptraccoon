@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,20 +7,18 @@ import { color } from "@rr/ui-tokens";
 import { categoryAccent, formatMoney, formatPaceComparison } from "@rr/shared";
 import { signOut } from "@rr/api";
 import { rn } from "../../lib/colors";
+import { CURRENT_MONTH, CURRENCIES } from "../../lib/data";
 import {
-  getAvailableMonths,
-  getCurrentUser,
-  getDashboard,
-  getOwedToUserSummary,
-  CURRENT_MONTH,
-  CURRENCIES,
-  setHomeCurrency,
-  getDistanceUnit,
-  setDistanceUnit,
-  getMileageRateMilli,
-  setMileageRateMilli,
-} from "../../lib/data";
-import type { DistanceUnit } from "@rr/shared";
+  useAvailableMonths,
+  useCurrentUser,
+  useDashboard,
+  useDistanceUnit,
+  useMileageRateMilli,
+  useOwedToUser,
+  useSetDistanceUnit,
+  useSetHomeCurrency,
+  useSetMileageRateMilli,
+} from "../../lib/queries";
 import { Text } from "../../components/Text";
 import { SpendPacingRing } from "../../components/SpendPacingRing";
 import { PickerSheet } from "../../components/PickerSheet";
@@ -46,34 +44,47 @@ export default function HomeScreen() {
   const [breakdownMonth, setBreakdownMonth] = useState(CURRENT_MONTH);
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // Mirrors the workspace setting so the sheet re-renders on change; the source of
-  // truth stays in the data layer, shared with the Mileage screen.
-  const [distanceUnit, setDistanceUnitState] = useState<DistanceUnit>(getDistanceUnit());
-  const [rateMilli, setRateMilliState] = useState(getMileageRateMilli());
 
-  // Bumped whenever the screen regains focus. Tab screens stay mounted, so
-  // without this the dashboard totals would not reflect a receipt edited on the
-  // detail screen or a trip added on Mileage.
-  const [refreshKey, setRefreshKey] = useState(0);
-  useFocusEffect(useCallback(() => setRefreshKey((n) => n + 1), []));
-
-  const user = getCurrentUser();
-  const dashboard = useMemo(() => getDashboard(CURRENT_MONTH), [refreshKey]);
-  const breakdownDashboard = useMemo(
-    () => (breakdownMonth === CURRENT_MONTH ? dashboard : getDashboard(breakdownMonth)),
-    [breakdownMonth, dashboard],
-  );
-  const monthOptions = useMemo(() => getAvailableMonths(), []);
+  const { data: user } = useCurrentUser();
+  const { data: dashboard, refetch: refetchDashboard } = useDashboard(CURRENT_MONTH);
+  const { data: breakdownDashboardOther } = useDashboard(breakdownMonth === CURRENT_MONTH ? undefined : breakdownMonth);
+  const { data: monthOptions } = useAvailableMonths();
   // Not month-scoped: this is a running balance, so it must not drop a pending
   // claim the moment the calendar rolls into a new month. amountMinor and
   // receiptCount come from the same underlying filter (pending + approved,
   // reimbursed and rejected both excluded) so the two boxes below can never
   // describe different sets of receipts.
-  const owedToUser = useMemo(() => getOwedToUserSummary(), [refreshKey]);
+  const { data: owedToUser, refetch: refetchOwed } = useOwedToUser();
+  const { data: distanceUnit } = useDistanceUnit();
+  const { data: rateMilli } = useMileageRateMilli();
+  const setHomeCurrency = useSetHomeCurrency();
+  const setDistanceUnit = useSetDistanceUnit();
+  const setMileageRateMilli = useSetMileageRateMilli();
+
+  // Tab screens stay mounted, so a mutation made on the receipt detail screen
+  // or Mileage already invalidates these queries in the background — this
+  // refetch on focus is just a cheap extra guarantee.
+  useFocusEffect(
+    useCallback(() => {
+      refetchDashboard();
+      refetchOwed();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
+
+  if (!user || !dashboard || !monthOptions || !owedToUser || !distanceUnit || rateMilli === undefined) {
+    return (
+      <View style={{ flex: 1, backgroundColor: rn(color.bgMobile), alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={rn(color.brand)} />
+      </View>
+    );
+  }
+
+  const breakdownDashboard = breakdownMonth === CURRENT_MONTH ? dashboard : breakdownDashboardOther;
   const currency = dashboard.currency;
 
   const greeting = getGreeting();
-  const breakdown = breakdownDashboard.categoryBreakdown.filter((c) => c.pct > 0);
+  const breakdown = breakdownDashboard?.categoryBreakdown.filter((c) => c.pct > 0) ?? [];
   const selectedMonthLabel =
     monthOptions.find((m) => m.value === breakdownMonth)?.label ?? breakdownMonth;
 
@@ -203,16 +214,12 @@ export default function HomeScreen() {
         currencies={CURRENCIES}
         initial={{ distanceUnit, rateMilli, homeCurrency: currency }}
         onSave={(draft) => {
-          setHomeCurrency(draft.homeCurrency);
+          setHomeCurrency.mutate(draft.homeCurrency);
           // Unit first: setDistanceUnit converts the stored rate, and the explicit
           // rate below must win over that conversion.
-          setDistanceUnit(draft.distanceUnit);
-          setMileageRateMilli(draft.rateMilli);
-
-          setDistanceUnitState(draft.distanceUnit);
-          setRateMilliState(draft.rateMilli);
-          // Currency change re-expresses every amount, so drop memoised totals.
-          setRefreshKey((n) => n + 1);
+          setDistanceUnit.mutate(draft.distanceUnit, {
+            onSuccess: () => setMileageRateMilli.mutate(draft.rateMilli),
+          });
         }}
         onClose={() => setSettingsOpen(false)}
         onSignOut={() => {
