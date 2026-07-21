@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -40,6 +40,7 @@ export default function ReceiptDetailScreen() {
   const [comment, setComment] = useState("");
   const [reclaimText, setReclaimText] = useState("");
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const categories = useMemo(() => listCategories(), []);
 
   useEffect(() => {
@@ -110,7 +111,9 @@ export default function ReceiptDetailScreen() {
       </Text>
 
       {receipt.imagePath ? (
-        <Image source={{ uri: receipt.imagePath }} style={styles.photo} contentFit="cover" />
+        <Pressable onPress={() => setPhotoViewerOpen(true)}>
+          <Image source={{ uri: receipt.imagePath }} style={styles.photo} contentFit="cover" />
+        </Pressable>
       ) : (
         <View style={styles.photoPlaceholder}>
           <Text style={styles.photoPlaceholderText}>[ receipt photo ]</Text>
@@ -247,6 +250,20 @@ export default function ReceiptDetailScreen() {
         onSelect={commitCategory}
         onClose={() => setCategoryPickerOpen(false)}
       />
+
+      {receipt.imagePath && (
+        <Modal visible={photoViewerOpen} transparent animationType="fade" onRequestClose={() => setPhotoViewerOpen(false)}>
+          <Pressable style={styles.photoViewerBackdrop} onPress={() => setPhotoViewerOpen(false)}>
+            <Image source={{ uri: receipt.imagePath }} style={styles.photoViewerImage} contentFit="contain" />
+          </Pressable>
+          <Pressable
+            onPress={() => setPhotoViewerOpen(false)}
+            style={[styles.photoViewerClose, { top: insets.top + 12 }]}
+          >
+            <Text style={styles.photoViewerCloseLabel}>✕</Text>
+          </Pressable>
+        </Modal>
+      )}
     </ScrollView>
   );
 }
@@ -296,6 +313,31 @@ const styles = StyleSheet.create({
     backgroundColor: rn(color.surfaceMuted),
     alignItems: "center",
     justifyContent: "center",
+  },
+  photoViewerBackdrop: {
+    flex: 1,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoViewerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  photoViewerClose: {
+    position: "absolute",
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoViewerCloseLabel: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
   photoPlaceholderText: {
     color: rn(color.textFaint),
