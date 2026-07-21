@@ -105,6 +105,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@rr/extraction':
+        specifier: workspace:*
+        version: link:../../packages/extraction
       '@rr/mock-api':
         specifier: workspace:*
         version: link:../../packages/mock-api

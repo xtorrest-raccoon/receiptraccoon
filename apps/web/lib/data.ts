@@ -70,6 +70,10 @@ export function listCategories(): string[] {
   return mockApi.listCategories();
 }
 
+export function getHomeCurrency(): string {
+  return mockApi.getHomeCurrency();
+}
+
 export function userName(id: string): string {
   return mockApi.userName(id);
 }

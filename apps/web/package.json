@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@rr/extraction": "workspace:*",
     "@rr/mock-api": "workspace:*",
     "@rr/shared": "workspace:*",
     "@rr/ui-tokens": "workspace:*",

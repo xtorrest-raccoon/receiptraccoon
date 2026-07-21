@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { color } from "@rr/ui-tokens";
 import { rn } from "../../lib/colors";
-import { TODAY, simulateExtraction } from "../../lib/data";
+import { TODAY, blankDraftReceipt, extractReceiptFromPhoto } from "../../lib/data";
 import { getCapturedPhoto, setDraftReceipt } from "../../lib/captureStore";
 import { Spinner } from "../../components/Spinner";
 import { Text } from "../../components/Text";
@@ -19,6 +19,9 @@ const STILL_WORKING_AFTER_MS = 10_000;
 export default function ProcessingScreen() {
   const router = useRouter();
   const [stillWorking, setStillWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Bumped to retry: re-running the same effect body rather than duplicating it.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const photoUri = getCapturedPhoto();
@@ -27,21 +30,55 @@ export default function ProcessingScreen() {
       return;
     }
 
+    setError(null);
+    setStillWorking(false);
     const stillWorkingTimer = setTimeout(() => setStillWorking(true), STILL_WORKING_AFTER_MS);
 
     let cancelled = false;
-    simulateExtraction(photoUri, TODAY).then((draft) => {
-      if (cancelled) return;
-      setDraftReceipt(draft);
-      router.replace("/capture/confirm");
-    });
+    extractReceiptFromPhoto(photoUri, TODAY)
+      .then((draft) => {
+        if (cancelled) return;
+        setDraftReceipt(draft);
+        router.replace("/capture/confirm");
+      })
+      .catch((err) => {
+        // Previously unhandled: a failed extraction left this screen spinning
+        // forever with no way forward. See OCR_PLAN.md §9 — "a hung extraction
+        // should surface as failed with a retry, not leave the Processing
+        // screen spinning".
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+      });
 
     return () => {
       cancelled = true;
       clearTimeout(stillWorkingTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [attempt]);
+
+  const onEnterManually = () => {
+    const photoUri = getCapturedPhoto();
+    if (photoUri) setDraftReceipt(blankDraftReceipt(photoUri, TODAY));
+    router.replace("/capture/confirm");
+  };
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: rn(color.bgMobile) }]}>
+        <Text style={styles.title}>Couldn't read this receipt</Text>
+        <Text style={styles.subtitle}>{error}</Text>
+        <View style={styles.actionsRow}>
+          <Pressable style={styles.retryButton} onPress={() => setAttempt((a) => a + 1)}>
+            <Text style={styles.retryButtonLabel}>Retry</Text>
+          </Pressable>
+          <Pressable style={styles.manualButton} onPress={onEnterManually}>
+            <Text style={styles.manualButtonLabel}>Enter manually</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: rn(color.bgMobile) }]}>
@@ -78,5 +115,32 @@ const styles = StyleSheet.create({
     color: rn(color.textFaint),
     textAlign: "center",
     lineHeight: 17,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  retryButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: rn(color.brand),
+  },
+  retryButtonLabel: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13.5,
+  },
+  manualButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: rn(color.surfaceMuted),
+  },
+  manualButtonLabel: {
+    color: rn(color.text),
+    fontWeight: "700",
+    fontSize: 13.5,
   },
 });

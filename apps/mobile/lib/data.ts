@@ -5,13 +5,10 @@
  * the real API later touches one file, not every screen." No screen or component
  * may `import ... from "@rr/mock-api"` directly — everything goes through here.
  *
- * One thing in this file is NOT a simple passthrough, because the real backend
- * isn't provisioned yet (see PHASE1.md, "Supabase is not provisioned yet"):
- *
- * `simulateExtraction` — there is no OCR endpoint yet (see OCR_PLAN.md /
- * schemas.ts's `ReceiptExtractionLoose`). This stands in for it with a realistic
- * delay and returns a blank, user-fillable draft rather than fabricating a fake
- * vendor/total, which would be misleading in a receipts app.
+ * `extractReceiptFromPhoto` calls out to apps/web's /api/extract rather than
+ * mock-api, since OCR (see OCR_PLAN.md) needs OPENAI_API_KEY held server-side —
+ * that key must never reach this bundle. `blankDraftReceipt` is the fallback
+ * when extraction fails or the user skips it.
  *
  * Receipt edits (comment, category, reclaim amount) go straight through to
  * mock-api's setters below, which mutate its RECEIPTS array in place — the same
@@ -22,6 +19,7 @@
  * the old figure.
  */
 
+import Constants from "expo-constants";
 import {
   getDashboard as mockGetDashboard,
   listReceipts as mockListReceipts,
@@ -206,7 +204,7 @@ export function getOwedToUserSummary(): OwedToUserSummary {
   return mockGetOwedToUser();
 }
 
-// ── Capture flow: simulated extraction (no OCR backend yet) ────────────────
+// ── Capture flow: real OCR extraction (packages/extraction via apps/web) ───
 
 export interface DraftReceipt {
   photoUri: string;
@@ -221,26 +219,63 @@ export interface DraftReceipt {
 }
 
 /**
- * Stands in for the real extraction call. Real extraction (see OCR_PLAN.md)
- * takes 3-8 seconds and sometimes longer — the design mockup's fixed 1.4s
- * timeout is not realistic, so this mirrors the real latency distribution
- * instead of faking a fast round-trip.
+ * The blank, user-fillable draft used when extraction fails or the user
+ * chooses to skip it — never fabricates a vendor/total, which would be
+ * misleading in a receipts app.
  */
-export function simulateExtraction(photoUri: string, today: string): Promise<DraftReceipt> {
-  const delayMs = 3000 + Math.random() * 5000; // 3-8s, matching real extraction
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        photoUri,
-        vendor: "",
-        date: today,
-        totalMinor: 0,
-        taxMinor: 0,
-        paymentBrand: null,
-        paymentLast4: null,
-        category: mockListCategories()[0] ?? "Other",
-        comment: "",
-      });
-    }, delayMs);
-  });
+export function blankDraftReceipt(photoUri: string, today: string): DraftReceipt {
+  return {
+    photoUri,
+    vendor: "",
+    date: today,
+    totalMinor: 0,
+    taxMinor: 0,
+    paymentBrand: null,
+    paymentLast4: null,
+    category: mockListCategories()[0] ?? "Other",
+    comment: "",
+  };
+}
+
+/**
+ * OPENAI_API_KEY must never reach this bundle (OCR_PLAN.md §9), so extraction
+ * runs server-side in apps/web's /api/extract and the phone uploads the photo
+ * there. In dev, Expo already tells this app the LAN address it was served
+ * from (Constants.expoConfig.hostUri) — reused here on port 3000 (Next's
+ * default) so the phone doesn't need "localhost" (which would mean itself,
+ * not the dev machine) or a manually typed IP. EXPO_PUBLIC_API_URL overrides
+ * this for anything other than local dev (a tunnel, a deployed API).
+ */
+function getApiBaseUrl(): string {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) return envUrl;
+  const host = Constants.expoConfig?.hostUri?.split(":")[0];
+  if (!host) {
+    throw new Error("Can't reach the extraction server — set EXPO_PUBLIC_API_URL.");
+  }
+  return `http://${host}:3000`;
+}
+
+export async function extractReceiptFromPhoto(photoUri: string, today: string): Promise<DraftReceipt> {
+  const body = new FormData();
+  body.append("image", { uri: photoUri, name: "receipt.jpg", type: "image/jpeg" } as unknown as Blob);
+
+  const res = await fetch(`${getApiBaseUrl()}/api/extract`, { method: "POST", body });
+  if (!res.ok) {
+    const problem = await res.json().catch(() => null);
+    throw new Error(problem?.error ?? `Extraction failed (HTTP ${res.status})`);
+  }
+
+  const data = await res.json();
+  return {
+    photoUri,
+    vendor: data.vendor ?? "",
+    date: data.date ?? today,
+    totalMinor: data.totalMinor ?? 0,
+    taxMinor: data.taxMinor ?? 0,
+    paymentBrand: data.paymentBrand ?? null,
+    paymentLast4: data.paymentLast4 ?? null,
+    category: data.category ?? (mockListCategories()[0] ?? "Other"),
+    comment: "",
+  };
 }
