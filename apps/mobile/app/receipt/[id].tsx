@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,6 +26,7 @@ import {
   useSetReceiptReclaim,
 } from "../../lib/queries";
 import { Text } from "../../components/Text";
+import { TextInput } from "../../components/TextInput";
 import { CategoryChip } from "../../components/CategoryChip";
 import { StatusBadge } from "../../components/StatusBadge";
 import { PickerSheet } from "../../components/PickerSheet";

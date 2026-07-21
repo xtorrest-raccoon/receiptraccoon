@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { color } from "@rr/ui-tokens";
 import {
   currencySymbol,
@@ -10,6 +10,7 @@ import {
 } from "@rr/shared";
 import { rn, rnAlpha } from "../lib/colors";
 import { Text } from "./Text";
+import { TextInput } from "./TextInput";
 
 export interface SettingsDraft {
   distanceUnit: DistanceUnit;

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { signInWithPassword, signUp } from "@rr/api";
 import { rn } from "../../lib/colors";
 import { Text } from "../../components/Text";
+import { TextInput } from "../../components/TextInput";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();

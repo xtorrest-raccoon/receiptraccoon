@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Image } from "expo-image";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
@@ -8,8 +8,9 @@ import { minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/sha
 import { rn } from "../../lib/colors";
 import type { DraftReceipt } from "../../lib/data";
 import { useAddReceipt, useCategories, useHomeCurrency, useUploadReceiptPhoto } from "../../lib/queries";
-import { getDraftReceipt, setSavedSummary } from "../../lib/captureStore";
+import { getDraftReceipt, resetCapture, setSavedSummary } from "../../lib/captureStore";
 import { Text } from "../../components/Text";
+import { TextInput } from "../../components/TextInput";
 import { CategoryChip } from "../../components/CategoryChip";
 import { PickerSheet } from "../../components/PickerSheet";
 
@@ -102,6 +103,20 @@ export default function ConfirmScreen() {
     );
   };
 
+  const onCancel = () => {
+    Alert.alert("Discard this receipt?", "The scanned photo and details will be lost.", [
+      { text: "Keep editing", style: "cancel" },
+      {
+        text: "Discard",
+        style: "destructive",
+        onPress: () => {
+          resetCapture();
+          router.replace("/capture");
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -180,17 +195,22 @@ export default function ConfirmScreen() {
           </Field>
         </View>
 
-        <Pressable
-          onPress={onSave}
-          disabled={!canSave}
-          style={[styles.saveButton, !canSave && { opacity: 0.5 }]}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonLabel}>Save receipt</Text>
-          )}
-        </Pressable>
+        <View style={styles.actionsRow}>
+          <Pressable onPress={onCancel} disabled={saving} style={[styles.cancelButton, saving && { opacity: 0.5 }]}>
+            <Text style={styles.cancelButtonLabel}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            onPress={onSave}
+            disabled={!canSave}
+            style={[styles.saveButton, !canSave && { opacity: 0.5 }]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveButtonLabel}>Save receipt</Text>
+            )}
+          </Pressable>
+        </View>
       </ScrollView>
 
       <PickerSheet
@@ -283,8 +303,25 @@ const styles = StyleSheet.create({
     color: rn(color.text),
     textAlignVertical: "top",
   },
-  saveButton: {
+  actionsRow: {
+    flexDirection: "row",
+    gap: 10,
     marginTop: 22,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: rn(color.surfaceMuted),
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  cancelButtonLabel: {
+    color: rn(color.textMuted),
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  saveButton: {
+    flex: 1,
     backgroundColor: rn(color.brand),
     alignItems: "center",
     paddingVertical: 14,

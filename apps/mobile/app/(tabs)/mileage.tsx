@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import {
@@ -24,6 +24,7 @@ import {
   useUpdateMileageTrip,
 } from "../../lib/queries";
 import { Text } from "../../components/Text";
+import { TextInput } from "../../components/TextInput";
 import { TripRow } from "../../components/TripRow";
 import { SwipeToDelete } from "../../components/SwipeToDelete";
 
