@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
@@ -33,6 +35,28 @@ export default function CaptureScreen() {
       // Previously swallowed: a failed takePictureAsync looked identical to a
       // shutter tap that did nothing at all, with no way to tell why.
       Alert.alert("Couldn't take photo", err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPickFromLibrary = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Photo library access needed", "Enable it in Settings to import a receipt photo.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: "images", quality: 0.7 });
+      const uri = result.canceled ? null : result.assets[0]?.uri;
+      if (uri) {
+        setCapturedPhoto(uri);
+        router.push("/capture/processing");
+      }
+    } catch (err) {
+      Alert.alert("Couldn't import photo", err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
@@ -72,13 +96,21 @@ export default function CaptureScreen() {
       </View>
 
       <View style={[styles.shutterArea, { paddingBottom: 40 + insets.bottom }]}>
-        <Pressable
-          onPress={onShutter}
-          style={[styles.shutterOuter, !cameraReady && { opacity: 0.4 }]}
-          disabled={busy || !cameraReady}
-        >
-          <View style={styles.shutterInner} />
-        </Pressable>
+        <View style={styles.shutterRow}>
+          <View style={styles.sideSlot} />
+          <Pressable
+            onPress={onShutter}
+            style={[styles.shutterOuter, !cameraReady && { opacity: 0.4 }]}
+            disabled={busy || !cameraReady}
+          >
+            <View style={styles.shutterInner} />
+          </Pressable>
+          <View style={styles.sideSlot}>
+            <Pressable onPress={onPickFromLibrary} style={styles.libraryButton} disabled={busy}>
+              <LibraryIcon />
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       <Pressable onPress={onCancel} style={[styles.cancel, { top: insets.top + 8 }]}>
@@ -92,6 +124,16 @@ export default function CaptureScreen() {
 // already uses for the "pending" status chip — so this borrows that token rather
 // than introducing an untracked colour.
 const AMBER_FRAME = rnAlpha(reimbursementChip.pending.text, 0.7);
+
+function LibraryIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Rect x={3} y={5} width={18} height={14} rx={2} stroke="#fff" strokeWidth={2} />
+      <Circle cx={8.5} cy={10} r={1.5} fill="#fff" />
+      <Path d="M4 16 L9 11 L13 14.5 L16.5 11 L20 15" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -114,6 +156,28 @@ const styles = StyleSheet.create({
   shutterArea: {
     paddingVertical: 26,
     paddingBottom: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shutterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    justifyContent: "center",
+  },
+  // Equal-width slots either side of the shutter keep it centred on screen —
+  // the library button lives in the right one, the left is an empty spacer.
+  sideSlot: {
+    flex: 1,
+    alignItems: "center",
+  },
+  libraryButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    // rnAlpha only parses the app's OKLCH design tokens, not arbitrary hex, so a
+    // plain rgba() is used directly here instead of misapplying it to "#000000".
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
     alignItems: "center",
     justifyContent: "center",
   },

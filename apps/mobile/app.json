@@ -11,12 +11,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.receiptraccoon.mobile",
       "infoPlist": {
-        "NSCameraUsageDescription": "ReceiptRaccoon needs camera access to photograph and scan receipts."
+        "NSCameraUsageDescription": "ReceiptRaccoon needs camera access to photograph and scan receipts.",
+        "NSPhotoLibraryUsageDescription": "ReceiptRaccoon needs photo library access to import receipt photos."
       }
     },
     "android": {
       "package": "com.receiptraccoon.mobile",
-      "permissions": ["CAMERA"]
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
     },
     "plugins": [
       "expo-router",
@@ -24,6 +25,12 @@
         "expo-camera",
         {
           "cameraPermission": "ReceiptRaccoon needs camera access to photograph and scan receipts."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ReceiptRaccoon needs photo library access to import receipt photos."
         }
       ]
     ],
