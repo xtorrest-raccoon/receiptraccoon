@@ -65,6 +65,7 @@ export default function ConfirmScreen() {
       comment: comment.trim(),
       paymentBrand: paymentBrand || null,
       paymentLast4: paymentLast4 || null,
+      imagePath: draft?.photoUri ?? null,
     });
     setSavedSummary({ vendor: vendor.trim(), totalMinor, category, currency });
     router.replace("/capture/saved");

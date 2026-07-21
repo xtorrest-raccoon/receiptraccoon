@@ -125,6 +125,7 @@ export function addReceipt(input: {
   comment: string;
   paymentBrand: string | null;
   paymentLast4: string | null;
+  imagePath: string | null;
 }): Receipt {
   return mockAddReceipt(input);
 }

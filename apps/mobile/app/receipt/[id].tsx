@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
@@ -108,9 +109,13 @@ export default function ReceiptDetailScreen() {
         {formatPaymentMethod(receipt.paymentBrand, receipt.paymentLast4) ?? "—"}
       </Text>
 
-      <View style={styles.photoPlaceholder}>
-        <Text style={styles.photoPlaceholderText}>[ receipt photo ]</Text>
-      </View>
+      {receipt.imagePath ? (
+        <Image source={{ uri: receipt.imagePath }} style={styles.photo} contentFit="cover" />
+      ) : (
+        <View style={styles.photoPlaceholder}>
+          <Text style={styles.photoPlaceholderText}>[ receipt photo ]</Text>
+        </View>
+      )}
 
       <View style={styles.chipRow}>
         <CategoryChip
@@ -273,6 +278,12 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: rn(color.textMuted),
     marginTop: 2,
+    marginBottom: 14,
+  },
+  photo: {
+    width: "100%",
+    height: 220,
+    borderRadius: 16,
     marginBottom: 14,
   },
   photoPlaceholder: {

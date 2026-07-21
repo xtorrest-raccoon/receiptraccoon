@@ -272,6 +272,7 @@ export function addReceipt(input: {
   comment: string;
   paymentBrand: string | null;
   paymentLast4: string | null;
+  imagePath: string | null;
 }): Receipt {
   const totalEur = fromHome(input.totalMinor);
   const taxEur = fromHome(input.taxMinor);
@@ -280,7 +281,7 @@ export function addReceipt(input: {
     workspaceId: WORKSPACE_ID,
     createdBy: CURRENT_USER.id,
     status: "processed",
-    imagePath: null,
+    imagePath: input.imagePath,
     vendor: input.vendor || null,
     receiptDate: input.receiptDate,
     categoryId: `cat_${input.categoryName.toLowerCase().replace(/\s+/g, "_")}`,
