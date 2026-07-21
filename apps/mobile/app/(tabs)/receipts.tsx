@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from "react-nati
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
-import type { Receipt } from "@rr/shared";
+import { canDeleteReceipt, type Receipt } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import { useDeleteReceipt, useHomeCurrency, useReceipts } from "../../lib/queries";
 import { Text } from "../../components/Text";
@@ -40,9 +40,9 @@ export default function ReceiptsScreen() {
           onPress: () => {
             deleteReceipt.mutate(receipt.id, {
               onSuccess: (ok) => {
-                // Should be unreachable — only pending rows swipe — but report it
-                // rather than appearing to succeed.
-                if (!ok) Alert.alert("Could not delete", "Only pending receipts can be deleted.");
+                // Should be unreachable — only pending/rejected rows swipe — but
+                // report it rather than appearing to succeed.
+                if (!ok) Alert.alert("Could not delete", "Only pending or rejected receipts can be deleted.");
               },
             });
           },
@@ -72,9 +72,10 @@ export default function ReceiptsScreen() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 96 + insets.bottom, gap: 8 }}
           renderItem={({ item }) => (
             <SwipeToDelete
-              // Only pending receipts swipe. Once approved, paid or rejected a
-              // receipt is part of the reimbursement record.
-              enabled={item.reimbursementStatus === "pending"}
+              // Pending or rejected receipts swipe — see canDeleteReceipt. Once
+              // approved or reimbursed, a receipt is part of the reimbursement
+              // record and stays put.
+              enabled={canDeleteReceipt(item.reimbursementStatus)}
               onDelete={() => confirmDelete(item)}
             >
               <ReceiptRow

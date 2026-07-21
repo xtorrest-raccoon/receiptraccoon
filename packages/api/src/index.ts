@@ -26,6 +26,7 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import {
   MI_TO_KM,
+  canDeleteReceipt,
   computeCategoryBreakdown,
   computeMonthPacing,
   computeReimbursable,
@@ -587,11 +588,12 @@ export async function addReceipt(input: {
 }
 
 /**
- * Only permitted while pending. RLS's receipts_delete policy allows the
- * delete for created_by/admin regardless of status — it does not itself
- * enforce this rule — so it is checked here, same UI-affordance-only caveat
- * as @rr/shared/authz.ts: this is not a substitute for a DB-level guarantee,
- * just what's available without altering the already-applied migration.
+ * Only permitted while pending or rejected — see canDeleteReceipt.  RLS's
+ * receipts_delete policy allows the delete for created_by/admin regardless
+ * of status — it does not itself enforce this rule — so it is checked here,
+ * same UI-affordance-only caveat as @rr/shared/authz.ts: this is not a
+ * substitute for a DB-level guarantee, just what's available without
+ * altering the already-applied migration.
  */
 export async function deleteReceipt(id: string): Promise<boolean> {
   const { data: receipt, error: fetchErr } = await client()
@@ -600,7 +602,7 @@ export async function deleteReceipt(id: string): Promise<boolean> {
     .eq("id", id)
     .maybeSingle();
   if (fetchErr || !receipt) return false;
-  if ((receipt as { reimbursement_status: ReimbursementStatus }).reimbursement_status !== "pending") return false;
+  if (!canDeleteReceipt((receipt as { reimbursement_status: ReimbursementStatus }).reimbursement_status)) return false;
   const { error } = await client().from("receipts").delete().eq("id", id);
   return !error;
 }

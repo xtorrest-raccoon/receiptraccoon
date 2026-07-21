@@ -110,6 +110,16 @@ export function canEditReceiptCategory(status: ReimbursementStatus): boolean {
   return status === "pending";
 }
 
+/**
+ * Deleting is looser than editing: a rejected receipt can be deleted outright
+ * (no money changed hands, and the employee may not want to resubmit it) as
+ * well as a still-pending one. Approved and reimbursed stay undeletable —
+ * those represent a real decision or payment that must stay on record.
+ */
+export function canDeleteReceipt(status: ReimbursementStatus): boolean {
+  return status === "pending" || status === "rejected";
+}
+
 /** Rejection is not terminal — an employee can correct and resubmit. */
 export const REIMBURSEMENT_TRANSITIONS: Record<ReimbursementStatus, ReimbursementStatus[]> = {
   pending: ["approved", "rejected"],
