@@ -112,28 +112,40 @@ export default function HomeScreen() {
         {/* Spend / stats row */}
         <View style={styles.statsRow}>
           <View style={styles.darkCard}>
-            <Text style={styles.darkCardLabel}>Spend this month</Text>
+            <Text style={styles.darkCardLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              Spend this month
+            </Text>
             <Text style={styles.darkCardValue}>
               {formatMoney(dashboard.stats.monthTotalMinor, currency)}
             </Text>
-            <Text style={styles.darkCardSub}>{monthOptions.find((m) => m.value === CURRENT_MONTH)?.label ?? CURRENT_MONTH}</Text>
+            <Text style={styles.darkCardSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {monthOptions.find((m) => m.value === CURRENT_MONTH)?.label ?? CURRENT_MONTH}
+            </Text>
           </View>
           <View style={styles.statColumn}>
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Owed to you</Text>
+              <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                Owed to you
+              </Text>
               <Text style={styles.statValue}>
                 {formatMoney(owedToUser.amountMinor, currency)}
               </Text>
-              <Text style={styles.statCaption}>Incl. mileage</Text>
+              <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                Incl. mileage
+              </Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Receipts</Text>
+              <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                Receipts
+              </Text>
               {/* Count of the receipts behind "Owed to you" above, not the
                   unrelated "receipts logged this month" figure — the two cards
                   are stacked together specifically so this reads as "that
                   amount, made up of this many receipts". */}
               <Text style={styles.statValue}>{owedToUser.receiptCount}</Text>
-              <Text style={styles.statCaption}>Pending reimbursement</Text>
+              <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                Pending reimbursement
+              </Text>
             </View>
           </View>
         </View>

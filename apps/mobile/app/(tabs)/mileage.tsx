@@ -145,20 +145,28 @@ export default function MileageScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.darkCard}>
-            <Text style={styles.darkCardLabel}>Reimbursement this month</Text>
+            <Text style={styles.darkCardLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              Reimbursement this month
+            </Text>
             <Text style={styles.darkCardValue}>{formatMoney(monthReimbMinor, currency)}</Text>
-            <Text style={styles.darkCardSub}>{formatDistance(monthDistanceInUnit, unit)} logged</Text>
+            <Text style={styles.darkCardSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {formatDistance(monthDistanceInUnit, unit)} logged
+            </Text>
           </View>
           {/* Read-only. The rate is a workspace setting, edited in Settings. */}
           <View style={styles.rateCard}>
-            <Text style={styles.statLabel}>Rate</Text>
+            <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              Rate
+            </Text>
             {/* Not formatMoney: that rounds to two decimals and would show a
                 0.675 rate as 0.68, understating what a long trip is worth. */}
             <Text style={styles.statValue}>
               {currencySymbol(currency)}
               {rateToDecimalString(rateMilli)}
             </Text>
-            <Text style={styles.statCaption}>per {unit}</Text>
+            <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              per {unit}
+            </Text>
           </View>
         </View>
 
