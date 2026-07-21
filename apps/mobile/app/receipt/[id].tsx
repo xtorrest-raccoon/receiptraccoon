@@ -20,6 +20,7 @@ import { rn, rnAlpha } from "../../lib/colors";
 import {
   useCategories,
   useReceipt,
+  useReceiptPhotoUrl,
   useSetReceiptCategory,
   useSetReceiptComment,
   useSetReceiptReclaim,
@@ -36,6 +37,7 @@ export default function ReceiptDetailScreen() {
 
   const { data: receipt, isLoading } = useReceipt(id ?? null);
   const { data: categories } = useCategories();
+  const { data: photoUrl } = useReceiptPhotoUrl(receipt?.imagePath ?? null);
   const setReceiptComment = useSetReceiptComment();
   const setReceiptCategory = useSetReceiptCategory();
   const setReceiptReclaim = useSetReceiptReclaim();
@@ -115,9 +117,9 @@ export default function ReceiptDetailScreen() {
         {formatPaymentMethod(receipt.paymentBrand, receipt.paymentLast4) ?? "—"}
       </Text>
 
-      {receipt.imagePath ? (
+      {photoUrl ? (
         <Pressable onPress={() => setPhotoViewerOpen(true)}>
-          <Image source={{ uri: receipt.imagePath }} style={styles.photo} contentFit="cover" />
+          <Image source={{ uri: photoUrl }} style={styles.photo} contentFit="cover" />
         </Pressable>
       ) : (
         <View style={styles.photoPlaceholder}>
@@ -256,10 +258,10 @@ export default function ReceiptDetailScreen() {
         onClose={() => setCategoryPickerOpen(false)}
       />
 
-      {receipt.imagePath && (
+      {photoUrl && (
         <Modal visible={photoViewerOpen} transparent animationType="fade" onRequestClose={() => setPhotoViewerOpen(false)}>
           <Pressable style={styles.photoViewerBackdrop} onPress={() => setPhotoViewerOpen(false)}>
-            <Image source={{ uri: receipt.imagePath }} style={styles.photoViewerImage} contentFit="contain" />
+            <Image source={{ uri: photoUrl }} style={styles.photoViewerImage} contentFit="contain" />
           </Pressable>
           <Pressable
             onPress={() => setPhotoViewerOpen(false)}

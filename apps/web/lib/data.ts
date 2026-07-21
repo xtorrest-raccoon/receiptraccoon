@@ -37,6 +37,11 @@ export function getReceipt(id: string): Promise<Receipt | undefined> {
   return api.getReceipt(id);
 }
 
+/** Exchanges a receipt's stored path for a short-lived URL actually usable in an <img>. */
+export function getReceiptPhotoUrl(imagePath: string | null): Promise<string | null> {
+  return api.getReceiptPhotoUrl(imagePath);
+}
+
 export function setReimbursementStatus(id: string, status: ReimbursementStatus, reason?: string): Promise<void> {
   return api.setReimbursementStatus(id, status, reason);
 }

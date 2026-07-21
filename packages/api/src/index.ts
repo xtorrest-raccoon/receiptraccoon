@@ -318,6 +318,38 @@ export async function removeCategoryName(name: string): Promise<void> {
   if (archiveErr) throw archiveErr;
 }
 
+// ── receipt photos (Supabase Storage) ───────────────────────────────────
+//
+// The "receipts" bucket is private (created via the Storage API, not SQL —
+// see 0003_receipt_photos_storage.sql for its RLS). receipts.image_path
+// stores the STORAGE PATH ("{workspaceId}/{filename}"), never a directly
+// usable URL — callers must exchange it for a signed URL to actually
+// display the image, and that URL expires.
+
+/**
+ * Uploads a captured photo and returns the storage path to store on the
+ * receipt — not a URL. No crypto.randomUUID() here: it's not universally
+ * available across the environments this package runs in (browser vs
+ * Hermes), so a plain timestamp+random string stands in for a unique name.
+ */
+export async function uploadReceiptPhoto(photo: Blob, contentType: string): Promise<string> {
+  const wsId = await getCurrentWorkspaceId();
+  const ext = contentType === "image/png" ? "png" : "jpg";
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const path = `${wsId}/${filename}`;
+  const { error } = await client().storage.from("receipts").upload(path, photo, { contentType });
+  if (error) throw error;
+  return path;
+}
+
+/** A short-lived URL for displaying a photo given its stored path. Null if the path is missing or the exchange fails. */
+export async function getReceiptPhotoUrl(imagePath: string | null): Promise<string | null> {
+  if (!imagePath) return null;
+  const { data, error } = await client().storage.from("receipts").createSignedUrl(imagePath, 3600);
+  if (error) return null;
+  return data.signedUrl;
+}
+
 // ── receipts ─────────────────────────────────────────────────────────────
 
 const RECEIPT_SELECT =

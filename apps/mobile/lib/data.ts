@@ -78,6 +78,23 @@ export function getReceipt(id: string): Promise<Receipt | undefined> {
   return api.getReceipt(id);
 }
 
+/**
+ * Uploads a local photo (e.g. a capture cache URI) to Supabase Storage and
+ * returns the storage PATH to store on the receipt — not the local URI, which
+ * only exists on this device, and not a URL either, since the bucket is
+ * private (see @rr/api's uploadReceiptPhoto).
+ */
+export async function uploadReceiptPhoto(localUri: string): Promise<string> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  return api.uploadReceiptPhoto(blob, blob.type || "image/jpeg");
+}
+
+/** Exchanges a receipt's stored path for a short-lived URL actually usable in an <Image>. */
+export function getReceiptPhotoUrl(imagePath: string | null): Promise<string | null> {
+  return api.getReceiptPhotoUrl(imagePath);
+}
+
 /** Save a newly captured/filled-in receipt so it actually joins the workspace's records. */
 export function addReceipt(input: {
   vendor: string;

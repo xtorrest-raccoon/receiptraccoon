@@ -53,6 +53,16 @@ export function useReceipt(id: string | null) {
   });
 }
 
+/** Signed URLs expire (1hr — see @rr/api), so this is intentionally excluded from the coarse invalidateAll sweep below; it just re-fetches on its own schedule. */
+export function useReceiptPhotoUrl(imagePath: string | null) {
+  return useQuery({
+    queryKey: ["receiptPhotoUrl", imagePath],
+    queryFn: () => data.getReceiptPhotoUrl(imagePath),
+    enabled: imagePath !== null,
+    staleTime: 30 * 60 * 1000,
+  });
+}
+
 export function useMileage(userId?: string) {
   return useQuery({ queryKey: ["mileage", userId ?? null], queryFn: () => data.listMileage(userId) });
 }

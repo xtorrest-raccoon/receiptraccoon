@@ -7,7 +7,7 @@ import { color } from "@rr/ui-tokens";
 import { minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import type { DraftReceipt } from "../../lib/data";
-import { useAddReceipt, useCategories, useHomeCurrency } from "../../lib/queries";
+import { useAddReceipt, useCategories, useHomeCurrency, useUploadReceiptPhoto } from "../../lib/queries";
 import { getDraftReceipt, setSavedSummary } from "../../lib/captureStore";
 import { Text } from "../../components/Text";
 import { CategoryChip } from "../../components/CategoryChip";
@@ -19,6 +19,7 @@ export default function ConfirmScreen() {
   const { data: currency } = useHomeCurrency();
   const { data: categories } = useCategories();
   const addReceipt = useAddReceipt();
+  const uploadPhoto = useUploadReceiptPhoto();
 
   const [draft, setDraft] = useState<DraftReceipt | null>(null);
   const [vendor, setVendor] = useState("");
@@ -57,15 +58,29 @@ export default function ConfirmScreen() {
   }
 
   const totalMinor = parseMoneyToMinor(totalText, currency);
-  const canSave = vendor.trim().length > 0 && totalMinor !== null && totalMinor > 0 && !addReceipt.isPending;
+  const saving = addReceipt.isPending || uploadPhoto.isPending;
+  const canSave = vendor.trim().length > 0 && totalMinor !== null && totalMinor > 0 && !saving;
 
-  const onSave = () => {
+  const onSave = async () => {
     if (!canSave || totalMinor === null) return;
     // "Visa •1234" -> brand "Visa", last4 "1234" — the inverse of
     // formatPaymentMethod, which is what produced this shape in the first place.
     const [paymentBrand, paymentLast4] = payment.includes("•")
       ? payment.split("•").map((s) => s.trim())
       : [payment.trim() || null, null];
+
+    // The photo is secondary to the receipt data itself — a failed upload
+    // (network blip, etc.) shouldn't lose everything the user just typed in.
+    // Falls back to no photo rather than blocking the save.
+    let imagePath: string | null = null;
+    if (draft?.photoUri) {
+      try {
+        imagePath = await uploadPhoto.mutateAsync(draft.photoUri);
+      } catch {
+        imagePath = null;
+      }
+    }
+
     addReceipt.mutate(
       {
         vendor: vendor.trim(),
@@ -76,7 +91,7 @@ export default function ConfirmScreen() {
         comment: comment.trim(),
         paymentBrand: paymentBrand || null,
         paymentLast4: paymentLast4 || null,
-        imagePath: draft?.photoUri ?? null,
+        imagePath,
       },
       {
         onSuccess: () => {
@@ -170,7 +185,7 @@ export default function ConfirmScreen() {
           disabled={!canSave}
           style={[styles.saveButton, !canSave && { opacity: 0.5 }]}
         >
-          {addReceipt.isPending ? (
+          {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.saveButtonLabel}>Save receipt</Text>

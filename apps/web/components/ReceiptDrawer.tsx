@@ -2,7 +2,7 @@
 
 import { formatMoney, formatPaymentMethod, formatShortDate, isAdmin, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, layout, radius, reimbursementChip } from "@rr/ui-tokens";
-import { useCurrentUser, useReceipt, useUsers } from "../lib/queries";
+import { useCurrentUser, useReceipt, useReceiptPhotoUrl, useUsers } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 import { CategoryChip, ReceiptStatusChip } from "./Chips";
 
@@ -15,6 +15,7 @@ export function ReceiptDrawer() {
   const { data: receipt } = useReceipt(selectedReceiptId);
   const { data: currentUser } = useCurrentUser();
   const { data: users } = useUsers();
+  const { data: photoUrl } = useReceiptPhotoUrl(receipt?.imagePath ?? null);
 
   if (!selectedReceiptId || !receipt || !currentUser || !users) return null;
 
@@ -68,24 +69,42 @@ export function ReceiptDrawer() {
           </button>
         </div>
 
-        <div
-          style={{
-            width: "100%",
-            height: 200,
-            borderRadius: radius.xl,
-            marginBottom: 18,
-            background: `repeating-linear-gradient(135deg, ${color.borderSubtle}, ${color.borderSubtle} 10px, ${color.surfaceMuted} 10px, ${color.surfaceMuted} 20px)`,
-            border: `1px solid ${color.border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: color.textFaint,
-            fontFamily: "monospace",
-            fontSize: fontSize.small,
-          }}
-        >
-          [ receipt photo ]
-        </div>
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a signed
+          // URL is a one-hour-lived opaque token, not a stable asset
+          // next/image's optimizer/CDN caching would want to hold onto.
+          <img
+            src={photoUrl}
+            alt={`Receipt from ${receipt.vendor ?? "unknown vendor"}`}
+            style={{
+              width: "100%",
+              height: 200,
+              objectFit: "cover",
+              borderRadius: radius.xl,
+              marginBottom: 18,
+              border: `1px solid ${color.border}`,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: 200,
+              borderRadius: radius.xl,
+              marginBottom: 18,
+              background: `repeating-linear-gradient(135deg, ${color.borderSubtle}, ${color.borderSubtle} 10px, ${color.surfaceMuted} 10px, ${color.surfaceMuted} 20px)`,
+              border: `1px solid ${color.border}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: color.textFaint,
+              fontFamily: "monospace",
+              fontSize: fontSize.small,
+            }}
+          >
+            [ receipt photo ]
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14 }}>
           <CategoryChip category={receipt.categoryName ?? "Other"} />

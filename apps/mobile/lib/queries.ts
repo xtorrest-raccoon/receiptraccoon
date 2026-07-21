@@ -60,6 +60,16 @@ export function useMileage() {
   return useQuery({ queryKey: ["mileage"], queryFn: data.listMileage });
 }
 
+/** Signed URLs expire (1hr — see @rr/api), so this is intentionally excluded from the coarse invalidateAll sweep below; it just re-fetches on its own schedule. */
+export function useReceiptPhotoUrl(imagePath: string | null) {
+  return useQuery({
+    queryKey: ["receiptPhotoUrl", imagePath],
+    queryFn: () => data.getReceiptPhotoUrl(imagePath),
+    enabled: imagePath !== null,
+    staleTime: 30 * 60 * 1000,
+  });
+}
+
 /** Every read that a write anywhere in the app can affect. Coarse on purpose — see module doc. */
 const ALL_QUERY_KEYS = [
   "dashboard",
@@ -84,6 +94,11 @@ function useInvalidateAll() {
 export function useAddReceipt() {
   const invalidateAll = useInvalidateAll();
   return useMutation({ mutationFn: data.addReceipt, onSuccess: invalidateAll });
+}
+
+/** No cache invalidation needed — this doesn't change any receipt yet, just gets a path to pass into addReceipt. */
+export function useUploadReceiptPhoto() {
+  return useMutation({ mutationFn: (localUri: string) => data.uploadReceiptPhoto(localUri) });
 }
 
 export function useSetReceiptComment() {
