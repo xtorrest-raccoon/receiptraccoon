@@ -485,7 +485,11 @@ const styles = StyleSheet.create({
     color: rn(color.textMuted),
   },
   totalInput: {
-    width: 90,
+    // Fixed at 90 before, which clipped the trailing digit of any amount six
+    // characters or longer (e.g. "238.93") — the box was too narrow for its
+    // own padding plus a bold 15px font. minWidth lets it grow for larger
+    // totals instead of silently cutting them off.
+    minWidth: 90,
     textAlign: "right",
     fontSize: 15,
     fontWeight: "800",
