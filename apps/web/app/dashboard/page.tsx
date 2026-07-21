@@ -52,7 +52,7 @@ export default function DashboardPage() {
         <StatCard
           label="Reimbursable to employees"
           value={formatMoney(stats.reimbursableMinor, currency)}
-          sub={`${stats.reimbursablePendingCount} receipts pending payout`}
+          sub={`${stats.reimbursablePendingCount} items pending payout`}
         />
         <StatCard label="Receipts this month" value={stats.receiptCount} sub={`${stats.needsReviewCount} need review`} />
       </div>

@@ -493,7 +493,20 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
   const elapsedFraction = isCurrentMonth ? todayDayOfMonth / daysInMonth : 1;
 
   const outstanding = monthReceipts.filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
-  const reimbursableMinor = outstanding.reduce((s, r) => s + reclaimMinor(r), 0);
+
+  // "Reimbursable to employees" is what the business currently owes, not what it
+  // owed this month — a receipt or trip from last month that is still pending
+  // doesn't stop counting just because the calendar page turned. No month
+  // restriction, same reasoning as getOwedToUserSummary. Receipts AND mileage:
+  // both are real money the business owes, and a trip pending payout is no
+  // different from a receipt pending payout from this stat's point of view.
+  const allOutstandingReceipts = all.filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
+  const outstandingTrips = visibleTrips().filter((t) => OUTSTANDING.includes(t.reimbursementStatus));
+  const reimbursableMinor =
+    allOutstandingReceipts.reduce((s, r) => s + reclaimMinor(r), 0) +
+    outstandingTrips.reduce((s, t) => s + t.amountMinor, 0);
+  const reimbursablePendingCount = allOutstandingReceipts.length + outstandingTrips.length;
+
   const needsReviewCount = monthReceipts.filter((r) => r.status === "needs_review").length;
   const breakdown = categoryBreakdown(monthReceipts);
 
@@ -525,7 +538,7 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
       ytdCount: ytd.length,
       taxMinor: toHome(monthReceipts.reduce((s, r) => s + (r.taxMinor ?? 0), 0)),
       reimbursableMinor: toHome(reimbursableMinor),
-      reimbursablePendingCount: outstanding.length,
+      reimbursablePendingCount,
       receiptCount: monthReceipts.length,
       needsReviewCount,
     },
