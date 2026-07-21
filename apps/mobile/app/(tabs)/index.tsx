@@ -144,7 +144,7 @@ export default function HomeScreen() {
                   amount, made up of this many receipts". */}
               <Text style={styles.statValue}>{owedToUser.receiptCount}</Text>
               <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                Pending reimbursement
+                Pending refund
               </Text>
             </View>
           </View>
@@ -153,7 +153,9 @@ export default function HomeScreen() {
         {/* Pacing ring: the full arc is last month's total, the fill is this
             month so far, and the tick marks how far through the month we are. */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Spending vs Last Month</Text>
+          <Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            Spending vs Last Month
+          </Text>
           <View style={{ alignItems: "center", marginTop: 10 }}>
             <SpendPacingRing
               monthToDateMinor={dashboard.stats.monthTotalMinor}
@@ -177,7 +179,14 @@ export default function HomeScreen() {
         {/* Category breakdown */}
         <View style={[styles.card, { marginBottom: 0 }]}>
           <View style={styles.breakdownHeader}>
-            <Text style={styles.cardTitle}>Category breakdown</Text>
+            <Text
+              style={[styles.cardTitle, { flexShrink: 1, marginRight: 8 }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              Category breakdown
+            </Text>
             <Pressable style={styles.monthPicker} onPress={() => setMonthPickerOpen(true)}>
               <Text style={styles.monthPickerLabel}>{selectedMonthLabel}</Text>
             </Pressable>
