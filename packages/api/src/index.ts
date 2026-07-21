@@ -758,23 +758,44 @@ export async function deleteMileageTrip(id: string): Promise<boolean> {
 
 // ── derived: dashboard, team, owed-to-user ───────────────────────────────
 
-async function fetchAllReceipts(): Promise<Receipt[]> {
-  const { data, error } = await client().from("receipts").select(RECEIPT_SELECT);
+/**
+ * `userId` narrows to one person's own rows regardless of what RLS itself
+ * would additionally allow — an owner/admin's RLS grant covers the whole
+ * workspace, but a caller (mobile's personal dashboard) can still ask for
+ * just their own by passing their own id.
+ */
+async function fetchAllReceipts(userId?: string): Promise<Receipt[]> {
+  let query = client().from("receipts").select(RECEIPT_SELECT);
+  if (userId) query = query.eq("created_by", userId);
+  const { data, error } = await query;
   if (error) throw error;
   return (data as ReceiptRow[]).map(mapReceiptRow);
 }
 
-async function fetchAllTrips(): Promise<MileageTrip[]> {
-  const { data, error } = await client().from("mileage_trips").select("*");
+async function fetchAllTrips(userId?: string): Promise<MileageTrip[]> {
+  let query = client().from("mileage_trips").select("*");
+  if (userId) query = query.eq("user_id", userId);
+  const { data, error } = await query;
   if (error) throw error;
   return (data as TripRow[]).map(mapTripRow);
 }
 
-export async function getDashboard(month?: string): Promise<DashboardResponse> {
+/**
+ * `userId`: omit for the workspace-wide view (Team page, and an owner/admin's
+ * own web Dashboard — see DESIGN_V2_DELTA.md's reasoning that an admin's
+ * figures should mean "outstanding in the business", not just their own
+ * handful of receipts). Pass the caller's own id for a personal-only view —
+ * mobile always does this, since approval happens on web, not on the phone.
+ */
+export async function getDashboard(month?: string, userId?: string): Promise<DashboardResponse> {
   const today = new Date().toISOString().slice(0, 10);
   const targetMonth = month ?? today.slice(0, 7);
 
-  const [ws, allReceipts, allTrips] = await Promise.all([getWorkspaceRow(), fetchAllReceipts(), fetchAllTrips()]);
+  const [ws, allReceipts, allTrips] = await Promise.all([
+    getWorkspaceRow(),
+    fetchAllReceipts(userId),
+    fetchAllTrips(userId),
+  ]);
 
   const monthReceipts = allReceipts.filter((r) => inMonth(r.receiptDate ?? "", targetMonth));
   const ytd = allReceipts.filter((r) => (r.receiptDate ?? "").startsWith(today.slice(0, 4)));
@@ -828,8 +849,9 @@ export async function getDashboard(month?: string): Promise<DashboardResponse> {
   };
 }
 
-export async function getOwedToUserSummary(): Promise<OwedToUserSummary> {
-  const [allReceipts, allTrips] = await Promise.all([fetchAllReceipts(), fetchAllTrips()]);
+/** See getDashboard's userId doc — same "omit for workspace-wide, pass caller's own id for personal-only" rule. */
+export async function getOwedToUserSummary(userId?: string): Promise<OwedToUserSummary> {
+  const [allReceipts, allTrips] = await Promise.all([fetchAllReceipts(userId), fetchAllTrips(userId)]);
   const outstandingReceipts = allReceipts.filter((r) => isOutstanding(r.reimbursementStatus));
   const { reimbursableMinor } = computeReimbursable(allReceipts, allTrips);
   return { amountMinor: reimbursableMinor, receiptCount: outstandingReceipts.length };

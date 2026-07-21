@@ -4,7 +4,7 @@ import { useFocusEffect } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
-import { categoryAccent, formatMoney, formatPaceComparison } from "@rr/shared";
+import { categoryAccent, formatMoney } from "@rr/shared";
 import { signOut } from "@rr/api";
 import { rn } from "../../lib/colors";
 import { CURRENT_MONTH, CURRENCIES } from "../../lib/data";
@@ -20,7 +20,7 @@ import {
   useSetMileageRateMilli,
 } from "../../lib/queries";
 import { Text } from "../../components/Text";
-import { SpendPacingRing } from "../../components/SpendPacingRing";
+import { SpendBarChart } from "../../components/SpendBarChart";
 import { PickerSheet } from "../../components/PickerSheet";
 import { SettingsSheet } from "../../components/SettingsSheet";
 
@@ -150,30 +150,9 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Pacing ring: the full arc is last month's total, the fill is this
-            month so far, and the tick marks how far through the month we are. */}
+        {/* Spend over time: mirrors apps/web/components/SpendBarChart.tsx. */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-            Spending vs Last Month
-          </Text>
-          <View style={{ alignItems: "center", marginTop: 10 }}>
-            <SpendPacingRing
-              monthToDateMinor={dashboard.stats.monthTotalMinor}
-              prevMonthTotalMinor={dashboard.pacing.prevMonthTotalMinor}
-              deltaPct={dashboard.stats.monthDeltaPct}
-              elapsedFraction={dashboard.pacing.elapsedFraction}
-              currency={currency}
-              size={220}
-            />
-          </View>
-          <Text
-            style={[
-              styles.statusCaption,
-              { color: rn(dashboard.stats.monthDeltaPct > 0 ? color.up : color.down) },
-            ]}
-          >
-            {formatPaceComparison(dashboard.stats.monthDeltaPct)}
-          </Text>
+          <SpendBarChart weeklySpend={dashboard.weeklySpend} currency={currency} />
         </View>
 
         {/* Category breakdown */}
@@ -355,13 +334,6 @@ const styles = StyleSheet.create({
     backgroundColor: rn(color.avatarBg),
     alignItems: "center",
     justifyContent: "center",
-  },
-  statusCaption: {
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 8,
-    lineHeight: 17,
   },
   breakdownHeader: {
     flexDirection: "row",

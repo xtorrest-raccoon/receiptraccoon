@@ -40,8 +40,27 @@ export function getCurrentUser(): Promise<api.CurrentUser> {
   return api.getCurrentUser();
 }
 
-export function getDashboard(month?: string): Promise<DashboardResponse> {
-  return api.getDashboard(month);
+/**
+ * The signed-in user's own id, read from the local session (no network round
+ * trip — supabase-js keeps the session in memory/AsyncStorage) rather than
+ * getCurrentUser(), which does a real join query just for this.
+ */
+async function currentUserId(): Promise<string> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+  return session.user.id;
+}
+
+/**
+ * Always scoped to the caller's own receipts/trips, regardless of role — an
+ * owner/admin's web Dashboard and Team page intentionally show the whole
+ * workspace (that's where approving/reviewing everyone's claims happens),
+ * but the phone is where you look at YOUR OWN spend, so it stays personal
+ * even for an owner. See @rr/api's getDashboard for the userId parameter
+ * this relies on.
+ */
+export async function getDashboard(month?: string): Promise<DashboardResponse> {
+  return api.getDashboard(month, await currentUserId());
 }
 
 /**
@@ -79,8 +98,9 @@ export function estimateMileageAmountMinor(distance: number, unit: DistanceUnit)
   return api.estimateMileageAmountMinor(distance, unit);
 }
 
-export function listReceipts(opts: { month?: string; categoryName?: string; q?: string } = {}): Promise<Receipt[]> {
-  return api.listReceipts(opts);
+/** Personal-only, same reasoning as getDashboard above. */
+export async function listReceipts(opts: { month?: string; categoryName?: string; q?: string } = {}): Promise<Receipt[]> {
+  return api.listReceipts({ ...opts, userId: await currentUserId() });
 }
 
 export function getReceipt(id: string): Promise<Receipt | undefined> {
@@ -157,8 +177,9 @@ export function deleteReceipt(id: string): Promise<boolean> {
   return api.deleteReceipt(id);
 }
 
-export function listMileage(): Promise<MileageTrip[]> {
-  return api.listMileage();
+/** Personal-only, same reasoning as getDashboard above. */
+export async function listMileage(): Promise<MileageTrip[]> {
+  return api.listMileage(await currentUserId());
 }
 
 export function addMileageTrip(input: {
@@ -187,23 +208,23 @@ export function listCategories(): Promise<string[]> {
   return api.listCategories();
 }
 
-/** Months that have at least one receipt, oldest first — powers the month picker. */
+/** Months that have at least one of the caller's OWN receipts, oldest first — powers the month picker. */
 export async function getAvailableMonths(): Promise<{ value: string; label: string }[]> {
-  const all = await api.listReceipts({});
+  const all = await api.listReceipts({ userId: await currentUserId() });
   const months = Array.from(new Set(all.map((r) => (r.receiptDate ?? "").slice(0, 7)).filter(Boolean))).sort();
   return months.map((m) => ({ value: m, label: formatMonthLabel(m) }));
 }
 
 /**
- * "Owed to you" running balance — pending + approved receipts and mileage, in
- * whatever scope the signed-in user's role sees (own claims for a member, the
- * whole workspace for an owner/admin). No date restriction — see @rr/api's
- * getOwedToUserSummary for why a monthly scope would be wrong here.
+ * "Owed to you" running balance — pending + approved receipts and mileage,
+ * always the caller's own regardless of role (see getDashboard above for
+ * why). No date restriction — see @rr/api's getOwedToUserSummary for why a
+ * monthly scope would be wrong here.
  *
  * amountMinor and receiptCount are paired deliberately — see OwedToUserSummary.
  */
-export function getOwedToUserSummary(): Promise<OwedToUserSummary> {
-  return api.getOwedToUserSummary();
+export async function getOwedToUserSummary(): Promise<OwedToUserSummary> {
+  return api.getOwedToUserSummary(await currentUserId());
 }
 
 // ── Capture flow: real OCR extraction (packages/extraction via apps/web) ───
