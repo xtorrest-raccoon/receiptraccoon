@@ -36,6 +36,20 @@ export async function POST(request: NextRequest) {
     });
 
     const d = outcome.result.data;
+
+    // validate.ts treats a poor-legibility or not-a-receipt photo as a hard
+    // failure that's not worth escalating to a stronger (pricier) model — no
+    // second call fixes a blurry photo. That already saves the extra spend;
+    // this surfaces the same signal to the client so it can tell the user to
+    // retake the photo instead of silently dumping them into a blank manual
+    // entry form with no explanation.
+    const retakeIssue = outcome.validation.issues.find(
+      (i) => i.field === "legibility" || i.field === "is_receipt",
+    );
+    if (retakeIssue) {
+      return NextResponse.json({ retake: true, reason: retakeIssue.message });
+    }
+
     // Extraction returns decimal strings in whatever currency it read off the
     // receipt. No FX conversion happens here — a foreign-currency receipt is
     // already flagged as a soft validation issue (see validate.ts) and needs a
@@ -43,6 +57,7 @@ export async function POST(request: NextRequest) {
     const currency = d.currency ?? homeCurrency;
 
     return NextResponse.json({
+      retake: false,
       vendor: d.vendor,
       date: d.receipt_date,
       totalMinor: parseMoneyToMinor(d.total, currency) ?? 0,

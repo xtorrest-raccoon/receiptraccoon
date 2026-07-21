@@ -257,6 +257,14 @@ function getApiBaseUrl(): string {
   return `http://${host}:3000`;
 }
 
+/**
+ * Thrown instead of a plain Error when the photo itself is the problem (too
+ * blurry to read, or not a receipt at all) — see /api/extract's `retake` flag.
+ * A second extraction attempt on the same photo can't fix this, so the caller
+ * needs to route to "take another photo", not "retry" or "enter manually".
+ */
+export class RetakePhotoError extends Error {}
+
 export async function extractReceiptFromPhoto(photoUri: string, today: string): Promise<DraftReceipt> {
   const body = new FormData();
   body.append("image", { uri: photoUri, name: "receipt.jpg", type: "image/jpeg" } as unknown as Blob);
@@ -268,6 +276,9 @@ export async function extractReceiptFromPhoto(photoUri: string, today: string): 
   }
 
   const data = await res.json();
+  if (data.retake) {
+    throw new RetakePhotoError(data.reason ?? "This photo is too unclear to read.");
+  }
   return {
     photoUri,
     vendor: data.vendor ?? "",

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { color } from "@rr/ui-tokens";
 import { rn } from "../../lib/colors";
-import { TODAY, blankDraftReceipt, extractReceiptFromPhoto } from "../../lib/data";
+import { RetakePhotoError, TODAY, blankDraftReceipt, extractReceiptFromPhoto } from "../../lib/data";
 import { getCapturedPhoto, setDraftReceipt } from "../../lib/captureStore";
 import { Spinner } from "../../components/Spinner";
 import { Text } from "../../components/Text";
@@ -20,6 +20,7 @@ export default function ProcessingScreen() {
   const router = useRouter();
   const [stillWorking, setStillWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsRetake, setNeedsRetake] = useState(false);
   // Bumped to retry: re-running the same effect body rather than duplicating it.
   const [attempt, setAttempt] = useState(0);
 
@@ -31,6 +32,7 @@ export default function ProcessingScreen() {
     }
 
     setError(null);
+    setNeedsRetake(false);
     setStillWorking(false);
     const stillWorkingTimer = setTimeout(() => setStillWorking(true), STILL_WORKING_AFTER_MS);
 
@@ -47,6 +49,10 @@ export default function ProcessingScreen() {
         // should surface as failed with a retry, not leave the Processing
         // screen spinning".
         if (cancelled) return;
+        // A blurry/unreadable photo can't be fixed by retrying the same
+        // upload or by asking the user to type numbers off a photo they
+        // can't read either — the only fix is a new photo.
+        setNeedsRetake(err instanceof RetakePhotoError);
         setError(err instanceof Error ? err.message : String(err));
       });
 
@@ -62,6 +68,22 @@ export default function ProcessingScreen() {
     if (photoUri) setDraftReceipt(blankDraftReceipt(photoUri, TODAY));
     router.replace("/capture/confirm");
   };
+
+  const onRetake = () => router.replace("/capture");
+
+  if (needsRetake) {
+    return (
+      <View style={[styles.container, { backgroundColor: rn(color.bgMobile) }]}>
+        <Text style={styles.title}>This photo is too unclear to read</Text>
+        <Text style={styles.subtitle}>{error}</Text>
+        <View style={styles.actionsRow}>
+          <Pressable style={styles.retryButton} onPress={onRetake}>
+            <Text style={styles.retryButtonLabel}>Retake photo</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (error) {
     return (
