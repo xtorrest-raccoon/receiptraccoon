@@ -15,19 +15,24 @@
 
 import {
   SEED_CATEGORIES,
-  derivedHue,
   daysBetween,
   formatMoney,
   reclaimMinor,
   mileageAmountMinor,
   MI_TO_KM,
-  type CategoryBreakdownRow,
+  isOutstanding,
+  inMonth,
+  prevMonthOf,
+  computeCategoryBreakdown,
+  computeMonthPacing,
+  computeWeeklySpend,
+  computeReimbursable,
+  computeTeamMemberSummaries,
   type DashboardResponse,
   type DistanceUnit,
   type MileageTrip,
   type Receipt,
   type ReimbursementStatus,
-  type TeamMemberSummary,
   type TeamResponse,
   type OwedToUserSummary,
   type Role,
@@ -322,21 +327,6 @@ const TRIPS: MileageTrip[] = [
   { id: "t_5", workspaceId: WORKSPACE_ID, userId: "u_4", tripDate: "2026-07-16", purpose: "Client site visit", distance: 18.4, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, amountMinor: mileageAmountMinor(18.4, MILEAGE_RATE_MILLI, HOME_CURRENCY), reimbursementStatus: "pending", rejectionReason: null },
 ];
 
-const OUTSTANDING: ReimbursementStatus[] = ["pending", "approved"];
-const inMonth = (iso: string, yyyyMm: string) => iso.startsWith(yyyyMm);
-
-/**
- * "2026-07" -> "2026-06", "2026-01" -> "2025-12". Computed rather than
- * hardcoded: the "vs last month" comparison depends on this being right for
- * whichever month is being viewed, not just the one month the seed data happens
- * to be dated around.
- */
-function prevMonthOf(yyyyMm: string): string {
-  const [year, month] = yyyyMm.split("-").map(Number) as [number, number];
-  const d = new Date(year, month - 2, 1); // JS Date months are 0-indexed
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
 /**
  * Members see only their own receipts; owners/admins see the workspace. Mirrors
  * RLS. The exact same rule applies to mileage trips (visibleTrips, below) —
@@ -447,52 +437,12 @@ export function setReclaimMinor(id: string, minorHomeCurrency: number): void {
   if (r) r.reclaimMinor = fromHome(minorHomeCurrency);
 }
 
-function categoryBreakdown(receipts: Receipt[]): CategoryBreakdownRow[] {
-  const total = receipts.reduce((s, r) => s + reclaimMinor(r), 0) || 1;
-  const byName = new Map<string, number>();
-  for (const r of receipts) {
-    const key = r.categoryName ?? "Other";
-    byName.set(key, (byName.get(key) ?? 0) + reclaimMinor(r));
-  }
-  return [...byName.entries()]
-    .map(([name, amountMinor]) => ({
-      categoryId: `cat_${name.toLowerCase().replace(/\s+/g, "_")}`,
-      name,
-      hue: derivedHue(name),
-      amountMinor,
-      pct: (amountMinor / total) * 100,
-    }))
-    .sort((a, b) => b.amountMinor - a.amountMinor);
-}
-
 export function getDashboard(month = "2026-07"): DashboardResponse {
   const all = visibleReceipts();
   const monthReceipts = all.filter((r) => inMonth(r.receiptDate ?? "", month));
-  const prevReceipts = all.filter((r) => inMonth(r.receiptDate ?? "", prevMonthOf(month)));
   const ytd = all.filter((r) => (r.receiptDate ?? "").startsWith("2026"));
 
-  const monthTotal = monthReceipts.reduce((s, r) => s + reclaimMinor(r), 0);
-  const prevTotal = prevReceipts.reduce((s, r) => s + reclaimMinor(r), 0);
-
-  // Like-for-like comparison. Measuring a part-finished month against a complete
-  // one shows a "decrease" almost every month until the final day, which is the
-  // opposite of what is actually happening — so the delta is measured against
-  // last month AT THE SAME DAY-OF-MONTH. A month that is already over compares
-  // in full, since there is no partial period to account for.
-  const isCurrentMonth = month === TODAY.slice(0, 7);
-  const todayDayOfMonth = Number(TODAY.slice(8, 10));
-  const cutoffDay = isCurrentMonth ? todayDayOfMonth : 31;
-  const prevToDate = prevReceipts
-    .filter((r) => Number((r.receiptDate ?? "").slice(8, 10)) <= cutoffDay)
-    .reduce((s, r) => s + reclaimMinor(r), 0);
-  const deltaPct = prevToDate ? ((monthTotal - prevToDate) / prevToDate) * 100 : 0;
-
-  // Day 0 of the following month is the last day of this one.
-  const [viewYear, viewMonth] = month.split("-").map(Number) as [number, number];
-  const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
-  const elapsedFraction = isCurrentMonth ? todayDayOfMonth / daysInMonth : 1;
-
-  const outstanding = monthReceipts.filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
+  const pacing = computeMonthPacing(all, month, TODAY);
 
   // "Reimbursable to employees" is what the business currently owes, not what it
   // owed this month — a receipt or trip from last month that is still pending
@@ -500,31 +450,15 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
   // restriction, same reasoning as getOwedToUserSummary. Receipts AND mileage:
   // both are real money the business owes, and a trip pending payout is no
   // different from a receipt pending payout from this stat's point of view.
-  const allOutstandingReceipts = all.filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
-  const outstandingTrips = visibleTrips().filter((t) => OUTSTANDING.includes(t.reimbursementStatus));
-  const reimbursableMinor =
-    allOutstandingReceipts.reduce((s, r) => s + reclaimMinor(r), 0) +
-    outstandingTrips.reduce((s, t) => s + t.amountMinor, 0);
-  const reimbursablePendingCount = allOutstandingReceipts.length + outstandingTrips.length;
+  const { reimbursableMinor, reimbursablePendingCount } = computeReimbursable(all, visibleTrips());
 
   const needsReviewCount = monthReceipts.filter((r) => r.status === "needs_review").length;
-  const breakdown = categoryBreakdown(monthReceipts);
+  const breakdown = computeCategoryBreakdown(monthReceipts);
+  const weeklySpend = computeWeeklySpend(all, TODAY);
 
-  const weeklySpend: { weekStart: string; totalMinor: number }[] = [];
-  const end = new Date(`${TODAY}T00:00:00`);
-  for (let i = 5; i >= 0; i--) {
-    const weekEnd = new Date(end);
-    weekEnd.setDate(end.getDate() - i * 7);
-    const weekStart = new Date(weekEnd);
-    weekStart.setDate(weekEnd.getDate() - 6);
-    const totalMinor = all
-      .filter((r) => {
-        const d = new Date(`${r.receiptDate}T00:00:00`);
-        return d >= weekStart && d <= weekEnd;
-      })
-      .reduce((s, r) => s + reclaimMinor(r), 0);
-    weeklySpend.push({ weekStart: weekStart.toISOString().slice(0, 10), totalMinor });
-  }
+  // Still month-scoped on purpose, unlike reimbursableMinor above — this tip is
+  // about clearing this month's backlog specifically, not the whole business's.
+  const outstandingThisMonth = monthReceipts.filter((r) => isOutstanding(r.reimbursementStatus));
 
   // Everything above is computed in EUR, the currency the seed data is stored in.
   // Convert on the way out, so percentages and counts stay currency-independent
@@ -532,8 +466,8 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
   return {
     currency: homeCurrency,
     stats: {
-      monthTotalMinor: toHome(monthTotal),
-      monthDeltaPct: deltaPct,
+      monthTotalMinor: toHome(pacing.monthTotalMinor),
+      monthDeltaPct: pacing.monthDeltaPct,
       ytdTotalMinor: toHome(ytd.reduce((s, r) => s + reclaimMinor(r), 0)),
       ytdCount: ytd.length,
       taxMinor: toHome(monthReceipts.reduce((s, r) => s + (r.taxMinor ?? 0), 0)),
@@ -543,9 +477,9 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
       needsReviewCount,
     },
     pacing: {
-      prevMonthTotalMinor: toHome(prevTotal),
-      prevMonthToDateMinor: toHome(prevToDate),
-      elapsedFraction,
+      prevMonthTotalMinor: toHome(pacing.prevMonthTotalMinor),
+      prevMonthToDateMinor: toHome(pacing.prevMonthToDateMinor),
+      elapsedFraction: pacing.elapsedFraction,
     },
     weeklySpend: weeklySpend.map((w) => ({ ...w, totalMinor: toHome(w.totalMinor) })),
     categoryBreakdown: breakdown.map((c) => ({ ...c, amountMinor: toHome(c.amountMinor) })),
@@ -556,7 +490,7 @@ export function getDashboard(month = "2026-07"): DashboardResponse {
         text: `You're paying for Adobe and Zoom (${formatMoney(toHome(22773), homeCurrency)} this month) — review for overlapping tools before renewal.`,
       },
       { iconLetter: "%", tone: "neutral", text: "Tax season prep: keep setting aside 10–15% of net income for deductible business expenses like these." },
-      { iconLetter: "!", tone: "warn", text: `${outstanding.length} receipts are still awaiting payout — clearing them moves spend from pending into reimbursed.` },
+      { iconLetter: "!", tone: "warn", text: `${outstandingThisMonth.length} receipts are still awaiting payout — clearing them moves spend from pending into reimbursed.` },
     ],
     recentReceipts: listReceipts().slice(0, 5),
   };
@@ -589,40 +523,29 @@ export function getOwedToUserSummary(): OwedToUserSummary {
   // outstandingRefundMinor totals. Previously hardcoded to createdBy ===
   // CURRENT_USER.id regardless of role, which undercounted an admin's figure
   // down to just their own handful of receipts instead of the workspace's.
-  const outstandingReceipts = visibleReceipts().filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
-  const outstandingTrips = visibleTrips().filter((t) => OUTSTANDING.includes(t.reimbursementStatus));
-  const receiptsMinor = outstandingReceipts.reduce((s, r) => s + reclaimMinor(r), 0);
-  const tripsMinor = outstandingTrips.reduce((s, t) => s + t.amountMinor, 0);
+  const outstandingReceipts = visibleReceipts().filter((r) => isOutstanding(r.reimbursementStatus));
+  const { reimbursableMinor } = computeReimbursable(visibleReceipts(), visibleTrips());
   return {
-    amountMinor: toHome(receiptsMinor + tripsMinor),
+    amountMinor: toHome(reimbursableMinor),
+    // Receipts only — mileage trips are not "receipts". computeReimbursable's
+    // count mixes both, so this is filtered separately.
     receiptCount: outstandingReceipts.length,
   };
 }
 
 export function getTeam(month = "2026-07"): TeamResponse {
   const monthReceipts = RECEIPTS.filter((r) => inMonth(r.receiptDate ?? "", month));
-  const allOutstanding = RECEIPTS.filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
-  const tripsOutstanding = TRIPS.filter((t) => OUTSTANDING.includes(t.reimbursementStatus));
+  const allOutstanding = RECEIPTS.filter((r) => isOutstanding(r.reimbursementStatus));
+  const tripsOutstanding = TRIPS.filter((t) => isOutstanding(t.reimbursementStatus));
   const mileageOutstandingMinor = tripsOutstanding.reduce((s, t) => s + t.amountMinor, 0);
 
-  const members: TeamMemberSummary[] = USERS.map((u) => {
-    const mine = RECEIPTS.filter((r) => r.createdBy === u.id);
-    const outstanding = mine.filter((r) => OUTSTANDING.includes(r.reimbursementStatus));
-    const ages = outstanding.map((r) => daysBetween(r.receiptDate ?? TODAY, TODAY));
-    const byCat = new Map<string, number>();
-    for (const r of mine) byCat.set(r.categoryName ?? "Other", (byCat.get(r.categoryName ?? "Other") ?? 0) + reclaimMinor(r));
-    const topCategory = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    return {
-      userId: u.id,
-      name: u.name,
-      jobTitle: u.jobTitle,
-      role: u.role,
-      receiptCount: mine.length,
-      outstandingMinor: toHome(outstanding.reduce((s, r) => s + reclaimMinor(r), 0)),
-      oldestPendingDays: ages.length ? Math.max(...ages) : null,
-      topCategory,
-    };
-  }).sort((a, b) => b.outstandingMinor - a.outstandingMinor);
+  // outstandingMinor per member is converted to the display currency AFTER
+  // sorting inside computeTeamMemberSummaries — safe, since toHome is a fixed
+  // positive scale factor and preserves order.
+  const members = computeTeamMemberSummaries(USERS, RECEIPTS, TODAY).map((m) => ({
+    ...m,
+    outstandingMinor: toHome(m.outstandingMinor),
+  }));
 
   const agedOver30 = allOutstanding.filter((r) => daysBetween(r.receiptDate ?? TODAY, TODAY) > 30);
 
