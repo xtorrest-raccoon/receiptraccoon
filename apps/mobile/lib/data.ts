@@ -149,6 +149,10 @@ export function addReceipt(input: {
   paymentBrand: string | null;
   paymentLast4: string | null;
   imagePath: string | null;
+  originalCurrency?: string | null;
+  originalTotalMinor?: number | null;
+  fxRate?: number | null;
+  fxRateDate?: string | null;
 }): Promise<Receipt> {
   return api.addReceipt(input);
 }
@@ -239,6 +243,11 @@ export interface DraftReceipt {
   paymentLast4: string | null;
   category: string;
   comment: string;
+  /** Populated only when the receipt was printed in a different currency — see @rr/shared's Receipt type. */
+  originalCurrency: string | null;
+  originalTotalMinor: number | null;
+  fxRate: number | null;
+  fxRateDate: string | null;
 }
 
 /**
@@ -258,6 +267,10 @@ export function blankDraftReceipt(photoUri: string, today: string): DraftReceipt
     paymentLast4: null,
     category: "Other",
     comment: "",
+    originalCurrency: null,
+    originalTotalMinor: null,
+    fxRate: null,
+    fxRateDate: null,
   };
 }
 
@@ -288,9 +301,10 @@ function getApiBaseUrl(): string {
  */
 export class RetakePhotoError extends Error {}
 
-export async function extractReceiptFromPhoto(photoUri: string, today: string): Promise<DraftReceipt> {
+export async function extractReceiptFromPhoto(photoUri: string, today: string, homeCurrency: string): Promise<DraftReceipt> {
   const body = new FormData();
   body.append("image", { uri: photoUri, name: "receipt.jpg", type: "image/jpeg" } as unknown as Blob);
+  body.append("homeCurrency", homeCurrency);
 
   const res = await fetch(`${getApiBaseUrl()}/api/extract`, { method: "POST", body });
   if (!res.ok) {
@@ -312,5 +326,9 @@ export async function extractReceiptFromPhoto(photoUri: string, today: string): 
     paymentLast4: data.paymentLast4 ?? null,
     category: data.category ?? "Other",
     comment: "",
+    originalCurrency: data.originalCurrency ?? null,
+    originalTotalMinor: data.originalTotalMinor ?? null,
+    fxRate: data.fxRate ?? null,
+    fxRateDate: data.fxRateDate ?? null,
   };
 }

@@ -559,10 +559,15 @@ export async function addReceipt(input: {
   paymentBrand: string | null;
   paymentLast4: string | null;
   imagePath: string | null;
+  /** Populated only when the receipt was printed in a different currency — see @rr/shared's Receipt type. */
+  originalCurrency?: string | null;
+  originalTotalMinor?: number | null;
+  fxRate?: number | null;
+  fxRateDate?: string | null;
 }): Promise<Receipt> {
   const userId = await getCurrentUserId();
   const wsId = await getCurrentWorkspaceId();
-  const categoryId = await resolveCategoryId(wsId, input.categoryName);
+  const [categoryId, ws] = await Promise.all([resolveCategoryId(wsId, input.categoryName), getWorkspaceRow()]);
   const { data, error } = await client()
     .from("receipts")
     .insert({
@@ -573,6 +578,10 @@ export async function addReceipt(input: {
       vendor: input.vendor || null,
       receipt_date: input.receiptDate,
       category_id: categoryId,
+      // Explicit, rather than relying on the column's 'EUR' default — every
+      // receipt is stored in the workspace's actual home currency, whatever
+      // that is.
+      currency: ws.home_currency,
       // total_minor is a generated column (subtotal + tax) — never written directly.
       subtotal_minor: input.totalMinor - input.taxMinor,
       tax_minor: input.taxMinor,
@@ -580,6 +589,11 @@ export async function addReceipt(input: {
       payment_last4: input.paymentLast4,
       comment: input.comment || null,
       reimbursement_status: "pending",
+      original_currency: input.originalCurrency ?? null,
+      original_total_minor: input.originalTotalMinor ?? null,
+      fx_rate: input.fxRate ?? null,
+      fx_rate_date: input.fxRateDate ?? null,
+      fx_source: input.originalCurrency ? "ECB" : null,
     })
     .select(RECEIPT_SELECT)
     .single();

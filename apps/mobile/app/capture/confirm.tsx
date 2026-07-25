@@ -3,8 +3,8 @@ import { Image } from "expo-image";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { color } from "@rr/ui-tokens";
-import { minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
+import { color, reimbursementChip } from "@rr/ui-tokens";
+import { formatMoney, formatShortDate, minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import type { DraftReceipt } from "../../lib/data";
 import { useAddReceipt, useCategories, useHomeCurrency, useUploadReceiptPhoto } from "../../lib/queries";
@@ -93,6 +93,10 @@ export default function ConfirmScreen() {
         paymentBrand: paymentBrand || null,
         paymentLast4: paymentLast4 || null,
         imagePath,
+        originalCurrency: draft?.originalCurrency ?? null,
+        originalTotalMinor: draft?.originalTotalMinor ?? null,
+        fxRate: draft?.fxRate ?? null,
+        fxRateDate: draft?.fxRateDate ?? null,
       },
       {
         onSuccess: () => {
@@ -160,6 +164,16 @@ export default function ConfirmScreen() {
               </Field>
             </View>
           </View>
+
+          {draft?.originalCurrency && draft.originalTotalMinor !== null ? (
+            <View style={styles.fxBanner}>
+              <Text style={styles.fxBannerText}>
+                Originally {formatMoney(draft.originalTotalMinor, draft.originalCurrency)}
+                {draft.fxRate !== null ? ` · converted at ${draft.fxRate.toFixed(4)}` : ""}
+                {draft.fxRateDate ? ` on ${formatShortDate(draft.fxRateDate)}` : ""}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
@@ -290,6 +304,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     color: rn(color.text),
+  },
+  fxBanner: {
+    backgroundColor: rn(reimbursementChip.approved.bg),
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  fxBannerText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: rn(reimbursementChip.approved.text),
   },
   commentInput: {
     minHeight: 60,

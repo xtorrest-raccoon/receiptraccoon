@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { color } from "@rr/ui-tokens";
 import { rn } from "../../lib/colors";
 import { RetakePhotoError, TODAY, blankDraftReceipt, extractReceiptFromPhoto } from "../../lib/data";
+import { useHomeCurrency } from "../../lib/queries";
 import { getCapturedPhoto, setDraftReceipt } from "../../lib/captureStore";
 import { Spinner } from "../../components/Spinner";
 import { Text } from "../../components/Text";
@@ -18,6 +19,7 @@ const STILL_WORKING_AFTER_MS = 10_000;
 
 export default function ProcessingScreen() {
   const router = useRouter();
+  const { data: homeCurrency } = useHomeCurrency();
   const [stillWorking, setStillWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsRetake, setNeedsRetake] = useState(false);
@@ -25,6 +27,11 @@ export default function ProcessingScreen() {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    // Waits for the real home currency rather than guessing — the extract
+    // route uses it to decide whether (and how) to convert a foreign-currency
+    // receipt, so starting before it's loaded would risk sending the wrong one.
+    if (!homeCurrency) return;
+
     const photoUri = getCapturedPhoto();
     if (!photoUri) {
       router.replace("/capture/confirm");
@@ -37,7 +44,7 @@ export default function ProcessingScreen() {
     const stillWorkingTimer = setTimeout(() => setStillWorking(true), STILL_WORKING_AFTER_MS);
 
     let cancelled = false;
-    extractReceiptFromPhoto(photoUri, TODAY)
+    extractReceiptFromPhoto(photoUri, TODAY, homeCurrency)
       .then((draft) => {
         if (cancelled) return;
         setDraftReceipt(draft);
@@ -61,7 +68,7 @@ export default function ProcessingScreen() {
       clearTimeout(stillWorkingTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt]);
+  }, [attempt, homeCurrency]);
 
   const onEnterManually = () => {
     const photoUri = getCapturedPhoto();
