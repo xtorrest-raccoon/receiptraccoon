@@ -87,6 +87,9 @@ export interface Receipt {
   fxRate: number | null;
   fxRateDate: string | null;
 
+  /** ISO 3166-1 alpha-2, detected from the receipt itself — null if genuinely unclear. */
+  country: string | null;
+
   paymentBrand: string | null;
   paymentLast4: string | null;
   paymentType: PaymentType | null;

@@ -1,9 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { formatMoney, formatPaymentMethod, formatShortDate, isAdmin, type ReimbursementStatus } from "@rr/shared";
+import { useEffect, useState } from "react";
+import {
+  canEditReceiptAmount,
+  formatMoney,
+  formatPaymentMethod,
+  formatShortDate,
+  isAdmin,
+  minorToDecimalString,
+  parseMoneyToMinor,
+  reclaimMinor,
+  reclaimedTaxMinor,
+  taxRate,
+  type ReimbursementStatus,
+} from "@rr/shared";
 import { color, fontSize, fontWeight, layout, radius, reimbursementChip } from "@rr/ui-tokens";
-import { useCurrentUser, useReceipt, useReceiptPhotoUrl, useUsers } from "../lib/queries";
+import { useCurrentUser, useReceipt, useReceiptPhotoUrl, useSetReceiptReclaim, useUsers } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 import { CategoryChip, ReceiptStatusChip } from "./Chips";
 
@@ -18,12 +30,31 @@ export function ReceiptDrawer() {
   const { data: users } = useUsers();
   const { data: photoUrl } = useReceiptPhotoUrl(receipt?.imagePath ?? null);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  const setReceiptReclaim = useSetReceiptReclaim();
+  const [reclaimText, setReclaimText] = useState("");
+
+  useEffect(() => {
+    setReclaimText(receipt ? minorToDecimalString(reclaimMinor(receipt), receipt.currency) : "");
+  }, [receipt]);
 
   if (!selectedReceiptId || !receipt || !currentUser || !users) return null;
 
   const admin = isAdmin(currentUser.role);
   const creatorName = users.find((u) => u.id === receipt.createdBy)?.name ?? "Unknown";
   const paymentMethod = formatPaymentMethod(receipt.paymentBrand, receipt.paymentLast4);
+  const amountEditable = canEditReceiptAmount(receipt.reimbursementStatus);
+  const typedReclaim = parseMoneyToMinor(reclaimText, receipt.currency);
+  const reclaimExceedsTotal = typedReclaim !== null && typedReclaim > receipt.totalMinor;
+
+  const commitReclaim = (value: string) => {
+    setReclaimText(value);
+    const minor = parseMoneyToMinor(value, receipt.currency);
+    // Reject a claim above the total rather than storing it — the database has
+    // the same constraint, so accepting it here would only fail later at the API.
+    if (minor !== null && minor >= 0 && minor <= receipt.totalMinor) {
+      setReceiptReclaim.mutate({ id: receipt.id, minor });
+    }
+  };
 
   return (
     <div
@@ -254,11 +285,16 @@ export function ReceiptDrawer() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: fontSize.body }}>
           <div style={{ display: "flex", justifyContent: "space-between", color: color.textMuted }}>
             <span>Subtotal</span>
-            <span>{formatMoney(receipt.subtotalMinor ?? 0, receipt.currency)}</span>
+            <span>{receipt.subtotalMinor !== null ? formatMoney(receipt.subtotalMinor, receipt.currency) : "—"}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", color: color.textMuted }}>
-            <span>Tax</span>
-            <span>{formatMoney(receipt.taxMinor ?? 0, receipt.currency)}</span>
+            <span>
+              Tax
+              {taxRate(receipt) !== null ? (
+                <span style={{ color: color.textFaint }}> ({(taxRate(receipt)! * 100).toFixed(1)}%)</span>
+              ) : null}
+            </span>
+            <span>{reclaimedTaxMinor(receipt) !== null ? formatMoney(reclaimedTaxMinor(receipt)!, receipt.currency) : "—"}</span>
           </div>
           <div
             style={{
@@ -273,6 +309,39 @@ export function ReceiptDrawer() {
             <span>Total</span>
             <span>{formatMoney(receipt.totalMinor, receipt.currency)}</span>
           </div>
+
+          {/* What is actually being claimed. Defaults to the total; lower it for a
+              shared bill or a personal portion — this is the figure spend reporting
+              and reimbursement read, and the Tax row above scales with it. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 4 }}>
+            {/* Past tense once the money has actually been paid out — "to reclaim"
+                reads as still outstanding, which it no longer is. */}
+            <span style={{ fontWeight: fontWeight.bold }}>
+              {receipt.reimbursementStatus === "reimbursed" ? "Amount reclaimed" : "Amount to reclaim"}
+            </span>
+            {amountEditable ? (
+              <input
+                value={reclaimText}
+                onChange={(e) => commitReclaim(e.target.value)}
+                style={{
+                  width: 90,
+                  textAlign: "right",
+                  padding: "5px 8px",
+                  borderRadius: radius.sm,
+                  border: `1px solid ${reclaimExceedsTotal ? color.up : color.borderStrong}`,
+                  fontSize: fontSize.body,
+                  fontWeight: fontWeight.bold,
+                }}
+              />
+            ) : (
+              <span style={{ fontWeight: fontWeight.bold }}>{formatMoney(reclaimMinor(receipt), receipt.currency)}</span>
+            )}
+          </div>
+          {reclaimExceedsTotal ? (
+            <div style={{ fontSize: fontSize.tiny + 0.5, color: color.up, textAlign: "right" }}>
+              Cannot reclaim more than the receipt total.
+            </div>
+          ) : null}
         </div>
       </div>
 

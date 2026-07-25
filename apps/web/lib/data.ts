@@ -50,6 +50,11 @@ export function setCategory(id: string, categoryName: string): Promise<void> {
   return api.setCategory(id, categoryName);
 }
 
+/** `minor` must already be in the receipt's own currency — see @rr/api's setReclaimMinor. */
+export function setReceiptReclaim(id: string, minor: number): Promise<void> {
+  return api.setReclaimMinor(id, minor);
+}
+
 export function getTeam(month?: string): Promise<TeamResponse> {
   return api.getTeam(month);
 }

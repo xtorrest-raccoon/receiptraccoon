@@ -15,6 +15,9 @@ Rules:
 - currency: the ISO 4217 code the receipt is printed in, inferred from the symbol,
   language, tax labels, and address. This drives currency conversion, so if the
   evidence is genuinely ambiguous return null rather than assuming USD.
+- country: the ISO 3166-1 alpha-2 code of the country this receipt was issued in,
+  inferred from the same evidence as currency (address, language, phone format,
+  tax labels). Return null if genuinely unclear rather than guessing.
 - Dates: ISO 8601 YYYY-MM-DD. If the year is absent, infer from context; if ambiguous, return null.
 - Ambiguous numeric date formats: prefer the locale implied by the receipt's language and currency.
 - subtotal excludes tax; total includes it. If only the total is printed, set subtotal

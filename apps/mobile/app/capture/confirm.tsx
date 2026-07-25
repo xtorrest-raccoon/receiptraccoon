@@ -97,6 +97,7 @@ export default function ConfirmScreen() {
         originalTotalMinor: draft?.originalTotalMinor ?? null,
         fxRate: draft?.fxRate ?? null,
         fxRateDate: draft?.fxRateDate ?? null,
+        country: draft?.country ?? null,
       },
       {
         onSuccess: () => {

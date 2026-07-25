@@ -1,6 +1,6 @@
 "use client";
 
-import { categoryChipColor, formatMoney, formatShortDate, isAdmin, type ReimbursementStatus } from "@rr/shared";
+import { categoryChipColor, formatMoney, formatShortDate, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type ReimbursementStatus } from "@rr/shared";
 import type { Receipt } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
@@ -44,7 +44,7 @@ export function ReceiptsTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1fr 1.6fr 1.3fr 1.3fr 0.9fr 1fr",
+          gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr",
           padding: "12px 20px",
           fontSize: fontSize.tiny + 0.5,
           fontWeight: fontWeight.bold,
@@ -58,6 +58,8 @@ export function ReceiptsTable({
         <div>Vendor</div>
         <div>User</div>
         <div>Category</div>
+        <div>Net amount</div>
+        <div>Tax</div>
         <div>Total</div>
         <div>Reimbursement</div>
       </div>
@@ -67,7 +69,7 @@ export function ReceiptsTable({
           <div
             className="hidden sm:grid"
             style={{
-              gridTemplateColumns: "1fr 1.6fr 1.3fr 1.3fr 0.9fr 1fr",
+              gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr",
               alignItems: "center",
               padding: "13px 20px",
               borderBottom: `1px solid ${color.borderSubtle}`,
@@ -123,6 +125,12 @@ export function ReceiptsTable({
                   </option>
                 ))}
               </select>
+            </div>
+            <div style={{ color: color.textMuted }}>
+              {reclaimedNetMinor(r) !== null ? formatMoney(reclaimedNetMinor(r)!, r.currency) : "—"}
+            </div>
+            <div style={{ color: color.textMuted }}>
+              {reclaimedTaxMinor(r) !== null ? formatMoney(reclaimedTaxMinor(r)!, r.currency) : "—"}
             </div>
             <button
               type="button"
@@ -193,6 +201,13 @@ export function ReceiptsTable({
               </span>
               <CategoryChip category={r.categoryName ?? "Other"} />
             </div>
+            {reclaimedNetMinor(r) !== null || reclaimedTaxMinor(r) !== null ? (
+              <div style={{ color: color.textFaint, fontSize: fontSize.small }}>
+                {reclaimedNetMinor(r) !== null ? `Net ${formatMoney(reclaimedNetMinor(r)!, r.currency)}` : null}
+                {reclaimedNetMinor(r) !== null && reclaimedTaxMinor(r) !== null ? " · " : null}
+                {reclaimedTaxMinor(r) !== null ? `Tax ${formatMoney(reclaimedTaxMinor(r)!, r.currency)}` : null}
+              </div>
+            ) : null}
             <div>
               {admin ? (
                 <select

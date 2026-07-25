@@ -67,6 +67,70 @@ export function currencySymbol(currency: string, locale = "en-US"): string {
   }
 }
 
+/**
+ * A representative country for a currency code — for the CSV export's
+ * Country column, not for anything a payment or compliance decision reads.
+ * A currency isn't 1:1 with a country (EUR alone spans ~20), so this is
+ * necessarily approximate: the currency's most common issuing country, or
+ * "Eurozone" for EUR since no single country is more "correct" than another.
+ * Covers this app's home-currency options (@rr/api's SUPPORTED_CURRENCIES)
+ * plus every currency the ECB's daily reference feed publishes (the
+ * complete set a foreign-currency receipt's originalCurrency can be). Falls
+ * back to the bare code for anything outside that set rather than guessing.
+ */
+const CURRENCY_COUNTRIES: Record<string, string> = {
+  EUR: "Eurozone",
+  USD: "United States",
+  GBP: "United Kingdom",
+  CHF: "Switzerland",
+  CAD: "Canada",
+  AUD: "Australia",
+  JPY: "Japan",
+  MXN: "Mexico",
+  INR: "India",
+  BRL: "Brazil",
+  CZK: "Czech Republic",
+  DKK: "Denmark",
+  HUF: "Hungary",
+  PLN: "Poland",
+  RON: "Romania",
+  SEK: "Sweden",
+  ISK: "Iceland",
+  NOK: "Norway",
+  TRY: "Turkey",
+  CNY: "China",
+  HKD: "Hong Kong",
+  IDR: "Indonesia",
+  ILS: "Israel",
+  KRW: "South Korea",
+  MYR: "Malaysia",
+  NZD: "New Zealand",
+  PHP: "Philippines",
+  SGD: "Singapore",
+  THB: "Thailand",
+  ZAR: "South Africa",
+  BGN: "Bulgaria",
+};
+
+export function countryForCurrency(currency: string): string {
+  return CURRENCY_COUNTRIES[currency.toUpperCase()] ?? currency.toUpperCase();
+}
+
+/**
+ * Full name for an ISO 3166-1 alpha-2 country code ("FR" -> "France") — for
+ * the receipt's own detected country (see Receipt.country), which unlike
+ * currency maps 1:1 onto a real country, so no hand-rolled table is needed
+ * here: Intl.DisplayNames covers every ISO 3166 code natively. Falls back to
+ * the bare code if the runtime's Intl data doesn't recognise it.
+ */
+export function countryName(iso2: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(iso2.toUpperCase()) ?? iso2.toUpperCase();
+  } catch {
+    return iso2.toUpperCase();
+  }
+}
+
 /** "Jul 18" — matches the design's fmtDate(). */
 export function formatShortDate(iso: string, locale = "en-US"): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(locale, {

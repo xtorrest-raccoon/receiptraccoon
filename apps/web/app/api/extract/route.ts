@@ -61,10 +61,13 @@ export async function POST(request: NextRequest) {
 
     // Extraction returns decimal strings in whatever currency it read off the
     // receipt (flagged as a soft validation issue in validate.ts when it
-    // differs from home). Converted below using the ECB rate of the day —
+    // differs from home). Converted below using the ECB rate for the
+    // RECEIPT'S OWN DATE (not scan time) — a card issuer's real conversion
+    // happens on the purchase date, so that's the rate this should track,
     // frozen on the receipt via fxRate/fxRateDate so it never drifts on
     // re-read, per DESIGN_V2_DELTA.md §4.1.
     const receiptCurrency = d.currency ?? homeCurrency;
+    const receiptDateForFx = d.receipt_date ?? new Date().toISOString().slice(0, 10);
     let totalMinor = parseMoneyToMinor(d.total, receiptCurrency) ?? 0;
     let taxMinor = parseMoneyToMinor(d.tax, receiptCurrency) ?? 0;
     let originalCurrency: string | null = null;
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
     let fxRateDate: string | null = null;
 
     if (receiptCurrency !== homeCurrency) {
-      const fx = await getFxRate(receiptCurrency, homeCurrency);
+      const fx = await getFxRate(receiptCurrency, homeCurrency, receiptDateForFx);
       if (fx) {
         originalCurrency = receiptCurrency;
         originalTotalMinor = totalMinor;
@@ -96,6 +99,7 @@ export async function POST(request: NextRequest) {
       originalTotalMinor,
       fxRate,
       fxRateDate,
+      country: d.country,
       paymentBrand: d.payment_brand,
       paymentLast4: d.payment_last4,
       category: d.category,

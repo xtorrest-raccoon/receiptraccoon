@@ -463,6 +463,7 @@ interface ReceiptRow {
   original_total_minor: number | null;
   fx_rate: number | null;
   fx_rate_date: string | null;
+  country: string | null;
   payment_brand: string | null;
   payment_last4: string | null;
   payment_type: Receipt["paymentType"];
@@ -494,6 +495,7 @@ function mapReceiptRow(row: ReceiptRow): Receipt {
     originalTotalMinor: row.original_total_minor,
     fxRate: row.fx_rate,
     fxRateDate: row.fx_rate_date,
+    country: row.country,
     paymentBrand: row.payment_brand,
     paymentLast4: row.payment_last4,
     paymentType: row.payment_type,
@@ -564,6 +566,8 @@ export async function addReceipt(input: {
   originalTotalMinor?: number | null;
   fxRate?: number | null;
   fxRateDate?: string | null;
+  /** ISO 3166-1 alpha-2, detected from the receipt itself — see @rr/shared's Receipt type. */
+  country?: string | null;
 }): Promise<Receipt> {
   const userId = await getCurrentUserId();
   const wsId = await getCurrentWorkspaceId();
@@ -594,6 +598,7 @@ export async function addReceipt(input: {
       fx_rate: input.fxRate ?? null,
       fx_rate_date: input.fxRateDate ?? null,
       fx_source: input.originalCurrency ? "ECB" : null,
+      country: input.country ?? null,
     })
     .select(RECEIPT_SELECT)
     .single();

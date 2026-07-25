@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatMoney, isAdmin, type Receipt } from "@rr/shared";
+import { countryForCurrency, countryName, formatMoney, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
@@ -11,12 +11,20 @@ import { DownloadIcon } from "../../components/icons";
 
 function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
-  const header = ["Date", "Vendor", "User", "Category", "Total", "Reimbursement"];
+  const header = ["Date", "Vendor", "User", "Category", "Country", "Currency", "Net amount", "Tax", "Total", "Reimbursement"];
   const lines = [header, ...rows.map((r) => [
     r.receiptDate ?? "",
     r.vendor ?? "",
     nameOf(r.createdBy),
     r.categoryName ?? "Other",
+    // Prefer the country actually detected on the receipt (real, not a
+    // currency-based guess — the only way to tell French from German EUR
+    // receipts). Falls back to the currency-based guess for receipts
+    // captured before country detection existed, or a genuinely unclear photo.
+    r.country ? countryName(r.country) : countryForCurrency(r.originalCurrency ?? r.currency),
+    r.currency,
+    reclaimedNetMinor(r) !== null ? formatMoney(reclaimedNetMinor(r)!, r.currency) : "",
+    reclaimedTaxMinor(r) !== null ? formatMoney(reclaimedTaxMinor(r)!, r.currency) : "",
     formatMoney(r.totalMinor, r.currency),
     r.reimbursementStatus,
   ])];

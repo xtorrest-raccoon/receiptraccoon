@@ -153,6 +153,7 @@ export function addReceipt(input: {
   originalTotalMinor?: number | null;
   fxRate?: number | null;
   fxRateDate?: string | null;
+  country?: string | null;
 }): Promise<Receipt> {
   return api.addReceipt(input);
 }
@@ -248,6 +249,8 @@ export interface DraftReceipt {
   originalTotalMinor: number | null;
   fxRate: number | null;
   fxRateDate: string | null;
+  /** ISO 3166-1 alpha-2, detected from the receipt itself — see @rr/shared's Receipt type. */
+  country: string | null;
 }
 
 /**
@@ -271,6 +274,7 @@ export function blankDraftReceipt(photoUri: string, today: string): DraftReceipt
     originalTotalMinor: null,
     fxRate: null,
     fxRateDate: null,
+    country: null,
   };
 }
 
@@ -330,5 +334,6 @@ export async function extractReceiptFromPhoto(photoUri: string, today: string, h
     originalTotalMinor: data.originalTotalMinor ?? null,
     fxRate: data.fxRate ?? null,
     fxRateDate: data.fxRateDate ?? null,
+    country: data.country ?? null,
   };
 }

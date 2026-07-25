@@ -167,6 +167,53 @@ export function reclaimMinor(receipt: {
   return receipt.reclaimMinor ?? receipt.totalMinor;
 }
 
+/**
+ * The tax rate as a fraction of the subtotal (net amount) — e.g. `0.2` for a
+ * 20% VAT receipt. Null when there's no subtotal to divide by (missing, or
+ * zero) or tax wasn't captured — never a fabricated rate.
+ */
+export function taxRate(receipt: { subtotalMinor: number | null; taxMinor: number | null }): number | null {
+  if (receipt.taxMinor === null || !receipt.subtotalMinor) return null;
+  return receipt.taxMinor / receipt.subtotalMinor;
+}
+
+/**
+ * The tax embedded in the portion actually being claimed back, not the
+ * receipt's full tax — a partial reclaim (a shared bill, a mixed
+ * business/personal trip) only claims a fraction of the total, so the tax
+ * relevant to reimbursement scales down by that same fraction. Returns the
+ * full tax, unscaled, when no partial claim is set (reclaimMinor null means
+ * "the whole total" — see reclaimMinor() above).
+ */
+export function reclaimedTaxMinor(receipt: {
+  totalMinor: number;
+  taxMinor: number | null;
+  reclaimMinor: number | null;
+}): number | null {
+  if (receipt.taxMinor === null) return null;
+  if (receipt.reclaimMinor === null || receipt.totalMinor <= 0) return receipt.taxMinor;
+  return new Decimal(receipt.taxMinor).times(receipt.reclaimMinor).dividedBy(receipt.totalMinor).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
+}
+
+/**
+ * The net (pre-tax) amount for the portion actually being claimed back.
+ * Deliberately reclaimMinor() minus reclaimedTaxMinor() — not its own
+ * independently-rounded proration of subtotalMinor — so Net + Tax always
+ * sums exactly to the reclaimed amount; two separately-rounded splits of the
+ * same total can drift apart by a minor unit against each other.
+ */
+export function reclaimedNetMinor(receipt: {
+  totalMinor: number;
+  subtotalMinor: number | null;
+  taxMinor: number | null;
+  reclaimMinor: number | null;
+}): number | null {
+  if (receipt.subtotalMinor === null) return null;
+  const tax = reclaimedTaxMinor(receipt);
+  if (tax === null) return null;
+  return reclaimMinor(receipt) - tax;
+}
+
 /** subtotal + tax === total, within a one-minor-unit tolerance for rounding. */
 export function arithmeticChecks(
   subtotalMinor: number | null,

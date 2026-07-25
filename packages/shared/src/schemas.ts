@@ -19,6 +19,10 @@ const baseExtractionShape = {
   vendor: z.string().nullable(),
   receipt_date: z.string().nullable(), // ISO YYYY-MM-DD
   currency: z.string().nullable(), // ISO 4217
+  // ISO 3166-1 alpha-2. Informational (CSV/reporting) only — not in the
+  // confidence object below, unlike currency, since nothing reimbursement-
+  // critical reads it.
+  country: z.string().nullable(),
   subtotal: z.string().nullable(),
   tax: z.string().nullable(),
   total: z.string().nullable(),

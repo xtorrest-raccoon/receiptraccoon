@@ -103,6 +103,14 @@ export function useSetCategory() {
   });
 }
 
+export function useSetReceiptReclaim() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ id, minor }: { id: string; minor: number }) => data.setReceiptReclaim(id, minor),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useSetHomeCurrency() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
