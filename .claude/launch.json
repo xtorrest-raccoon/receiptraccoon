@@ -9,6 +9,15 @@
         "set PATH=C:\\Program Files\\nodejs;%PATH% && cd /d C:\\Users\\Utilisateur\\Desktop\\Perso\\Ryan_App\\ReceiptRaccoon && node C:\\Users\\Utilisateur\\AppData\\Roaming\\npm\\node_modules\\pnpm\\bin\\pnpm.mjs --filter @rr/web run dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "mobile-dev",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": [
+        "/c",
+        "set PATH=C:\\Program Files\\nodejs;%PATH% && cd /d C:\\Users\\Utilisateur\\Desktop\\Perso\\Ryan_App\\ReceiptRaccoon\\apps\\mobile && node C:\\Users\\Utilisateur\\AppData\\Roaming\\npm\\node_modules\\pnpm\\bin\\pnpm.mjs run start"
+      ],
+      "port": 8081
     }
   ]
 }
