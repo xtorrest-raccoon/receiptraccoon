@@ -118,3 +118,103 @@ export function getMyPendingInvite(): Promise<MyPendingInvite | null> {
 export function acceptInvite(inviteId: string): Promise<void> {
   return api.acceptInvite(inviteId);
 }
+
+// ── Capture flow: upload-and-extract a receipt from the web app ──────────
+//
+// Mirrors apps/mobile/lib/data.ts's capture flow. Mobile is the only other
+// caller of /api/extract — web just posts to it directly (same origin, no
+// LAN address to resolve) and passes a browser File straight through
+// (already a Blob — no RN/Hermes-style workaround needed here).
+
+export interface DraftReceipt {
+  vendor: string;
+  date: string;
+  totalMinor: number;
+  taxMinor: number;
+  paymentBrand: string | null;
+  paymentLast4: string | null;
+  category: string;
+  comment: string;
+  originalCurrency: string | null;
+  originalTotalMinor: number | null;
+  fxRate: number | null;
+  fxRateDate: string | null;
+  country: string | null;
+}
+
+/** The blank, user-fillable draft used when extraction fails or the user skips it — see mobile's identical reasoning. */
+export function blankDraftReceipt(today: string): DraftReceipt {
+  return {
+    vendor: "",
+    date: today,
+    totalMinor: 0,
+    taxMinor: 0,
+    paymentBrand: null,
+    paymentLast4: null,
+    category: "Other",
+    comment: "",
+    originalCurrency: null,
+    originalTotalMinor: null,
+    fxRate: null,
+    fxRateDate: null,
+    country: null,
+  };
+}
+
+/** Thrown instead of a plain Error when the photo itself is the problem — see /api/extract's `retake` flag. */
+export class RetakePhotoError extends Error {}
+
+export async function extractReceiptFromFile(file: File, homeCurrency: string, today: string): Promise<DraftReceipt> {
+  const body = new FormData();
+  body.append("image", file);
+  body.append("homeCurrency", homeCurrency);
+
+  const res = await fetch("/api/extract", { method: "POST", body });
+  if (!res.ok) {
+    const problem = await res.json().catch(() => null);
+    throw new Error(problem?.error ?? `Extraction failed (HTTP ${res.status})`);
+  }
+
+  const data = await res.json();
+  if (data.retake) {
+    throw new RetakePhotoError(data.reason ?? "This photo is too unclear to read.");
+  }
+  return {
+    vendor: data.vendor ?? "",
+    date: data.date ?? today,
+    totalMinor: data.totalMinor ?? 0,
+    taxMinor: data.taxMinor ?? 0,
+    paymentBrand: data.paymentBrand ?? null,
+    paymentLast4: data.paymentLast4 ?? null,
+    category: data.category ?? "Other",
+    comment: "",
+    originalCurrency: data.originalCurrency ?? null,
+    originalTotalMinor: data.originalTotalMinor ?? null,
+    fxRate: data.fxRate ?? null,
+    fxRateDate: data.fxRateDate ?? null,
+    country: data.country ?? null,
+  };
+}
+
+export function uploadReceiptPhoto(file: File): Promise<string> {
+  return api.uploadReceiptPhoto(file, file.type || "image/jpeg");
+}
+
+export function addReceipt(input: {
+  vendor: string;
+  receiptDate: string | null;
+  totalMinor: number;
+  taxMinor: number;
+  categoryName: string;
+  comment: string;
+  paymentBrand: string | null;
+  paymentLast4: string | null;
+  imagePath: string | null;
+  originalCurrency?: string | null;
+  originalTotalMinor?: number | null;
+  fxRate?: number | null;
+  fxRateDate?: string | null;
+  country?: string | null;
+}): Promise<Receipt> {
+  return api.addReceipt(input);
+}

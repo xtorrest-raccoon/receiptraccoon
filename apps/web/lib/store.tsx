@@ -31,6 +31,10 @@ interface DataStoreValue {
   openReceipt: (id: string) => void;
   closeReceipt: () => void;
 
+  addReceiptOpen: boolean;
+  openAddReceipt: () => void;
+  closeAddReceipt: () => void;
+
   rejectionModal: RejectionModalState | null;
   /** Non-rejected targets apply immediately; "rejected" opens the reason modal. */
   requestReimbursementChange: (
@@ -52,6 +56,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const openReceipt = useCallback((id: string) => setSelectedReceiptId(id), []);
   const closeReceipt = useCallback(() => setSelectedReceiptId(null), []);
+
+  const [addReceiptOpen, setAddReceiptOpen] = useState(false);
+  const openAddReceipt = useCallback(() => setAddReceiptOpen(true), []);
+  const closeAddReceipt = useCallback(() => setAddReceiptOpen(false), []);
 
   const [rejectionModal, setRejectionModal] = useState<RejectionModalState | null>(null);
 
@@ -84,13 +92,28 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       selectedReceiptId,
       openReceipt,
       closeReceipt,
+      addReceiptOpen,
+      openAddReceipt,
+      closeAddReceipt,
       rejectionModal,
       requestReimbursementChange,
       setRejectionReason,
       confirmRejection,
       cancelRejection,
     }),
-    [selectedReceiptId, openReceipt, closeReceipt, rejectionModal, requestReimbursementChange, setRejectionReason, confirmRejection, cancelRejection],
+    [
+      selectedReceiptId,
+      openReceipt,
+      closeReceipt,
+      addReceiptOpen,
+      openAddReceipt,
+      closeAddReceipt,
+      rejectionModal,
+      requestReimbursementChange,
+      setRejectionReason,
+      confirmRejection,
+      cancelRejection,
+    ],
   );
 
   return <DataStoreContext.Provider value={value}>{children}</DataStoreContext.Provider>;

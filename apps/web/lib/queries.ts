@@ -173,3 +173,13 @@ export function useAcceptInvite() {
     onSuccess: () => queryClient.clear(),
   });
 }
+
+export function useAddReceipt() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({ mutationFn: data.addReceipt, onSuccess: invalidateAll });
+}
+
+/** No cache invalidation needed — this doesn't change any receipt yet, just gets a path to pass into addReceipt. */
+export function useUploadReceiptPhoto() {
+  return useMutation({ mutationFn: (file: File) => data.uploadReceiptPhoto(file) });
+}

@@ -59,3 +59,12 @@ export function DownloadIcon({ color }: { color: string }) {
     </svg>
   );
 }
+
+export function UploadIcon({ color }: { color: string }) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M7 9.5v-8M3.5 4.5L7 1l3.5 3.5" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1.5 11.5h11" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
+  );
+}

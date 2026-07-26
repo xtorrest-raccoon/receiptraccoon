@@ -9,6 +9,7 @@ import { color } from "@rr/ui-tokens";
 import { DataStoreProvider } from "../lib/store";
 import { MobileTopBar, Sidebar } from "./Sidebar";
 import { ReceiptDrawer } from "./ReceiptDrawer";
+import { AddReceiptDrawer } from "./AddReceiptDrawer";
 import { RejectionModal } from "./RejectionModal";
 import { AcceptInviteBanner } from "./AcceptInviteBanner";
 // Side-effect import: creates this app's Supabase client and registers it
@@ -80,6 +81,7 @@ function AppShellBody({
         </div>
       </div>
       <ReceiptDrawer />
+      <AddReceiptDrawer />
       <RejectionModal />
     </DataStoreProvider>
   );

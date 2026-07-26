@@ -5,9 +5,10 @@ import { countryForCurrency, countryName, formatMoney, formatShortDate, isAdmin,
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
+import { useDataStore } from "../../lib/store";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
-import { DownloadIcon } from "../../components/icons";
+import { DownloadIcon, UploadIcon } from "../../components/icons";
 
 function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
@@ -57,6 +58,7 @@ export default function ReceiptsPage() {
   const { data: currentUser } = useCurrentUser();
   const { data: users } = useUsers();
   const admin = currentUser ? isAdmin(currentUser.role) : false;
+  const { openAddReceipt } = useDataStore();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -71,26 +73,48 @@ export default function ReceiptsPage() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em" }}>Receipts</div>
-        <button
-          type="button"
-          onClick={() => exportCsv(allForExport ?? [], users)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "9px 16px",
-            borderRadius: radius.md,
-            background: color.brand,
-            color: color.surface,
-            fontWeight: fontWeight.bold,
-            fontSize: fontSize.body,
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          <DownloadIcon color={color.surface} />
-          Export CSV
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            type="button"
+            onClick={openAddReceipt}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "9px 16px",
+              borderRadius: radius.md,
+              background: color.surfaceMuted,
+              color: color.text,
+              fontWeight: fontWeight.bold,
+              fontSize: fontSize.body,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <UploadIcon color={color.text} />
+            Upload receipt
+          </button>
+          <button
+            type="button"
+            onClick={() => exportCsv(allForExport ?? [], users)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "9px 16px",
+              borderRadius: radius.md,
+              background: color.brand,
+              color: color.surface,
+              fontWeight: fontWeight.bold,
+              fontSize: fontSize.body,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <DownloadIcon color={color.surface} />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap" style={{ gap: 10, marginBottom: 16 }}>
