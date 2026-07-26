@@ -164,12 +164,18 @@ export function blankDraftReceipt(today: string): DraftReceipt {
 /** Thrown instead of a plain Error when the photo itself is the problem — see /api/extract's `retake` flag. */
 export class RetakePhotoError extends Error {}
 
-export async function extractReceiptFromFile(file: File, homeCurrency: string, today: string): Promise<DraftReceipt> {
+export async function extractReceiptFromFile(file: File, today: string): Promise<DraftReceipt> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
   const body = new FormData();
   body.append("image", file);
-  body.append("homeCurrency", homeCurrency);
 
-  const res = await fetch("/api/extract", { method: "POST", body });
+  const res = await fetch("/api/extract", {
+    method: "POST",
+    body,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
   if (!res.ok) {
     const problem = await res.json().catch(() => null);
     throw new Error(problem?.error ?? `Extraction failed (HTTP ${res.status})`);

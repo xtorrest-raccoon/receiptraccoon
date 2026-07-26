@@ -305,12 +305,18 @@ function getApiBaseUrl(): string {
  */
 export class RetakePhotoError extends Error {}
 
-export async function extractReceiptFromPhoto(photoUri: string, today: string, homeCurrency: string): Promise<DraftReceipt> {
+export async function extractReceiptFromPhoto(photoUri: string, today: string): Promise<DraftReceipt> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
   const body = new FormData();
   body.append("image", { uri: photoUri, name: "receipt.jpg", type: "image/jpeg" } as unknown as Blob);
-  body.append("homeCurrency", homeCurrency);
 
-  const res = await fetch(`${getApiBaseUrl()}/api/extract`, { method: "POST", body });
+  const res = await fetch(`${getApiBaseUrl()}/api/extract`, {
+    method: "POST",
+    body,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
   if (!res.ok) {
     const problem = await res.json().catch(() => null);
     throw new Error(problem?.error ?? `Extraction failed (HTTP ${res.status})`);

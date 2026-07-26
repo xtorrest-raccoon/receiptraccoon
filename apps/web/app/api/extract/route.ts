@@ -1,16 +1,64 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { extractReceipt } from "@rr/extraction";
-import { SEED_CATEGORIES, convertMinor, parseMoneyToMinor } from "@rr/shared";
+import { convertMinor, parseMoneyToMinor } from "@rr/shared";
 import { getFxRate } from "../../../lib/fxRates";
 
 /**
  * Server-side extraction endpoint. OPENAI_API_KEY never reaches a client bundle
- * (mobile or web) — see OCR_PLAN.md §9 — so the mobile capture flow uploads the
- * photo here instead of calling OpenAI directly.
+ * (mobile or web) — see OCR_PLAN.md §9 — so mobile/web upload the photo here
+ * instead of calling OpenAI directly.
  */
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  // Required — without this, a public deployment of this route would let
+  // anyone burn OpenAI spend with no account at all. The token is the
+  // caller's own Supabase access token (getSession().access_token), same
+  // one already used for every other authenticated call in the app.
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "");
+  if (!token) {
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  }
+
+  // Request-scoped — deliberately not @rr/api's singleton client (bound to
+  // whichever client was last registered at import time; reusing it here
+  // would race across concurrent requests in the same server process) and
+  // not lib/fxRates.ts's service-role client (that exists to bypass RLS for
+  // a table with no user-facing policy; this one must respect RLS, scoped
+  // to the caller's own identity, not bypass it).
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { autoRefreshToken: false, persistSession: false } },
+  );
+
+  // getUser() re-validates the JWT against the auth server, unlike reading a
+  // local session — the right check for a token a client just handed you.
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) {
+    return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
+  }
+
+  const { data: membership, error: membershipErr } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", userData.user.id)
+    .limit(1)
+    .single();
+  if (membershipErr || !membership) {
+    return NextResponse.json({ error: "No workspace found for this account" }, { status: 403 });
+  }
+  const workspaceId = (membership as { workspace_id: string }).workspace_id;
+
+  const [{ data: workspace }, { data: categoryRows }] = await Promise.all([
+    supabase.from("workspaces").select("home_currency").eq("id", workspaceId).single(),
+    supabase.from("categories").select("name").eq("workspace_id", workspaceId).is("archived_at", null).order("sort_order"),
+  ]);
+  const homeCurrency = (workspace as { home_currency: string } | null)?.home_currency ?? "EUR";
+  const categories = ((categoryRows as { name: string }[] | null) ?? []).map((c) => c.name);
+
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -24,17 +72,6 @@ export async function POST(request: NextRequest) {
   }
 
   const image = Buffer.from(await file.arrayBuffer());
-  // Stopgap until the next step (authenticating this route with the caller's
-  // real session): lib/data.ts's listCategories() would need an
-  // authenticated client this route doesn't have yet — resolving "which
-  // workspace" needs the caller's identity, which isn't wired through here
-  // yet either. Falls back to the seed category list in the meantime.
-  //
-  // homeCurrency, unlike categories, doesn't need that auth wiring: the
-  // caller (mobile) already knows its own real home currency via
-  // useHomeCurrency() and just sends it along, same as it sends the photo.
-  const homeCurrency = (formData.get("homeCurrency") as string) || "EUR";
-  const categories = SEED_CATEGORIES as unknown as string[];
 
   try {
     const outcome = await extractReceipt({

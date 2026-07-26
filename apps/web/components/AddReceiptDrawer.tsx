@@ -80,7 +80,7 @@ export function AddReceiptDrawer() {
     setFile(f);
     setStep("loading");
     try {
-      const d = await extractReceiptFromFile(f, currency, TODAY);
+      const d = await extractReceiptFromFile(f, TODAY);
       loadDraft(d);
     } catch (err) {
       if (err instanceof RetakePhotoError) {
