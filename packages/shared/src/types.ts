@@ -122,6 +122,9 @@ export interface MileageTrip {
   amountMinor: number;
   reimbursementStatus: ReimbursementStatus;
   rejectionReason: string | null;
+  /** Populated only when the trip's distance was calculated automatically from these addresses, not typed in manually. */
+  startAddress: string | null;
+  endAddress: string | null;
 }
 
 export interface CategoryBreakdownRow {

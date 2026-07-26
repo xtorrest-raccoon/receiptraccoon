@@ -683,6 +683,8 @@ interface TripRow {
   amount_minor: number;
   reimbursement_status: ReimbursementStatus;
   rejection_reason: string | null;
+  start_address: string | null;
+  end_address: string | null;
 }
 
 function mapTripRow(row: TripRow): MileageTrip {
@@ -698,6 +700,8 @@ function mapTripRow(row: TripRow): MileageTrip {
     amountMinor: row.amount_minor,
     reimbursementStatus: row.reimbursement_status,
     rejectionReason: row.rejection_reason,
+    startAddress: row.start_address,
+    endAddress: row.end_address,
   };
 }
 
@@ -714,6 +718,9 @@ export async function addMileageTrip(input: {
   purpose: string;
   distance: number;
   distanceUnit: DistanceUnit;
+  /** Populated only for a trip entered via automatic (address-based) distance calculation. */
+  startAddress?: string | null;
+  endAddress?: string | null;
 }): Promise<MileageTrip> {
   const userId = await getCurrentUserId();
   const wsId = await getCurrentWorkspaceId();
@@ -733,6 +740,8 @@ export async function addMileageTrip(input: {
       rate_milli: ws.mileage_rate_milli,
       amount_minor: amountMinor,
       reimbursement_status: "pending",
+      start_address: input.startAddress ?? null,
+      end_address: input.endAddress ?? null,
     })
     .select("*")
     .single();

@@ -192,6 +192,9 @@ export function addMileageTrip(input: {
   purpose: string;
   distance: number;
   distanceUnit: DistanceUnit;
+  /** Populated only for a trip entered via automatic (address-based) distance calculation. */
+  startAddress?: string | null;
+  endAddress?: string | null;
 }): Promise<MileageTrip> {
   return api.addMileageTrip(input);
 }
@@ -304,6 +307,42 @@ function getApiBaseUrl(): string {
  * needs to route to "take another photo", not "retry" or "enter manually".
  */
 export class RetakePhotoError extends Error {}
+
+export interface CalculatedDistance {
+  distance: number;
+  unit: DistanceUnit;
+  originAddress: string;
+  destinationAddress: string;
+}
+
+/**
+ * Server-side lookup for the "Automatic" mileage entry mode — GOOGLE_MAPS_API_KEY
+ * must never reach this bundle, same reasoning as OPENAI_API_KEY above, so this
+ * posts JSON (no file, unlike extractReceiptFromPhoto) to apps/web's
+ * /api/mileage-distance instead of calling Google directly.
+ */
+export async function calculateMileageDistance(
+  startAddress: string,
+  endAddress: string,
+  unit: DistanceUnit,
+): Promise<CalculatedDistance> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch(`${getApiBaseUrl()}/api/mileage-distance`, {
+    method: "POST",
+    body: JSON.stringify({ startAddress, endAddress, unit }),
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Distance lookup failed (HTTP ${res.status})`);
+  }
+  return data as CalculatedDistance;
+}
 
 export async function extractReceiptFromPhoto(photoUri: string, today: string): Promise<DraftReceipt> {
   const session = await api.getSession();

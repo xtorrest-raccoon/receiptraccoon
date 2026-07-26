@@ -1,8 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { extractReceipt } from "@rr/extraction";
 import { convertMinor, parseMoneyToMinor } from "@rr/shared";
 import { getFxRate } from "../../../lib/fxRates";
+import { requireUser } from "../../../lib/auth";
 
 /**
  * Server-side extraction endpoint. OPENAI_API_KEY never reaches a client bundle
@@ -12,39 +12,14 @@ import { getFxRate } from "../../../lib/fxRates";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  // Required — without this, a public deployment of this route would let
-  // anyone burn OpenAI spend with no account at all. The token is the
-  // caller's own Supabase access token (getSession().access_token), same
-  // one already used for every other authenticated call in the app.
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace(/^Bearer\s+/i, "");
-  if (!token) {
-    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  }
-
-  // Request-scoped — deliberately not @rr/api's singleton client (bound to
-  // whichever client was last registered at import time; reusing it here
-  // would race across concurrent requests in the same server process) and
-  // not lib/fxRates.ts's service-role client (that exists to bypass RLS for
-  // a table with no user-facing policy; this one must respect RLS, scoped
-  // to the caller's own identity, not bypass it).
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { autoRefreshToken: false, persistSession: false } },
-  );
-
-  // getUser() re-validates the JWT against the auth server, unlike reading a
-  // local session — the right check for a token a client just handed you.
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userData.user) {
-    return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
-  }
+  const auth = await requireUser(request);
+  if ("error" in auth) return auth.error;
+  const { supabase, userId } = auth;
 
   const { data: membership, error: membershipErr } = await supabase
     .from("workspace_members")
     .select("workspace_id")
-    .eq("user_id", userData.user.id)
+    .eq("user_id", userId)
     .limit(1)
     .single();
   if (membershipErr || !membership) {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { color } from "@rr/ui-tokens";
+import { color, reimbursementChip } from "@rr/ui-tokens";
 import {
   formatMoney,
   formatShortDate,
@@ -13,7 +13,7 @@ import {
 } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import { convertDistance, formatDistance } from "../../lib/units";
-import { CURRENT_MONTH, TODAY } from "../../lib/data";
+import { CURRENT_MONTH, TODAY, calculateMileageDistance, type CalculatedDistance } from "../../lib/data";
 import {
   useAddMileageTrip,
   useDeleteMileageTrip,
@@ -46,6 +46,15 @@ export default function MileageScreen() {
   const [newDate, setNewDate] = useState(TODAY);
   const [newDistance, setNewDistance] = useState("");
 
+  /** Editing an existing trip always forces "manual" — see startEdit below. */
+  const [entryMode, setEntryMode] = useState<"manual" | "automatic">("manual");
+  const [newStartAddress, setNewStartAddress] = useState("");
+  const [newEndAddress, setNewEndAddress] = useState("");
+  const [calculating, setCalculating] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
+  /** Non-null only once a successful lookup has resolved a distance to save. */
+  const [calculated, setCalculated] = useState<CalculatedDistance | null>(null);
+
   if (!currency || !unit || rateMilli === undefined || isLoading || !trips) {
     return (
       <View style={{ flex: 1, backgroundColor: rn(color.bgMobile), alignItems: "center", justifyContent: "center" }}>
@@ -61,7 +70,10 @@ export default function MileageScreen() {
     0,
   );
 
-  const distanceValue = parseFloat(newDistance.replace(",", "."));
+  const manualDistanceValue = parseFloat(newDistance.replace(",", "."));
+  // In automatic mode the distance to save comes from the last successful
+  // lookup, not a typed number — see calculated state above.
+  const distanceValue = entryMode === "automatic" ? calculated?.distance ?? NaN : manualDistanceValue;
   // Computed locally from the same rate/currency already loaded for this
   // screen, rather than a round-trip per keystroke — mathematically identical
   // to what addMileageTrip will save, since both read the same workspace rate.
@@ -76,15 +88,42 @@ export default function MileageScreen() {
     setNewPurpose("");
     setNewDistance("");
     setNewDate(TODAY);
+    setEntryMode("manual");
+    setNewStartAddress("");
+    setNewEndAddress("");
+    setCalculating(false);
+    setCalcError(null);
+    setCalculated(null);
   };
 
-  /** Tapping a pending trip loads it into the same form used to add one. */
+  /**
+   * Tapping a pending trip loads it into the same form used to add one,
+   * always in Manual mode — the distance is already frozen at entry (same
+   * "never recomputed" principle as rateMilli), so there's nothing to
+   * recalculate even if the trip was originally logged automatically.
+   */
   const startEdit = (trip: MileageTrip) => {
     setEditingId(trip.id);
     setNewPurpose(trip.purpose);
     setNewDate(trip.tripDate);
     setNewDistance(String(trip.distance));
+    setEntryMode("manual");
     setAddTripOpen(true);
+  };
+
+  const runCalculateDistance = async () => {
+    if (!newStartAddress.trim() || !newEndAddress.trim()) return;
+    setCalculating(true);
+    setCalcError(null);
+    setCalculated(null);
+    try {
+      const result = await calculateMileageDistance(newStartAddress.trim(), newEndAddress.trim(), unit);
+      setCalculated(result);
+    } catch (err) {
+      setCalcError(err instanceof Error ? err.message : "Couldn't calculate that distance.");
+    } finally {
+      setCalculating(false);
+    }
   };
 
   const saveTrip = () => {
@@ -105,6 +144,9 @@ export default function MileageScreen() {
         purpose: newPurpose.trim(),
         distance: distanceValue,
         distanceUnit: unit,
+        ...(entryMode === "automatic" && calculated
+          ? { startAddress: calculated.originAddress, endAddress: calculated.destinationAddress }
+          : {}),
       });
     }
     closeForm();
@@ -191,23 +233,82 @@ export default function MileageScreen() {
               placeholderTextColor={rn(color.textFaint)}
               style={styles.addTripInput}
             />
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <TextInput
-                value={newDate}
-                onChangeText={setNewDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={rn(color.textFaint)}
-                style={[styles.addTripInput, { flex: 1 }]}
-              />
+            <TextInput
+              value={newDate}
+              onChangeText={setNewDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={rn(color.textFaint)}
+              style={styles.addTripInput}
+            />
+
+            {/* Editing an existing trip is always Manual — see startEdit. */}
+            {!editingId && (
+              <View style={styles.segmented}>
+                {(["automatic", "manual"] as const).map((m) => {
+                  const on = m === entryMode;
+                  return (
+                    <Pressable
+                      key={m}
+                      onPress={() => setEntryMode(m)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      style={[styles.segment, on && styles.segmentOn]}
+                    >
+                      <Text style={[styles.segmentLabel, on && styles.segmentLabelOn]}>
+                        {m === "automatic" ? "Automatic" : "Manual"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            {entryMode === "automatic" && !editingId ? (
+              <>
+                <TextInput
+                  value={newStartAddress}
+                  onChangeText={setNewStartAddress}
+                  placeholder="Start address…"
+                  placeholderTextColor={rn(color.textFaint)}
+                  style={styles.addTripInput}
+                />
+                <TextInput
+                  value={newEndAddress}
+                  onChangeText={setNewEndAddress}
+                  placeholder="End address…"
+                  placeholderTextColor={rn(color.textFaint)}
+                  style={styles.addTripInput}
+                />
+                <Pressable
+                  style={[styles.calculateButton, calculating && { opacity: 0.6 }]}
+                  disabled={calculating || !newStartAddress.trim() || !newEndAddress.trim()}
+                  onPress={runCalculateDistance}
+                >
+                  {calculating ? (
+                    <ActivityIndicator color={rn(color.brand)} size="small" />
+                  ) : (
+                    <Text style={styles.calculateButtonLabel}>Calculate distance</Text>
+                  )}
+                </Pressable>
+                {calcError && <Text style={styles.calcErrorText}>{calcError}</Text>}
+                {calculated && (
+                  <Text style={styles.calcResultText}>
+                    {formatDistance(calculated.distance, calculated.unit)} · {calculated.originAddress} →{" "}
+                    {calculated.destinationAddress}
+                  </Text>
+                )}
+              </>
+            ) : (
               <TextInput
                 value={newDistance}
                 onChangeText={setNewDistance}
                 placeholder={`Distance (${unit})`}
                 placeholderTextColor={rn(color.textFaint)}
                 keyboardType="decimal-pad"
-                style={[styles.addTripInput, { flex: 1 }]}
+                style={styles.addTripInput}
               />
-            </View>
+            )}
+
             {estimateMinor !== null && (
               <Text style={styles.estimateText}>Estimated reimbursement: {formatMoney(estimateMinor, currency)}</Text>
             )}
@@ -215,7 +316,11 @@ export default function MileageScreen() {
               <Pressable style={styles.cancelButton} onPress={closeForm}>
                 <Text style={styles.cancelButtonLabel}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.saveTripButton} onPress={saveTrip}>
+              <Pressable
+                style={[styles.saveTripButton, isNaN(distanceValue) && { opacity: 0.5 }]}
+                disabled={isNaN(distanceValue) || distanceValue <= 0}
+                onPress={saveTrip}
+              >
                 <Text style={styles.saveButtonLabel}>
                   {editingId ? "Save changes" : "Save trip"}
                 </Text>
@@ -406,6 +511,50 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: rn(color.textMuted),
     marginTop: -2,
+  },
+  segmented: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    backgroundColor: rn(color.avatarBg),
+    borderRadius: 20,
+    padding: 3,
+  },
+  segment: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  segmentOn: {
+    backgroundColor: rn(color.brand),
+  },
+  segmentLabel: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: rn(color.textMuted),
+  },
+  segmentLabelOn: {
+    color: "#fff",
+  },
+  calculateButton: {
+    alignItems: "center",
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: rn(color.surfaceMuted),
+  },
+  calculateButtonLabel: {
+    color: rn(color.brand),
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  calcErrorText: {
+    fontSize: 11.5,
+    color: rn(reimbursementChip.rejected.text),
+    lineHeight: 16,
+  },
+  calcResultText: {
+    fontSize: 11.5,
+    color: rn(color.textMuted),
+    lineHeight: 16,
   },
   cancelButton: {
     flex: 1,
