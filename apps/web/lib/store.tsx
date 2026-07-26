@@ -18,11 +18,15 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { ReimbursementStatus } from "@rr/shared";
-import { useSetReimbursementStatus } from "./queries";
+import { useSetMileageReimbursementStatus, useSetReimbursementStatus } from "./queries";
+
+type ReimbursableEntityType = "receipt" | "mileage_trip";
 
 interface RejectionModalState {
-  receiptId: string;
-  vendor: string;
+  entityId: string;
+  entityType: ReimbursableEntityType;
+  /** The vendor name (receipt) or trip purpose (mileage) — whatever identifies the entry to the approver. */
+  label: string;
   reason: string;
 }
 
@@ -36,12 +40,13 @@ interface DataStoreValue {
   closeAddReceipt: () => void;
 
   rejectionModal: RejectionModalState | null;
-  /** Non-rejected targets apply immediately; "rejected" opens the reason modal. */
+  /** Non-rejected targets apply immediately; "rejected" opens the reason modal. `entityType` defaults to "receipt". */
   requestReimbursementChange: (
-    receiptId: string,
-    vendor: string,
+    entityId: string,
+    label: string,
     status: ReimbursementStatus,
     currentReason: string | null,
+    entityType?: ReimbursableEntityType,
   ) => void;
   setRejectionReason: (reason: string) => void;
   confirmRejection: () => void;
@@ -52,6 +57,7 @@ const DataStoreContext = createContext<DataStoreValue | null>(null);
 
 export function DataStoreProvider({ children }: { children: ReactNode }) {
   const setReimbursementStatus = useSetReimbursementStatus();
+  const setMileageReimbursementStatus = useSetMileageReimbursementStatus();
 
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const openReceipt = useCallback((id: string) => setSelectedReceiptId(id), []);
@@ -63,15 +69,33 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   const [rejectionModal, setRejectionModal] = useState<RejectionModalState | null>(null);
 
-  const requestReimbursementChange = useCallback(
-    (receiptId: string, vendor: string, status: ReimbursementStatus, currentReason: string | null) => {
-      if (status === "rejected") {
-        setRejectionModal({ receiptId, vendor, reason: currentReason ?? "" });
+  const mutateStatus = useCallback(
+    (entityType: ReimbursableEntityType, id: string, status: ReimbursementStatus, reason?: string) => {
+      const payload = reason === undefined ? { id, status } : { id, status, reason };
+      if (entityType === "mileage_trip") {
+        setMileageReimbursementStatus.mutate(payload);
       } else {
-        setReimbursementStatus.mutate({ id: receiptId, status });
+        setReimbursementStatus.mutate(payload);
       }
     },
-    [setReimbursementStatus],
+    [setReimbursementStatus, setMileageReimbursementStatus],
+  );
+
+  const requestReimbursementChange = useCallback(
+    (
+      entityId: string,
+      label: string,
+      status: ReimbursementStatus,
+      currentReason: string | null,
+      entityType: ReimbursableEntityType = "receipt",
+    ) => {
+      if (status === "rejected") {
+        setRejectionModal({ entityId, entityType, label, reason: currentReason ?? "" });
+      } else {
+        mutateStatus(entityType, entityId, status);
+      }
+    },
+    [mutateStatus],
   );
 
   const setRejectionReason = useCallback((reason: string) => {
@@ -80,10 +104,10 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
   const confirmRejection = useCallback(() => {
     setRejectionModal((m) => {
-      if (m) setReimbursementStatus.mutate({ id: m.receiptId, status: "rejected", reason: m.reason.trim() });
+      if (m) mutateStatus(m.entityType, m.entityId, "rejected", m.reason.trim());
       return null;
     });
-  }, [setReimbursementStatus]);
+  }, [mutateStatus]);
 
   const cancelRejection = useCallback(() => setRejectionModal(null), []);
 

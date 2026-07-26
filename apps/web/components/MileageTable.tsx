@@ -4,6 +4,7 @@ import { formatMoney, formatShortDate, isAdmin, type MileageTrip, type Reimburse
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import type { WorkspaceUser } from "@rr/api";
 import { useCurrentUser } from "../lib/queries";
+import { useDataStore } from "../lib/store";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
@@ -11,27 +12,18 @@ function nameOf(users: WorkspaceUser[], id: string): string {
   return users.find((u) => u.id === id)?.name ?? "Unknown";
 }
 
-/**
- * The real backend has no mutator for mileage trip status yet (only
- * setReimbursementStatus for receipts). The status control here therefore
- * updates local page state only, same as the design's own localStorage-backed
- * prototype — neither persists.
- */
 export function MileageTable({
   trips,
   currency,
   users,
-  statusOverrides,
-  onStatusChange,
 }: {
   trips: MileageTrip[];
   currency: string;
   users: WorkspaceUser[];
-  statusOverrides: Record<string, ReimbursementStatus>;
-  onStatusChange: (tripId: string, status: ReimbursementStatus) => void;
 }) {
   const { data: currentUser } = useCurrentUser();
   const admin = currentUser ? isAdmin(currentUser.role) : false;
+  const { requestReimbursementChange } = useDataStore();
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden" }}>
@@ -60,7 +52,7 @@ export function MileageTable({
         <div style={{ padding: 30, textAlign: "center", color: color.textFaint, fontSize: fontSize.body }}>No mileage trips logged.</div>
       ) : (
         trips.map((t) => {
-          const status = statusOverrides[t.id] ?? t.reimbursementStatus;
+          const status = t.reimbursementStatus;
           return (
             <div key={t.id}>
               <div
@@ -84,7 +76,9 @@ export function MileageTable({
                   {admin ? (
                     <select
                       value={status}
-                      onChange={(e) => onStatusChange(t.id, e.target.value as ReimbursementStatus)}
+                      onChange={(e) =>
+                        requestReimbursementChange(t.id, t.purpose, e.target.value as ReimbursementStatus, t.rejectionReason, "mileage_trip")
+                      }
                       style={{
                         border: `1px solid ${color.border}`,
                         borderRadius: radius.sm,

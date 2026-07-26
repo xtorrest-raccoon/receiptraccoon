@@ -67,6 +67,10 @@ export function addMileageTrip(input: { tripDate: string; purpose: string; dista
   return api.addMileageTrip(input);
 }
 
+export function setMileageReimbursementStatus(id: string, status: ReimbursementStatus, reason?: string): Promise<void> {
+  return api.setMileageReimbursementStatus(id, status, reason);
+}
+
 export function listCategories(): Promise<string[]> {
   return api.listCategories();
 }

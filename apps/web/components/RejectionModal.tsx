@@ -33,14 +33,16 @@ export function RejectionModal() {
         onClick={(e) => e.stopPropagation()}
         style={{ width: 420, maxWidth: "90vw", background: color.surface, borderRadius: radius["2xl"], padding: 24 }}
       >
-        <div style={{ fontSize: fontSize.lg + 1, fontWeight: fontWeight.heavy, marginBottom: 4 }}>Reject receipt</div>
+        <div style={{ fontSize: fontSize.lg + 1, fontWeight: fontWeight.heavy, marginBottom: 4 }}>
+          {rejectionModal.entityType === "mileage_trip" ? "Reject mileage trip" : "Reject receipt"}
+        </div>
         <div style={{ fontSize: fontSize.small + 0.5, color: color.textMuted, marginBottom: 16 }}>
-          {rejectionModal.vendor} — this reason will be visible to the employee.
+          {rejectionModal.label} — this reason will be visible to the employee.
         </div>
         <textarea
           value={rejectionModal.reason}
           onChange={(e) => setRejectionReason(e.target.value)}
-          placeholder="Explain why this receipt was rejected…"
+          placeholder={`Explain why this ${rejectionModal.entityType === "mileage_trip" ? "trip" : "receipt"} was rejected…`}
           style={{
             width: "100%",
             minHeight: 90,
@@ -89,7 +91,7 @@ export function RejectionModal() {
               opacity: canConfirm ? 1 : 0.5,
             }}
           >
-            Reject receipt
+            {rejectionModal.entityType === "mileage_trip" ? "Reject trip" : "Reject receipt"}
           </button>
         </div>
       </div>

@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  canViewTeamPage,
-  formatMoney,
-  currencySymbol,
-  isAdmin,
-  rateToDecimalString,
-  type ReimbursementStatus,
-} from "@rr/shared";
+import { canViewTeamPage, formatMoney, currencySymbol, isAdmin, isOutstanding, rateToDecimalString } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useCurrentUser, useMileage, useTeam, useUsers } from "../../lib/queries";
 import { StatCard } from "../../components/StatCard";
@@ -26,20 +19,14 @@ export default function TeamPage() {
   const allowed = currentUser ? canViewTeamPage(currentUser.role) : false;
 
   const [mileageUserFilter, setMileageUserFilter] = useState("All");
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, ReimbursementStatus>>({});
 
   const { data: team } = useTeam();
   const { data: users } = useUsers();
   const { data: mileage } = useMileage(mileageUserFilter === "All" ? undefined : mileageUserFilter);
 
   const mileageOutstandingMinor = useMemo(() => {
-    return (mileage ?? [])
-      .filter((t) => {
-        const s = statusOverrides[t.id] ?? t.reimbursementStatus;
-        return s === "pending" || s === "approved";
-      })
-      .reduce((sum, t) => sum + t.amountMinor, 0);
-  }, [mileage, statusOverrides]);
+    return (mileage ?? []).filter((t) => isOutstanding(t.reimbursementStatus)).reduce((sum, t) => sum + t.amountMinor, 0);
+  }, [mileage]);
 
   if (!currentUser || !allowed) {
     return (
@@ -159,8 +146,6 @@ export default function TeamPage() {
           trips={mileage ?? []}
           currency={team.currency}
           users={users}
-          statusOverrides={statusOverrides}
-          onStatusChange={(id, status) => setStatusOverrides((prev) => ({ ...prev, [id]: status }))}
         />
       </div>
 

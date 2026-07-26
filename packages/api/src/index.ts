@@ -660,6 +660,15 @@ export async function setReimbursementStatus(id: string, status: ReimbursementSt
   if (error) throw error;
 }
 
+/** Same enforce_reimbursement_authority trigger as receipts (trg_mileage_reimbursement_authority, already applied in 0001_init.sql) — this was just missing the client-side mutator. */
+export async function setMileageReimbursementStatus(id: string, status: ReimbursementStatus, reason?: string): Promise<void> {
+  const { error } = await client()
+    .from("mileage_trips")
+    .update({ reimbursement_status: status, rejection_reason: status === "rejected" ? reason ?? null : null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 // ── mileage ──────────────────────────────────────────────────────────────
 
 interface TripRow {

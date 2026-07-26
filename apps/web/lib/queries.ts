@@ -95,6 +95,15 @@ export function useSetReimbursementStatus() {
   });
 }
 
+export function useSetMileageReimbursementStatus() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ id, status, reason }: { id: string; status: ReimbursementStatus; reason?: string }) =>
+      data.setMileageReimbursementStatus(id, status, reason),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useSetCategory() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
