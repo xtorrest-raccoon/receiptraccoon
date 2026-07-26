@@ -18,6 +18,8 @@ import {
   useSetDistanceUnit,
   useSetHomeCurrency,
   useSetMileageRateMilli,
+  useSetWorkspaceName,
+  useWorkspaceName,
 } from "../../lib/queries";
 import { Text } from "../../components/Text";
 import { SpendBarChart } from "../../components/SpendBarChart";
@@ -57,9 +59,11 @@ export default function HomeScreen() {
   const { data: owedToUser, refetch: refetchOwed } = useOwedToUser();
   const { data: distanceUnit } = useDistanceUnit();
   const { data: rateMilli } = useMileageRateMilli();
+  const { data: workspaceName } = useWorkspaceName();
   const setHomeCurrency = useSetHomeCurrency();
   const setDistanceUnit = useSetDistanceUnit();
   const setMileageRateMilli = useSetMileageRateMilli();
+  const setWorkspaceName = useSetWorkspaceName();
 
   // Tab screens stay mounted, so a mutation made on the receipt detail screen
   // or Mileage already invalidates these queries in the background — this
@@ -72,7 +76,7 @@ export default function HomeScreen() {
     }, []),
   );
 
-  if (!user || !dashboard || !monthOptions || !owedToUser || !distanceUnit || rateMilli === undefined) {
+  if (!user || !dashboard || !monthOptions || !owedToUser || !distanceUnit || rateMilli === undefined || workspaceName === undefined) {
     return (
       <View style={{ flex: 1, backgroundColor: rn(color.bgMobile), alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={rn(color.brand)} />
@@ -212,8 +216,9 @@ export default function HomeScreen() {
       <SettingsSheet
         visible={settingsOpen}
         currencies={CURRENCIES}
-        initial={{ distanceUnit, rateMilli, homeCurrency: currency }}
+        initial={{ workspaceName, distanceUnit, rateMilli, homeCurrency: currency }}
         onSave={(draft) => {
+          if (draft.workspaceName !== workspaceName) setWorkspaceName.mutate(draft.workspaceName);
           setHomeCurrency.mutate(draft.homeCurrency);
           // Unit first: setDistanceUnit converts the stored rate, and the explicit
           // rate below must win over that conversion.

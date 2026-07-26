@@ -75,6 +75,14 @@ export function setHomeCurrency(code: string): Promise<void> {
   return api.setHomeCurrency(code);
 }
 
+export function getWorkspaceName(): Promise<string> {
+  return api.getWorkspaceName();
+}
+
+export function setWorkspaceName(name: string): Promise<void> {
+  return api.setWorkspaceName(name);
+}
+
 /** Distance unit for mileage. A workspace setting, shared across screens. */
 export function getDistanceUnit(): Promise<DistanceUnit> {
   return api.getDistanceUnit();

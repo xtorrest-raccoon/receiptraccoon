@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -7,7 +8,7 @@ import { canViewTeamPage } from "@rr/shared";
 import { signOut } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../lib/data";
-import { useCurrentUser, useHomeCurrency, useSetHomeCurrency } from "../lib/queries";
+import { useCurrentUser, useHomeCurrency, useSetHomeCurrency, useSetWorkspaceName, useWorkspaceName } from "../lib/queries";
 import { DashboardIcon, ReceiptsIcon, TeamIcon } from "./icons";
 
 interface NavItem {
@@ -28,6 +29,26 @@ export function Sidebar() {
   const { data: currentUser } = useCurrentUser();
   const { data: homeCurrency } = useHomeCurrency();
   const setHomeCurrency = useSetHomeCurrency();
+  const { data: workspaceName } = useWorkspaceName();
+  const setWorkspaceName = useSetWorkspaceName();
+  const [nameDraft, setNameDraft] = useState("");
+
+  // Only sync from the server once it's loaded, and not while the field is
+  // mid-edit — otherwise a background refetch after another change (e.g. the
+  // currency mutation's invalidateAll) would overwrite what's being typed.
+  useEffect(() => {
+    if (workspaceName !== undefined) setNameDraft(workspaceName);
+  }, [workspaceName]);
+
+  const commitName = () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === workspaceName) {
+      setNameDraft(workspaceName ?? "");
+      return;
+    }
+    setWorkspaceName.mutate(trimmed);
+  };
+
   const role = currentUser?.role;
   const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (role && canViewTeamPage(role)));
 
@@ -92,6 +113,29 @@ export function Sidebar() {
       </nav>
 
       <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ padding: 12, borderRadius: radius.lg, background: color.surfaceMuted }}>
+          <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
+            Workspace name
+          </div>
+          <input
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            style={{
+              width: "100%",
+              border: `1px solid ${color.borderStrong}`,
+              borderRadius: radius.sm,
+              padding: "6px 8px",
+              fontSize: fontSize.small + 0.5,
+              fontWeight: fontWeight.semibold,
+              background: color.surface,
+              color: color.text,
+            }}
+          />
+        </div>
         <div style={{ padding: 12, borderRadius: radius.lg, background: color.surfaceMuted }}>
           <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
             Home currency

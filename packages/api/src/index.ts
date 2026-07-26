@@ -268,6 +268,7 @@ export async function acceptInvite(inviteId: string): Promise<void> {
 
 interface WorkspaceRow {
   id: string;
+  name: string;
   home_currency: string;
   mileage_unit: DistanceUnit;
   mileage_rate_milli: number;
@@ -277,11 +278,23 @@ async function getWorkspaceRow(): Promise<WorkspaceRow> {
   const wsId = await getCurrentWorkspaceId();
   const { data, error } = await client()
     .from("workspaces")
-    .select("id, home_currency, mileage_unit, mileage_rate_milli")
+    .select("id, name, home_currency, mileage_unit, mileage_rate_milli")
     .eq("id", wsId)
     .single();
   if (error) throw error;
   return data as WorkspaceRow;
+}
+
+export async function getWorkspaceName(): Promise<string> {
+  return (await getWorkspaceRow()).name;
+}
+
+export async function setWorkspaceName(name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const wsId = await getCurrentWorkspaceId();
+  const { error } = await client().from("workspaces").update({ name: trimmed }).eq("id", wsId);
+  if (error) throw error;
 }
 
 /** Plain ISO codes — real receipts store their amount already converted at write time, so no FX table is needed here (contrast mock-api's FX_FROM_EUR). */

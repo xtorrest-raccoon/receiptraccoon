@@ -27,6 +27,10 @@ export function useHomeCurrency() {
   return useQuery({ queryKey: ["homeCurrency"], queryFn: data.getHomeCurrency });
 }
 
+export function useWorkspaceName() {
+  return useQuery({ queryKey: ["workspaceName"], queryFn: data.getWorkspaceName });
+}
+
 export function useCategories() {
   return useQuery({ queryKey: ["categories"], queryFn: data.listCategories });
 }
@@ -77,7 +81,7 @@ export function useMyPendingInvite() {
 }
 
 /** Every read that a write anywhere in the app can affect. Coarse on purpose — see module doc. */
-const ALL_QUERY_KEYS = ["dashboard", "team", "receipts", "receipt", "mileage", "categories", "homeCurrency", "workspaceInvites"];
+const ALL_QUERY_KEYS = ["dashboard", "team", "receipts", "receipt", "mileage", "categories", "homeCurrency", "workspaceInvites", "workspaceName"];
 
 function useInvalidateAll() {
   const queryClient = useQueryClient();
@@ -124,6 +128,14 @@ export function useSetHomeCurrency() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
     mutationFn: (code: string) => data.setHomeCurrency(code),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useSetWorkspaceName() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (name: string) => data.setWorkspaceName(name),
     onSuccess: invalidateAll,
   });
 }

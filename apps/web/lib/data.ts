@@ -91,6 +91,14 @@ export function setHomeCurrency(code: string): Promise<void> {
   return api.setHomeCurrency(code);
 }
 
+export function getWorkspaceName(): Promise<string> {
+  return api.getWorkspaceName();
+}
+
+export function setWorkspaceName(name: string): Promise<void> {
+  return api.setWorkspaceName(name);
+}
+
 export function userName(id: string): Promise<string> {
   return api.userName(id);
 }
