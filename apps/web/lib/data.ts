@@ -115,6 +115,10 @@ export function setReimbursementAuthority(userId: string, canApprove: boolean, c
   return api.setReimbursementAuthority(userId, canApprove, canProcess);
 }
 
+export function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {
+  return api.setReimbursementAssignments(approverUserId, employeeIds);
+}
+
 export function listWorkspaceInvites(): Promise<WorkspaceInvite[]> {
   return api.listWorkspaceInvites();
 }

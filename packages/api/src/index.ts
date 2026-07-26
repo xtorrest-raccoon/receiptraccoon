@@ -191,6 +191,13 @@ export interface WorkspaceUser {
   jobTitle: string | null;
   canApproveReimbursements: boolean;
   canProcessReimbursements: boolean;
+  /**
+   * Employees this person is specifically scoped to act on — see
+   * 0009_reimbursement_assignments.sql. Empty means no authority over
+   * anyone yet, even if either capability above is true; irrelevant for
+   * owner/admin, who have blanket authority regardless of this list.
+   */
+  assignedEmployeeIds: string[];
 }
 
 /**
@@ -202,12 +209,17 @@ export interface WorkspaceUser {
  */
 export async function listUsers(): Promise<WorkspaceUser[]> {
   const wsId = await getCurrentWorkspaceId();
-  const { data, error } = await client()
-    .from("workspace_members")
-    .select("user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name)")
-    .eq("workspace_id", wsId);
-  if (error) throw error;
-  const rows = data as unknown as (MemberWithProfileRow & { user_id: string })[];
+  const [membersRes, assignmentsRes] = await Promise.all([
+    client()
+      .from("workspace_members")
+      .select("user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name)")
+      .eq("workspace_id", wsId),
+    client().from("reimbursement_assignments").select("approver_id, employee_id").eq("workspace_id", wsId),
+  ]);
+  if (membersRes.error) throw membersRes.error;
+  if (assignmentsRes.error) throw assignmentsRes.error;
+  const rows = membersRes.data as unknown as (MemberWithProfileRow & { user_id: string })[];
+  const assignments = (assignmentsRes.data ?? []) as { approver_id: string; employee_id: string }[];
   return rows.map((m) => ({
     id: m.user_id,
     name: m.profiles?.display_name ?? "",
@@ -215,7 +227,29 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
     jobTitle: m.job_title,
     canApproveReimbursements: m.can_approve_reimbursements,
     canProcessReimbursements: m.can_process_reimbursements,
+    assignedEmployeeIds: assignments.filter((a) => a.approver_id === m.user_id).map((a) => a.employee_id),
   }));
+}
+
+/**
+ * Replaces the full set of employees an approver/refunder is scoped to in
+ * one call, rather than granular add/remove — simpler UX (a checklist of
+ * everyone, saved as a whole) and simpler to reason about than incremental
+ * inserts/deletes racing each other.
+ */
+export async function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error: delErr } = await client()
+    .from("reimbursement_assignments")
+    .delete()
+    .eq("workspace_id", wsId)
+    .eq("approver_id", approverUserId);
+  if (delErr) throw delErr;
+  if (employeeIds.length === 0) return;
+  const { error: insErr } = await client()
+    .from("reimbursement_assignments")
+    .insert(employeeIds.map((employeeId) => ({ workspace_id: wsId, approver_id: approverUserId, employee_id: employeeId })));
+  if (insErr) throw insErr;
 }
 
 /**

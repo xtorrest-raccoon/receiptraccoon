@@ -145,6 +145,15 @@ export function useSetReimbursementAuthority() {
   });
 }
 
+export function useSetReimbursementAssignments() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ approverUserId, employeeIds }: { approverUserId: string; employeeIds: string[] }) =>
+      data.setReimbursementAssignments(approverUserId, employeeIds),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useSetHomeCurrency() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
