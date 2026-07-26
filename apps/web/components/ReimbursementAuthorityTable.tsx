@@ -11,15 +11,104 @@ function nameOf(users: WorkspaceUser[], id: string): string {
   return users.find((u) => u.id === id)?.name ?? "Unknown";
 }
 
-const selectStyle = {
+type AuthorityLevel = "none" | "approve" | "process" | "both";
+
+function levelOf(u: WorkspaceUser): AuthorityLevel {
+  if (u.canApproveReimbursements && u.canProcessReimbursements) return "both";
+  if (u.canApproveReimbursements) return "approve";
+  if (u.canProcessReimbursements) return "process";
+  return "none";
+}
+
+const AUTHORITY_OPTIONS: { value: AuthorityLevel; label: string }[] = [
+  { value: "none", label: "No authority" },
+  { value: "approve", label: "Approve / Reject" },
+  { value: "process", label: "Refund" },
+  { value: "both", label: "Approve, Reject & Refund" },
+];
+
+const controlStyle = {
   width: "100%",
   border: `1px solid ${color.borderStrong}`,
   borderRadius: radius.sm,
-  padding: "4px 6px",
+  padding: "6px 8px",
   fontSize: fontSize.small,
   background: color.surface,
   color: color.text,
+  cursor: "pointer",
 };
+
+/**
+ * Closed by default, opens a checkbox list — same shape as a native
+ * <select multiple> but readable at a glance and doesn't need Ctrl/Cmd-click
+ * to pick more than one. Commits each toggle immediately, so there's no
+ * separate Save step, matching how a plain dropdown feels.
+ */
+function MultiSelectDropdown({
+  options,
+  selected,
+  onChange,
+  emptyLabel,
+}: {
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  emptyLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const summary = selected.length === 0 ? emptyLabel : options.filter((o) => selected.includes(o.value)).map((o) => o.label).join(", ");
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button type="button" onClick={() => setOpen((v) => !v)} style={{ ...controlStyle, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{summary}</span>
+        <span style={{ color: color.textFaint, flexShrink: 0 }}>▾</span>
+      </button>
+      {open ? (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            zIndex: 10,
+            minWidth: 200,
+            maxHeight: 220,
+            overflowY: "auto",
+            background: color.surface,
+            border: `1px solid ${color.borderStrong}`,
+            borderRadius: radius.sm,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+            padding: 6,
+          }}
+        >
+          {options.length === 0 ? (
+            <div style={{ fontSize: fontSize.small, color: color.textFaint, padding: "6px 8px" }}>No other members yet.</div>
+          ) : (
+            options.map((o) => (
+              <label key={o.value} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", fontSize: fontSize.small, color: color.text, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o.value)}
+                  onChange={(e) => onChange(e.target.checked ? [...selected, o.value] : selected.filter((v) => v !== o.value))}
+                />
+                {o.label}
+              </label>
+            ))
+          )}
+          <div style={{ borderTop: `1px solid ${color.borderSubtle}`, marginTop: 4, paddingTop: 4, textAlign: "right" }}>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.brand, background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 /**
  * Who can approve/reject vs. refund, and specifically whose expenses they're
@@ -37,21 +126,7 @@ export function ReimbursementAuthorityTable({
 }) {
   const setAuthority = useSetReimbursementAuthority();
   const setAssignments = useSetReimbursementAssignments();
-  const [editingApproverId, setEditingApproverId] = useState<string | null>(null);
-  const [assignmentDraft, setAssignmentDraft] = useState<string[]>([]);
-
   const canGrant = canManageReimbursementAuthority(currentUser.role, currentUser);
-
-  const startEditing = (u: WorkspaceUser) => {
-    setEditingApproverId(u.id);
-    setAssignmentDraft(u.assignedEmployeeIds);
-  };
-
-  const saveAssignments = () => {
-    if (!editingApproverId) return;
-    setAssignments.mutate({ approverUserId: editingApproverId, employeeIds: assignmentDraft });
-    setEditingApproverId(null);
-  };
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden", marginTop: 16 }}>
@@ -65,7 +140,7 @@ export function ReimbursementAuthorityTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1.6fr 1.3fr 2.2fr",
+          gridTemplateColumns: "1.6fr 1.5fr 2fr",
           padding: "10px 20px",
           fontSize: fontSize.tiny + 0.5,
           fontWeight: fontWeight.bold,
@@ -82,20 +157,15 @@ export function ReimbursementAuthorityTable({
 
       {users.map((u) => {
         const admin = isAdmin(u.role);
-        const editing = editingApproverId === u.id;
         const otherUsers = users.filter((other) => other.id !== u.id);
-
-        const selectedAuthority = [
-          ...(u.canApproveReimbursements ? ["approve"] : []),
-          ...(u.canProcessReimbursements ? ["process"] : []),
-        ];
+        const level = levelOf(u);
 
         return (
           <div
             key={u.id}
             className="grid sm:grid"
             style={{
-              gridTemplateColumns: "1.6fr 1.3fr 2.2fr",
+              gridTemplateColumns: "1.6fr 1.5fr 2fr",
               alignItems: "start",
               padding: "12px 20px",
               borderBottom: `1px solid ${color.borderSubtle}`,
@@ -118,79 +188,40 @@ export function ReimbursementAuthorityTable({
             ) : (
               <>
                 <select
-                  multiple
-                  value={selectedAuthority}
+                  value={level}
                   disabled={!canGrant}
                   onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    const next = e.target.value as AuthorityLevel;
                     setAuthority.mutate({
                       userId: u.id,
-                      canApprove: selected.includes("approve"),
-                      canProcess: selected.includes("process"),
+                      canApprove: next === "approve" || next === "both",
+                      canProcess: next === "process" || next === "both",
                     });
                   }}
-                  style={{ ...selectStyle, height: 52 }}
+                  style={controlStyle}
                 >
-                  <option value="approve">Approve / Reject</option>
-                  <option value="process">Refund</option>
+                  {AUTHORITY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
 
-                {editing ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <select
-                      multiple
-                      value={assignmentDraft}
-                      onChange={(e) => setAssignmentDraft(Array.from(e.target.selectedOptions).map((o) => o.value))}
-                      style={{ ...selectStyle, height: Math.min(140, 30 + otherUsers.length * 22) }}
-                    >
-                      {otherUsers.map((other) => (
-                        <option key={other.id} value={other.id}>
-                          {other.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button
-                        type="button"
-                        onClick={saveAssignments}
-                        style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.brand, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingApproverId(null)}
-                        style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
+                {level === "none" ? (
+                  <span style={{ fontSize: fontSize.small, color: color.textFaint }}>—</span>
+                ) : canGrant ? (
+                  <MultiSelectDropdown
+                    options={otherUsers.map((other) => ({ value: other.id, label: other.name }))}
+                    selected={u.assignedEmployeeIds}
+                    onChange={(next) => setAssignments.mutate({ approverUserId: u.id, employeeIds: next })}
+                    emptyLabel="No one — not yet assigned"
+                  />
+                ) : u.assignedEmployeeIds.length === 0 ? (
+                  <span style={{ fontSize: fontSize.small, color: color.textFaint, fontStyle: "italic" }}>No one — not yet assigned</span>
                 ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    {u.canApproveReimbursements || u.canProcessReimbursements ? (
-                      u.assignedEmployeeIds.length === 0 ? (
-                        <span style={{ fontSize: fontSize.small, color: color.textFaint, fontStyle: "italic" }}>
-                          No one — not yet assigned
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: fontSize.small, color: color.textMuted }}>
-                          {u.assignedEmployeeIds.map((id) => nameOf(users, id)).join(", ")}
-                        </span>
-                      )
-                    ) : (
-                      <span style={{ fontSize: fontSize.small, color: color.textFaint }}>—</span>
-                    )}
-                    {canGrant ? (
-                      <button
-                        type="button"
-                        onClick={() => startEditing(u)}
-                        style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.brand, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                      >
-                        Edit
-                      </button>
-                    ) : null}
-                  </div>
+                  <span style={{ fontSize: fontSize.small, color: color.textMuted }}>
+                    {u.assignedEmployeeIds.map((id) => nameOf(users, id)).join(", ")}
+                  </span>
                 )}
               </>
             )}
