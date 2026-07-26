@@ -10,6 +10,7 @@ import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
 import { InviteTeammatePanel } from "../../components/InviteTeammatePanel";
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
+import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 
 /** Translucent red-on-dark panel, mixed from the `up` (bad-trend) token — there
  * is no dedicated "alert on dark" entry in @rr/ui-tokens. */
@@ -106,7 +107,7 @@ export default function TeamPage() {
             <StatCard label="Highest spender" value={team.topSpenderName ?? "—"} valueSize={fontSize.h3} />
           </div>
 
-          <TeamMembersTable members={team.members} currency={team.currency} users={users} currentUser={currentUser} />
+          <TeamMembersTable members={team.members} currency={team.currency} />
         </>
       ) : null}
 
@@ -166,6 +167,7 @@ export default function TeamPage() {
         <>
           <ProvisionMemberPanel />
           <InviteTeammatePanel />
+          <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
         </>
       ) : null}
     </div>

@@ -1,37 +1,16 @@
-import type { CurrentUser, WorkspaceUser } from "@rr/api";
-import { formatMoney, isAdmin, type TeamMemberSummary } from "@rr/shared";
+import type { TeamMemberSummary } from "@rr/shared";
+import { formatMoney } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { useSetReimbursementAuthority } from "../lib/queries";
 import { Avatar } from "./Avatar";
 import { CategoryChip } from "./Chips";
 
-function findUser(users: WorkspaceUser[], userId: string): WorkspaceUser | undefined {
-  return users.find((u) => u.id === userId);
-}
-
-export function TeamMembersTable({
-  members,
-  currency,
-  users,
-  currentUser,
-}: {
-  members: TeamMemberSummary[];
-  currency: string;
-  users: WorkspaceUser[];
-  currentUser: CurrentUser;
-}) {
-  const setAuthority = useSetReimbursementAuthority();
-  // Mirrors can_grant_reimbursement_authority() in 0007_reimbursement_authority.sql —
-  // owner/admin, or a super user (both capabilities already granted). A refund-only
-  // or approve-only person deliberately cannot grant, so they can't self-escalate.
-  const canGrant = isAdmin(currentUser.role) || (currentUser.canApproveReimbursements && currentUser.canProcessReimbursements);
-
+export function TeamMembersTable({ members, currency }: { members: TeamMemberSummary[]; currency: string }) {
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden" }}>
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1.8fr 0.8fr 1.1fr 0.9fr 1.2fr 1.3fr",
+          gridTemplateColumns: "2fr 1fr 1.2fr 1fr 1.4fr",
           padding: "12px 20px",
           fontSize: fontSize.tiny + 0.5,
           fontWeight: fontWeight.bold,
@@ -46,18 +25,16 @@ export function TeamMembersTable({
         <div>Outstanding refund</div>
         <div>Oldest pending</div>
         <div>Top category</div>
-        <div>Reimbursement authority</div>
       </div>
 
       {members.map((u) => {
         const aged = u.oldestPendingDays != null && u.oldestPendingDays > 30;
-        const member = findUser(users, u.userId);
         return (
           <div key={u.userId}>
             <div
               className="hidden sm:grid"
               style={{
-                gridTemplateColumns: "1.8fr 0.8fr 1.1fr 0.9fr 1.2fr 1.3fr",
+                gridTemplateColumns: "2fr 1fr 1.2fr 1fr 1.4fr",
                 alignItems: "center",
                 padding: "14px 20px",
                 borderBottom: `1px solid ${color.borderSubtle}`,
@@ -77,38 +54,6 @@ export function TeamMembersTable({
                 {u.oldestPendingDays != null ? `${u.oldestPendingDays}d` : "—"}
               </div>
               <div>{u.topCategory ? <CategoryChip category={u.topCategory} /> : <span style={{ color: color.textFaint }}>—</span>}</div>
-              <div>
-                {member ? (
-                  isAdmin(member.role) ? (
-                    <span style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint }}>Admin (full authority)</span>
-                  ) : (
-                    <div style={{ display: "flex", gap: 12 }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: fontSize.tiny + 0.5, color: color.textMuted, cursor: canGrant ? "pointer" : "default" }}>
-                        <input
-                          type="checkbox"
-                          checked={member.canApproveReimbursements}
-                          disabled={!canGrant}
-                          onChange={(e) =>
-                            setAuthority.mutate({ userId: member.id, canApprove: e.target.checked, canProcess: member.canProcessReimbursements })
-                          }
-                        />
-                        Approve
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: fontSize.tiny + 0.5, color: color.textMuted, cursor: canGrant ? "pointer" : "default" }}>
-                        <input
-                          type="checkbox"
-                          checked={member.canProcessReimbursements}
-                          disabled={!canGrant}
-                          onChange={(e) =>
-                            setAuthority.mutate({ userId: member.id, canApprove: member.canApproveReimbursements, canProcess: e.target.checked })
-                          }
-                        />
-                        Refund
-                      </label>
-                    </div>
-                  )
-                ) : null}
-              </div>
             </div>
 
             <div
@@ -132,32 +77,6 @@ export function TeamMembersTable({
                   {u.oldestPendingDays != null ? `${u.oldestPendingDays}d oldest` : "—"}
                 </span>
               </div>
-              {member && !isAdmin(member.role) ? (
-                <div style={{ display: "flex", gap: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: fontSize.small, color: color.textMuted }}>
-                    <input
-                      type="checkbox"
-                      checked={member.canApproveReimbursements}
-                      disabled={!canGrant}
-                      onChange={(e) =>
-                        setAuthority.mutate({ userId: member.id, canApprove: e.target.checked, canProcess: member.canProcessReimbursements })
-                      }
-                    />
-                    Approve
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: fontSize.small, color: color.textMuted }}>
-                    <input
-                      type="checkbox"
-                      checked={member.canProcessReimbursements}
-                      disabled={!canGrant}
-                      onChange={(e) =>
-                        setAuthority.mutate({ userId: member.id, canApprove: member.canApproveReimbursements, canProcess: e.target.checked })
-                      }
-                    />
-                    Refund
-                  </label>
-                </div>
-              ) : null}
             </div>
           </div>
         );
