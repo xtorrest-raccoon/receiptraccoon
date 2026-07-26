@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { countryForCurrency, countryName, formatMoney, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt } from "@rr/shared";
+import { countryForCurrency, countryName, formatMoney, formatShortDate, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
@@ -11,7 +11,10 @@ import { DownloadIcon } from "../../components/icons";
 
 function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
-  const header = ["Date", "Vendor", "User", "Category", "Country", "Currency", "Net amount", "Tax", "Total", "Reimbursement"];
+  const header = [
+    "Date", "Vendor", "User", "Category", "Country", "Currency", "Net amount", "Tax", "Total",
+    "Currency conversion", "Comment", "Reimbursement",
+  ];
   const lines = [header, ...rows.map((r) => [
     r.receiptDate ?? "",
     r.vendor ?? "",
@@ -26,9 +29,18 @@ function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
     reclaimedNetMinor(r) !== null ? formatMoney(reclaimedNetMinor(r)!, r.currency) : "",
     reclaimedTaxMinor(r) !== null ? formatMoney(reclaimedTaxMinor(r)!, r.currency) : "",
     formatMoney(r.totalMinor, r.currency),
+    // Same info as the web Receipt drawer's "Currency conversion" banner —
+    // only populated for a receipt that was actually printed in a different
+    // currency (see @rr/shared's Receipt type).
+    r.originalCurrency && r.originalTotalMinor !== null
+      ? `Originally ${formatMoney(r.originalTotalMinor, r.originalCurrency)} at ${r.fxRate}${r.fxRateDate ? ` on ${formatShortDate(r.fxRateDate)}` : ""}`
+      : "",
+    r.comment ?? "",
     r.reimbursementStatus,
   ])];
-  const csv = lines.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  // Excel doesn't assume UTF-8 for a bare CSV — without the BOM it reads "€"
+  // (multi-byte UTF-8) as the system codepage and mangles it into "â‚¬".
+  const csv = "﻿" + lines.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
