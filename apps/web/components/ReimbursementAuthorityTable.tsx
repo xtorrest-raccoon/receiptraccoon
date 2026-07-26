@@ -27,6 +27,14 @@ const AUTHORITY_OPTIONS: { value: AuthorityLevel; label: string }[] = [
   { value: "both", label: "Approve, Reject & Refund" },
 ];
 
+/** Short status word for the sub-label under a name — kept distinct from AUTHORITY_OPTIONS' longer dropdown labels. */
+const LEVEL_STATUS: Record<AuthorityLevel, string | null> = {
+  none: null,
+  approve: "Approver",
+  process: "Refunder",
+  both: "Super user",
+};
+
 const controlStyle = {
   width: "100%",
   border: `1px solid ${color.borderStrong}`,
@@ -129,7 +137,11 @@ export function ReimbursementAuthorityTable({
   const canGrant = canManageReimbursementAuthority(currentUser.role, currentUser);
 
   return (
-    <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden", marginTop: 16 }}>
+    // No overflow: hidden here (unlike other tables in this app) — the
+    // Authority on dropdown below is an absolutely-positioned popover that
+    // needs to escape this container's bounds, which overflow: hidden would
+    // clip instead of just rounding the corners.
+    <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], marginTop: 16 }}>
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
         <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Reimbursement authority</div>
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
@@ -177,7 +189,10 @@ export function ReimbursementAuthorityTable({
               <Avatar name={u.name} />
               <div>
                 <div style={{ fontWeight: fontWeight.bold }}>{u.name}</div>
-                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint, textTransform: "capitalize" }}>{u.role}</div>
+                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint }}>
+                  <span style={{ textTransform: "capitalize" }}>{u.role}</span>
+                  {!admin && LEVEL_STATUS[level] ? ` · ${LEVEL_STATUS[level]}` : ""}
+                </div>
               </div>
             </div>
 
