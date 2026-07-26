@@ -37,6 +37,20 @@ export function TeamIcon({ color }: { color: string }) {
   );
 }
 
+export function SetupIcon({ color }: { color: string }) {
+  return (
+    <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx={10} cy={10} r={2.6} fill="none" stroke={color} strokeWidth={1.6} />
+      <path
+        d="M10 3v1.6M10 15.4V17M17 10h-1.6M4.6 10H3M15.1 4.9l-1.1 1.1M5.9 14.1l-1.1 1.1M15.1 15.1l-1.1-1.1M5.9 5.9L4.8 4.8"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function DownloadIcon({ color }: { color: string }) {
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden="true">

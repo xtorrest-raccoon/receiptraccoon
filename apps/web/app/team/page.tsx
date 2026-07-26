@@ -8,9 +8,6 @@ import { useCurrentUser, useMileage, useTeam, useUsers } from "../../lib/queries
 import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
-import { InviteTeammatePanel } from "../../components/InviteTeammatePanel";
-import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
-import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 
 /** Translucent red-on-dark panel, mixed from the `up` (bad-trend) token — there
  * is no dedicated "alert on dark" entry in @rr/ui-tokens. */
@@ -163,13 +160,6 @@ export default function TeamPage() {
         />
       </div>
 
-      {admin ? (
-        <>
-          <ProvisionMemberPanel />
-          <InviteTeammatePanel />
-          <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
-        </>
-      ) : null}
     </div>
   );
 }

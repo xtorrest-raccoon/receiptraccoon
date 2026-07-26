@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CurrentUser, WorkspaceUser } from "@rr/api";
-import { isAdmin } from "@rr/shared";
+import { canManageReimbursementAuthority, isAdmin } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { useSetReimbursementAssignments, useSetReimbursementAuthority, useSetWorkspaceName, useWorkspaceName } from "../lib/queries";
+import { useSetReimbursementAssignments, useSetReimbursementAuthority } from "../lib/queries";
 import { Avatar } from "./Avatar";
 
 function nameOf(users: WorkspaceUser[], id: string): string {
@@ -14,9 +14,9 @@ function nameOf(users: WorkspaceUser[], id: string): string {
 /**
  * Who can approve/reject vs. refund, and specifically whose expenses they're
  * scoped to — separated out from TeamMembersTable (which is spend analytics,
- * a different concern) so this is the one place an admin manages the whole
- * approval hierarchy. Also hosts the workspace name field, moved here from
- * the sidebar as the other piece of "how this workspace is set up."
+ * a different concern) so this is the one place to manage the whole
+ * approval hierarchy. Lives on the Setup page, visible only to whoever
+ * canManageReimbursementAuthority — see that page's own gating.
  */
 export function ReimbursementAuthorityTable({
   users,
@@ -27,29 +27,10 @@ export function ReimbursementAuthorityTable({
 }) {
   const setAuthority = useSetReimbursementAuthority();
   const setAssignments = useSetReimbursementAssignments();
-  const { data: workspaceName } = useWorkspaceName();
-  const setWorkspaceName = useSetWorkspaceName();
-  const [nameDraft, setNameDraft] = useState("");
   const [editingApproverId, setEditingApproverId] = useState<string | null>(null);
   const [assignmentDraft, setAssignmentDraft] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (workspaceName !== undefined) setNameDraft(workspaceName);
-  }, [workspaceName]);
-
-  const commitName = () => {
-    const trimmed = nameDraft.trim();
-    if (!trimmed || trimmed === workspaceName) {
-      setNameDraft(workspaceName ?? "");
-      return;
-    }
-    setWorkspaceName.mutate(trimmed);
-  };
-
-  // Mirrors can_grant_reimbursement_authority() in 0007_reimbursement_authority.sql —
-  // owner/admin, or a super user (both capabilities already granted). A refund-only
-  // or approve-only person deliberately cannot grant, so they can't self-escalate.
-  const canGrant = isAdmin(currentUser.role) || (currentUser.canApproveReimbursements && currentUser.canProcessReimbursements);
+  const canGrant = canManageReimbursementAuthority(currentUser.role, currentUser);
 
   const startEditing = (u: WorkspaceUser) => {
     setEditingApproverId(u.id);
@@ -66,32 +47,8 @@ export function ReimbursementAuthorityTable({
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden", marginTop: 16 }}>
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
         <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Reimbursement authority</div>
-        <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2, marginBottom: 14 }}>
+        <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
           Who can approve or reject a claim, who can refund it, and specifically whose claims they cover.
-        </div>
-
-        <div style={{ maxWidth: 280 }}>
-          <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
-            Workspace name
-          </div>
-          <input
-            value={nameDraft}
-            onChange={(e) => setNameDraft(e.target.value)}
-            onBlur={commitName}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-            }}
-            style={{
-              width: "100%",
-              border: `1px solid ${color.borderStrong}`,
-              borderRadius: radius.sm,
-              padding: "7px 10px",
-              fontSize: fontSize.small + 0.5,
-              fontWeight: fontWeight.semibold,
-              background: color.surface,
-              color: color.text,
-            }}
-          />
         </div>
       </div>
 

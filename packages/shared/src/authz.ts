@@ -45,6 +45,23 @@ export function canViewTeamPage(role: Role, authority: ReimbursementAuthority): 
   return isAdmin(role) || hasAnyReimbursementAuthority(authority);
 }
 
+/** Both capabilities granted — a "super user" in everything-but-role terms. */
+export function hasFullReimbursementAuthority(authority: ReimbursementAuthority): boolean {
+  return authority.canApproveReimbursements && authority.canProcessReimbursements;
+}
+
+/**
+ * Who can grant/revoke someone else's reimbursement authority, and who sees
+ * the Setup page (account creation, invites, the authority table itself).
+ * Mirrors can_grant_reimbursement_authority() in 0007_reimbursement_authority.sql —
+ * deliberately narrower than "anyone with either capability": an approve-only
+ * or refund-only person cannot grant, so they can't self-escalate into a
+ * super user by their own hand.
+ */
+export function canManageReimbursementAuthority(role: Role, authority: ReimbursementAuthority): boolean {
+  return isAdmin(role) || hasFullReimbursementAuthority(authority);
+}
+
 /**
  * Can this actor move a receipt (or mileage trip) to `targetStatus`?
  *

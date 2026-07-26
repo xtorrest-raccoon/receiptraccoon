@@ -3,33 +3,37 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { canViewTeamPage } from "@rr/shared";
-import { signOut } from "@rr/api";
+import { canManageReimbursementAuthority, canViewTeamPage } from "@rr/shared";
+import { signOut, type CurrentUser } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
-import { CURRENCIES } from "../lib/data";
-import { useCurrentUser, useHomeCurrency, useSetHomeCurrency } from "../lib/queries";
-import { DashboardIcon, ReceiptsIcon, TeamIcon } from "./icons";
+import { useCurrentUser } from "../lib/queries";
+import { DashboardIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
 
 interface NavItem {
   href: string;
   label: string;
   Icon: (props: { color: string }) => React.ReactElement;
-  requiresAdmin: boolean;
+  /** Omitted means visible to everyone signed in. */
+  visible?: (user: CurrentUser) => boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", Icon: DashboardIcon, requiresAdmin: false },
-  { href: "/receipts", label: "Receipts", Icon: ReceiptsIcon, requiresAdmin: false },
-  { href: "/team", label: "Team", Icon: TeamIcon, requiresAdmin: true },
+  { href: "/dashboard", label: "Dashboard", Icon: DashboardIcon },
+  { href: "/receipts", label: "Receipts", Icon: ReceiptsIcon },
+  { href: "/team", label: "Team", Icon: TeamIcon, visible: (u) => canViewTeamPage(u.role, u) },
+  // Only whoever can grant reimbursement authority in the first place —
+  // same audience the Setup page itself gates on.
+  { href: "/setup", label: "Setup", Icon: SetupIcon, visible: (u) => canManageReimbursementAuthority(u.role, u) },
 ];
+
+function visibleItems(currentUser: CurrentUser | undefined) {
+  return NAV_ITEMS.filter((item) => !item.visible || (currentUser && item.visible(currentUser)));
+}
 
 export function Sidebar() {
   const pathname = usePathname();
   const { data: currentUser } = useCurrentUser();
-  const { data: homeCurrency } = useHomeCurrency();
-  const setHomeCurrency = useSetHomeCurrency();
-
-  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (currentUser && canViewTeamPage(currentUser.role, currentUser)));
+  const items = visibleItems(currentUser);
 
   return (
     <div
@@ -92,34 +96,6 @@ export function Sidebar() {
       </nav>
 
       <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ padding: 12, borderRadius: radius.lg, background: color.surfaceMuted }}>
-          <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
-            Home currency
-          </div>
-          <select
-            value={homeCurrency ?? "EUR"}
-            onChange={(e) => setHomeCurrency.mutate(e.target.value)}
-            style={{
-              width: "100%",
-              border: `1px solid ${color.borderStrong}`,
-              borderRadius: radius.sm,
-              padding: "6px 8px",
-              fontSize: fontSize.small + 0.5,
-              fontWeight: fontWeight.semibold,
-              background: color.surface,
-              color: color.text,
-            }}
-          >
-            {CURRENCIES.map((cur) => (
-              <option key={cur} value={cur}>
-                {cur}
-              </option>
-            ))}
-          </select>
-          <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
-            Foreign receipts are auto-converted at scan time using the latest rate.
-          </div>
-        </div>
         <div style={{ padding: "14px 12px", borderRadius: radius.lg, background: color.brandTint }}>
           <div style={{ fontSize: fontSize.small, fontWeight: fontWeight.semibold, color: color.brandSoftText, marginBottom: 4 }}>
             Snap a receipt
@@ -154,7 +130,7 @@ export function Sidebar() {
 export function MobileTopBar() {
   const pathname = usePathname();
   const { data: currentUser } = useCurrentUser();
-  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (currentUser && canViewTeamPage(currentUser.role, currentUser)));
+  const items = visibleItems(currentUser);
 
   return (
     <div
