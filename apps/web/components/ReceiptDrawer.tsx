@@ -18,6 +18,7 @@ import { color, fontSize, fontWeight, layout, radius, reimbursementChip } from "
 import { useCurrentUser, useReceipt, useReceiptPhotoUrl, useSetReceiptReclaim, useUsers } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 import { CategoryChip, ReceiptStatusChip } from "./Chips";
+import { ZoomableImage } from "./ZoomableImage";
 
 const BACKDROP = `color-mix(in oklch, ${color.text} 45%, transparent)`;
 
@@ -361,8 +362,7 @@ export function ReceiptDrawer() {
             justifyContent: "center",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- same signed-URL reasoning as the thumbnail above */}
-          <img
+          <ZoomableImage
             src={photoUrl}
             alt={`Receipt from ${receipt.vendor ?? "unknown vendor"}`}
             style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: radius.md }}
