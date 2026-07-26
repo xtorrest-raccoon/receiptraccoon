@@ -1,6 +1,16 @@
 "use client";
 
-import { currencySymbol, formatMoney, formatShortDate, rateToDecimalString, type MileageTrip, type ReimbursementStatus } from "@rr/shared";
+import {
+  canTransitionReimbursement,
+  currencySymbol,
+  formatMoney,
+  formatShortDate,
+  rateToDecimalString,
+  type MileageTrip,
+  type ReimbursementAuthority,
+  type ReimbursementStatus,
+  type Role,
+} from "@rr/shared";
 import { color, fontSize, fontWeight, layout, radius, reimbursementChip } from "@rr/ui-tokens";
 
 const BACKDROP = `color-mix(in oklch, ${color.text} 45%, transparent)`;
@@ -17,14 +27,19 @@ export function MileageTripDrawer({
   trip,
   currency,
   creatorName,
-  admin,
+  canAct,
+  viewerRole,
+  viewerAuthority,
   onClose,
   onRequestStatusChange,
 }: {
   trip: MileageTrip;
   currency: string;
   creatorName: string;
-  admin: boolean;
+  /** Admin/owner, or granted approve/process authority — see canAct in MileageTable. */
+  canAct: boolean;
+  viewerRole: Role;
+  viewerAuthority: ReimbursementAuthority;
   onClose: () => void;
   onRequestStatusChange: (status: ReimbursementStatus) => void;
 }) {
@@ -74,15 +89,17 @@ export function MileageTripDrawer({
         </div>
 
         <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, marginBottom: 8 }}>Reimbursement</div>
-        {admin ? (
+        {canAct ? (
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
             {STATUS_ORDER.map((status) => {
               const active = trip.reimbursementStatus === status;
               const meta = reimbursementChip[status];
+              const enabled = canTransitionReimbursement(status, viewerRole, viewerAuthority);
               return (
                 <button
                   key={status}
                   type="button"
+                  disabled={!enabled}
                   onClick={() => onRequestStatusChange(status)}
                   style={{
                     flex: 1,
@@ -91,7 +108,8 @@ export function MileageTripDrawer({
                     borderRadius: radius.md,
                     fontSize: fontSize.small - 0.5,
                     fontWeight: fontWeight.bold,
-                    cursor: "pointer",
+                    cursor: enabled ? "pointer" : "not-allowed",
+                    opacity: enabled ? 1 : 0.4,
                     background: active ? meta.bg : color.surfaceMuted,
                     color: active ? meta.text : color.textFaint,
                     border: "none",

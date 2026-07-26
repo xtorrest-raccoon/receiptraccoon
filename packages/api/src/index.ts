@@ -129,11 +129,16 @@ export interface CurrentUser {
   name: string;
   role: Role;
   jobTitle: string | null;
+  /** Independent of role — see 0007_reimbursement_authority.sql. */
+  canApproveReimbursements: boolean;
+  canProcessReimbursements: boolean;
 }
 
 interface MemberWithProfileRow {
   role: Role;
   job_title: string | null;
+  can_approve_reimbursements: boolean;
+  can_process_reimbursements: boolean;
   // Confirmed against a live query (not assumed): a many-to-one embed like
   // this comes back as a single object, e.g. {"name":"Meals"}, not an array —
   // despite the untyped client's generic .select() overload claiming the
@@ -145,13 +150,20 @@ export async function getCurrentUser(): Promise<CurrentUser> {
   const userId = await getCurrentUserId();
   const { data, error } = await client()
     .from("workspace_members")
-    .select("role, job_title, profiles(display_name)")
+    .select("role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name)")
     .eq("user_id", userId)
     .limit(1)
     .single();
   if (error) throw error;
   const row = data as unknown as MemberWithProfileRow;
-  return { id: userId, name: row.profiles?.display_name ?? "", role: row.role, jobTitle: row.job_title };
+  return {
+    id: userId,
+    name: row.profiles?.display_name ?? "",
+    role: row.role,
+    jobTitle: row.job_title,
+    canApproveReimbursements: row.can_approve_reimbursements,
+    canProcessReimbursements: row.can_process_reimbursements,
+  };
 }
 
 export interface WorkspaceUser {
@@ -159,6 +171,8 @@ export interface WorkspaceUser {
   name: string;
   role: Role;
   jobTitle: string | null;
+  canApproveReimbursements: boolean;
+  canProcessReimbursements: boolean;
 }
 
 /**
@@ -172,11 +186,41 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
   const wsId = await getCurrentWorkspaceId();
   const { data, error } = await client()
     .from("workspace_members")
-    .select("user_id, role, job_title, profiles(display_name)")
+    .select("user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name)")
     .eq("workspace_id", wsId);
   if (error) throw error;
   const rows = data as unknown as (MemberWithProfileRow & { user_id: string })[];
-  return rows.map((m) => ({ id: m.user_id, name: m.profiles?.display_name ?? "", role: m.role, jobTitle: m.job_title }));
+  return rows.map((m) => ({
+    id: m.user_id,
+    name: m.profiles?.display_name ?? "",
+    role: m.role,
+    jobTitle: m.job_title,
+    canApproveReimbursements: m.can_approve_reimbursements,
+    canProcessReimbursements: m.can_process_reimbursements,
+  }));
+}
+
+/**
+ * Grants/revokes another member's reimbursement authority. Goes through the
+ * grant_reimbursement_authority() RPC rather than updating workspace_members
+ * directly — that table's RLS write policy is owner/admin-only for good
+ * reason (it also covers role and job_title), so a super user (a plain
+ * member with both capabilities) needs a narrower, SECURITY DEFINER path
+ * that only ever touches these two columns. See 0007_reimbursement_authority.sql.
+ */
+export async function setReimbursementAuthority(
+  userId: string,
+  canApprove: boolean,
+  canProcess: boolean,
+): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error } = await client().rpc("grant_reimbursement_authority", {
+    p_workspace_id: wsId,
+    p_user_id: userId,
+    p_can_approve: canApprove,
+    p_can_process: canProcess,
+  });
+  if (error) throw error;
 }
 
 export async function userName(id: string): Promise<string> {
@@ -659,11 +703,13 @@ export async function setReclaimMinor(id: string, minor: number): Promise<void> 
 }
 
 /**
- * The enforce_reimbursement_authority trigger does the actual work: checks
- * the caller is an admin, enforces the self-approval rule, requires a reason
- * on rejection, and logs to reimbursement_events — all server-side, so every
- * client that writes here is covered the same way. This just makes the write;
- * a rejected trigger surfaces as a thrown Postgrest error.
+ * The enforce_reimbursement_authority trigger does the actual work: checks the
+ * caller holds the capability the target status needs (canApproveReimbursements
+ * for approve/reject/back-to-pending, canProcessReimbursements for the final
+ * payout), enforces the self-approval rule, requires a reason on rejection,
+ * and logs to reimbursement_events — all server-side, so every client that
+ * writes here is covered the same way. This just makes the write; a rejected
+ * trigger surfaces as a thrown Postgrest error.
  */
 export async function setReimbursementStatus(id: string, status: ReimbursementStatus, reason?: string): Promise<void> {
   const { error } = await client()

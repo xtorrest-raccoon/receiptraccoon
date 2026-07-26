@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import {
   canEditReceiptAmount,
+  canTransitionReimbursement,
   formatMoney,
   formatPaymentMethod,
   formatShortDate,
+  hasAnyReimbursementAuthority,
   isAdmin,
   minorToDecimalString,
   parseMoneyToMinor,
@@ -40,7 +42,7 @@ export function ReceiptDrawer() {
 
   if (!selectedReceiptId || !receipt || !currentUser || !users) return null;
 
-  const admin = isAdmin(currentUser.role);
+  const canAct = isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser);
   const creatorName = users.find((u) => u.id === receipt.createdBy)?.name ?? "Unknown";
   const paymentMethod = formatPaymentMethod(receipt.paymentBrand, receipt.paymentLast4);
   const amountEditable = canEditReceiptAmount(receipt.reimbursementStatus);
@@ -148,15 +150,17 @@ export function ReceiptDrawer() {
         </div>
 
         <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, marginBottom: 8 }}>Reimbursement</div>
-        {admin ? (
+        {canAct ? (
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
             {STATUS_ORDER.map((status) => {
               const active = receipt.reimbursementStatus === status;
               const meta = reimbursementChip[status];
+              const enabled = canTransitionReimbursement(status, currentUser.role, currentUser);
               return (
                 <button
                   key={status}
                   type="button"
+                  disabled={!enabled}
                   onClick={() =>
                     requestReimbursementChange(receipt.id, receipt.vendor ?? "This receipt", status, receipt.rejectionReason)
                   }
@@ -167,7 +171,8 @@ export function ReceiptDrawer() {
                     borderRadius: radius.md,
                     fontSize: fontSize.small - 0.5,
                     fontWeight: fontWeight.bold,
-                    cursor: "pointer",
+                    cursor: enabled ? "pointer" : "not-allowed",
+                    opacity: enabled ? 1 : 0.4,
                     background: active ? meta.bg : color.surfaceMuted,
                     color: active ? meta.text : color.textFaint,
                     border: "none",

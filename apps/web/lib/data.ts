@@ -111,6 +111,10 @@ export function listUsers(): Promise<api.WorkspaceUser[]> {
   return api.listUsers();
 }
 
+export function setReimbursementAuthority(userId: string, canApprove: boolean, canProcess: boolean): Promise<void> {
+  return api.setReimbursementAuthority(userId, canApprove, canProcess);
+}
+
 export function listWorkspaceInvites(): Promise<WorkspaceInvite[]> {
   return api.listWorkspaceInvites();
 }

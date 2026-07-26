@@ -1,6 +1,16 @@
 "use client";
 
-import { categoryChipColor, formatMoney, formatShortDate, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type ReimbursementStatus } from "@rr/shared";
+import {
+  categoryChipColor,
+  canTransitionReimbursement,
+  formatMoney,
+  formatShortDate,
+  hasAnyReimbursementAuthority,
+  isAdmin,
+  reclaimedNetMinor,
+  reclaimedTaxMinor,
+  type ReimbursementStatus,
+} from "@rr/shared";
 import type { Receipt } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
@@ -26,7 +36,10 @@ export function ReceiptsTable({
 }) {
   const { openReceipt, requestReimbursementChange } = useDataStore();
   const { data: currentUser } = useCurrentUser();
-  const admin = currentUser ? isAdmin(currentUser.role) : false;
+  // Admin/owner or anyone granted approve/process authority sees the status
+  // control; canTransitionReimbursement below then disables the specific
+  // options their capability doesn't cover (e.g. approve-only can't reimburse).
+  const canAct = currentUser ? isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser) : false;
   const setCategory = useSetCategory();
 
   if (receipts.length === 0) {
@@ -140,7 +153,7 @@ export function ReceiptsTable({
               {formatMoney(r.totalMinor, r.currency)}
             </button>
             <div>
-              {admin ? (
+              {canAct ? (
                 <select
                   value={r.reimbursementStatus}
                   onChange={(e) =>
@@ -157,7 +170,7 @@ export function ReceiptsTable({
                   }}
                 >
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
+                    <option key={s} value={s} disabled={!currentUser || !canTransitionReimbursement(s, currentUser.role, currentUser)}>
                       {reimbursementChip[s].label}
                     </option>
                   ))}
@@ -209,7 +222,7 @@ export function ReceiptsTable({
               </div>
             ) : null}
             <div>
-              {admin ? (
+              {canAct ? (
                 <select
                   value={r.reimbursementStatus}
                   onChange={(e) =>
@@ -226,7 +239,7 @@ export function ReceiptsTable({
                   }}
                 >
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
+                    <option key={s} value={s} disabled={!currentUser || !canTransitionReimbursement(s, currentUser.role, currentUser)}>
                       {reimbursementChip[s].label}
                     </option>
                   ))}

@@ -49,8 +49,7 @@ export function Sidebar() {
     setWorkspaceName.mutate(trimmed);
   };
 
-  const role = currentUser?.role;
-  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (role && canViewTeamPage(role)));
+  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (currentUser && canViewTeamPage(currentUser.role, currentUser)));
 
   return (
     <div
@@ -198,8 +197,7 @@ export function Sidebar() {
 export function MobileTopBar() {
   const pathname = usePathname();
   const { data: currentUser } = useCurrentUser();
-  const role = currentUser?.role;
-  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (role && canViewTeamPage(role)));
+  const items = NAV_ITEMS.filter((item) => !item.requiresAdmin || (currentUser && canViewTeamPage(currentUser.role, currentUser)));
 
   return (
     <div

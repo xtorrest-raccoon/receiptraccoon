@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { countryForCurrency, countryName, formatMoney, formatShortDate, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt } from "@rr/shared";
+import { countryForCurrency, countryName, formatMoney, formatShortDate, hasAnyReimbursementAuthority, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
@@ -57,7 +57,10 @@ export default function ReceiptsPage() {
   const { data: categories } = useCategories();
   const { data: currentUser } = useCurrentUser();
   const { data: users } = useUsers();
-  const admin = currentUser ? isAdmin(currentUser.role) : false;
+  // Anyone who can act on others' receipts needs to be able to filter to
+  // them first — not just admin/owner, now that approve/process authority
+  // can be granted to a plain member too.
+  const admin = currentUser ? isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser) : false;
   const { openAddReceipt } = useDataStore();
 
   const [search, setSearch] = useState("");

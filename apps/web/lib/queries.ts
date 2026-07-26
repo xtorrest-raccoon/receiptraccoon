@@ -81,7 +81,19 @@ export function useMyPendingInvite() {
 }
 
 /** Every read that a write anywhere in the app can affect. Coarse on purpose — see module doc. */
-const ALL_QUERY_KEYS = ["dashboard", "team", "receipts", "receipt", "mileage", "categories", "homeCurrency", "workspaceInvites", "workspaceName"];
+const ALL_QUERY_KEYS = [
+  "dashboard",
+  "team",
+  "receipts",
+  "receipt",
+  "mileage",
+  "categories",
+  "homeCurrency",
+  "workspaceInvites",
+  "workspaceName",
+  "users",
+  "currentUser",
+];
 
 function useInvalidateAll() {
   const queryClient = useQueryClient();
@@ -120,6 +132,15 @@ export function useSetReceiptReclaim() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
     mutationFn: ({ id, minor }: { id: string; minor: number }) => data.setReceiptReclaim(id, minor),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useSetReimbursementAuthority() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ userId, canApprove, canProcess }: { userId: string; canApprove: boolean; canProcess: boolean }) =>
+      data.setReimbursementAuthority(userId, canApprove, canProcess),
     onSuccess: invalidateAll,
   });
 }

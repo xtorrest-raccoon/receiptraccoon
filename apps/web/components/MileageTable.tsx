@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { formatMoney, formatShortDate, isAdmin, type MileageTrip, type ReimbursementStatus } from "@rr/shared";
+import {
+  canTransitionReimbursement,
+  formatMoney,
+  formatShortDate,
+  hasAnyReimbursementAuthority,
+  isAdmin,
+  type MileageTrip,
+  type ReimbursementStatus,
+} from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import type { WorkspaceUser } from "@rr/api";
 import { useCurrentUser } from "../lib/queries";
@@ -25,6 +33,7 @@ export function MileageTable({
 }) {
   const { data: currentUser } = useCurrentUser();
   const admin = currentUser ? isAdmin(currentUser.role) : false;
+  const canAct = currentUser ? admin || hasAnyReimbursementAuthority(currentUser) : false;
   const { requestReimbursementChange } = useDataStore();
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const selectedTrip = trips.find((t) => t.id === selectedTripId) ?? null;
@@ -95,7 +104,7 @@ export function MileageTable({
                   {formatMoney(t.amountMinor, currency)}
                 </button>
                 <div>
-                  {admin ? (
+                  {canAct ? (
                     <select
                       value={status}
                       onChange={(e) =>
@@ -112,7 +121,7 @@ export function MileageTable({
                       }}
                     >
                       {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
+                        <option key={s} value={s} disabled={!currentUser || !canTransitionReimbursement(s, currentUser.role, currentUser)}>
                           {reimbursementChip[s].label}
                         </option>
                       ))}
@@ -172,12 +181,14 @@ export function MileageTable({
         })
       )}
 
-      {selectedTrip ? (
+      {selectedTrip && currentUser ? (
         <MileageTripDrawer
           trip={selectedTrip}
           currency={currency}
           creatorName={nameOf(users, selectedTrip.userId)}
-          admin={admin}
+          canAct={canAct}
+          viewerRole={currentUser.role}
+          viewerAuthority={currentUser}
           onClose={() => setSelectedTripId(null)}
           onRequestStatusChange={(status) =>
             requestReimbursementChange(selectedTrip.id, selectedTrip.purpose, status, selectedTrip.rejectionReason, "mileage_trip")

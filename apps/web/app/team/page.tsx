@@ -16,7 +16,11 @@ const AGED_ALERT_BG = `color-mix(in oklch, ${color.up} 28%, transparent)`;
 
 export default function TeamPage() {
   const { data: currentUser } = useCurrentUser();
-  const allowed = currentUser ? canViewTeamPage(currentUser.role) : false;
+  const allowed = currentUser ? canViewTeamPage(currentUser.role, currentUser) : false;
+  // Full page (member list, invites, workspace-wide totals) stays admin/owner-only —
+  // someone granted only approve/process authority gets a trimmed view: just the
+  // reimbursement queues they can act on.
+  const admin = currentUser ? isAdmin(currentUser.role) : false;
 
   const [mileageUserFilter, setMileageUserFilter] = useState("All");
 
@@ -47,55 +51,63 @@ export default function TeamPage() {
 
   return (
     <div>
-      <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em", marginBottom: 4 }}>Team spend</div>
+      <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em", marginBottom: 4 }}>
+        {admin ? "Team spend" : "Reimbursement queue"}
+      </div>
       <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 20 }}>
-        Expense situation across everyone on the account this month.
+        {admin
+          ? "Expense situation across everyone on the account this month."
+          : "Receipts and mileage trips you have authority to approve, reject, or refund."}
       </div>
 
-      <div
-        className="flex-col sm:flex-row"
-        style={{
-          background: color.inkPanel,
-          borderRadius: radius["2xl"],
-          padding: "20px 24px",
-          marginBottom: 16,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 20,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: fontSize.small, color: color.inkPanelText, fontWeight: fontWeight.semibold }}>
-            Outstanding refund — all pending &amp; approved receipts, any month
-          </div>
-          <div style={{ fontSize: fontSize.stat, fontWeight: fontWeight.heavy, color: color.surface, marginTop: 8 }}>
-            {formatMoney(team.outstandingRefundMinor, team.currency)}
-          </div>
-          <div style={{ fontSize: fontSize.small, color: color.inkPanelText, marginTop: 4 }}>
-            Across {team.outstandingRefundCount} receipts
-          </div>
-        </div>
-        {team.agedOver30Count > 0 ? (
-          <div style={{ background: AGED_ALERT_BG, borderRadius: radius.lg, padding: "14px 18px" }}>
-            <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.up }}>Over 30 days old</div>
-            <div style={{ fontSize: fontSize.h2 - 1, fontWeight: fontWeight.heavy, color: color.surface, marginTop: 4 }}>
-              {formatMoney(team.agedOver30Minor, team.currency)}
+      {admin ? (
+        <>
+          <div
+            className="flex-col sm:flex-row"
+            style={{
+              background: color.inkPanel,
+              borderRadius: radius["2xl"],
+              padding: "20px 24px",
+              marginBottom: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 20,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: fontSize.small, color: color.inkPanelText, fontWeight: fontWeight.semibold }}>
+                Outstanding refund — all pending &amp; approved receipts, any month
+              </div>
+              <div style={{ fontSize: fontSize.stat, fontWeight: fontWeight.heavy, color: color.surface, marginTop: 8 }}>
+                {formatMoney(team.outstandingRefundMinor, team.currency)}
+              </div>
+              <div style={{ fontSize: fontSize.small, color: color.inkPanelText, marginTop: 4 }}>
+                Across {team.outstandingRefundCount} receipts
+              </div>
             </div>
-            <div style={{ fontSize: fontSize.tiny + 0.5, color: color.up, marginTop: 2 }}>{team.agedOver30Count} receipts need attention</div>
+            {team.agedOver30Count > 0 ? (
+              <div style={{ background: AGED_ALERT_BG, borderRadius: radius.lg, padding: "14px 18px" }}>
+                <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.up }}>Over 30 days old</div>
+                <div style={{ fontSize: fontSize.h2 - 1, fontWeight: fontWeight.heavy, color: color.surface, marginTop: 4 }}>
+                  {formatMoney(team.agedOver30Minor, team.currency)}
+                </div>
+                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.up, marginTop: 2 }}>{team.agedOver30Count} receipts need attention</div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" style={{ marginBottom: 18 }}>
-        <StatCard label="Team spend this month" value={formatMoney(team.teamTotalMinor, team.currency)} valueSize={fontSize.stat - 2} />
-        <StatCard label="Active users" value={team.userCount} valueSize={fontSize.stat - 2} />
-        <StatCard label="Needs review" value={team.needsReviewCount} valueSize={fontSize.stat - 2} />
-        <StatCard label="Highest spender" value={team.topSpenderName ?? "—"} valueSize={fontSize.h3} />
-      </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" style={{ marginBottom: 18 }}>
+            <StatCard label="Team spend this month" value={formatMoney(team.teamTotalMinor, team.currency)} valueSize={fontSize.stat - 2} />
+            <StatCard label="Active users" value={team.userCount} valueSize={fontSize.stat - 2} />
+            <StatCard label="Needs review" value={team.needsReviewCount} valueSize={fontSize.stat - 2} />
+            <StatCard label="Highest spender" value={team.topSpenderName ?? "—"} valueSize={fontSize.h3} />
+          </div>
 
-      <TeamMembersTable members={team.members} currency={team.currency} />
+          <TeamMembersTable members={team.members} currency={team.currency} users={users} currentUser={currentUser} />
+        </>
+      ) : null}
 
       <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden", marginTop: 16 }}>
         <div
@@ -149,7 +161,7 @@ export default function TeamPage() {
         />
       </div>
 
-      {isAdmin(currentUser.role) ? <InviteTeammatePanel /> : null}
+      {admin ? <InviteTeammatePanel /> : null}
     </div>
   );
 }
