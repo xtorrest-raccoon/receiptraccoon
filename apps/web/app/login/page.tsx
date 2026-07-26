@@ -66,7 +66,7 @@ export default function LoginPage() {
             textAlign: "center",
           }}
         >
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={88} height={88} style={{ marginBottom: 14 }} />
+          <Image src="/logo.png" alt="ReceiptRaccoon" width={104} height={104} style={{ marginBottom: 14 }} />
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a confirmation link, then sign in.
           </div>
@@ -98,7 +98,7 @@ export default function LoginPage() {
           gap: 12,
         }}
       >
-        <Image src="/logo.png" alt="ReceiptRaccoon" width={72} height={72} style={{ alignSelf: "center", marginBottom: 4 }} />
+        <Image src="/logo.png" alt="ReceiptRaccoon" width={104} height={104} style={{ alignSelf: "center", marginBottom: 4 }} />
         <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 8, textAlign: "center" }}>
           {mode === "signUp" ? "Create your workspace" : "Sign in"}
         </div>
