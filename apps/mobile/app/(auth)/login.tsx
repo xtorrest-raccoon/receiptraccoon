@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { signInWithPassword, signUp } from "@rr/api";
@@ -48,6 +49,7 @@ export default function LoginScreen() {
   if (confirmPending) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + 60, flex: 1, justifyContent: "center" }]}>
+        <Image source={require("../../assets/images/logo.png")} style={styles.logo} contentFit="contain" />
         <Text style={styles.title}>ReceiptRaccoon</Text>
         <Text style={[styles.subtitle, { textAlign: "center", marginBottom: 0 }]}>
           Check {email.trim()} for a confirmation link, then sign in.
@@ -65,6 +67,7 @@ export default function LoginScreen() {
         contentContainerStyle={[styles.container, { paddingTop: insets.top + 60 }]}
         keyboardShouldPersistTaps="handled"
       >
+        <Image source={require("../../assets/images/logo.png")} style={styles.logo} contentFit="contain" />
         <Text style={styles.title}>ReceiptRaccoon</Text>
         <Text style={styles.subtitle}>{mode === "signUp" ? "Create your workspace" : "Sign in"}</Text>
 
@@ -129,6 +132,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingBottom: 40,
     alignItems: "center",
+  },
+  logo: {
+    width: 110,
+    height: 110,
+    marginBottom: 10,
   },
   title: {
     fontSize: 24,
