@@ -271,7 +271,18 @@ export async function revokeInvite(id: string): Promise<void> {
   if (error) throw error;
 }
 
-/** The signed-in user's own pending invite, if any — checked wherever the app gates on session (see apps/*\/lib/queries.ts). */
+/**
+ * The signed-in user's own pending invite, if any — checked wherever the app
+ * gates on session (see apps/*\/lib/queries.ts).
+ *
+ * Two different workspaces can each invite the same email independently
+ * (the unique constraint is per-workspace, not global), so more than one row
+ * can legitimately match here. .maybeSingle() would throw in that case —
+ * order + limit(1) picks the most recently sent invite instead. The other
+ * invite(s) stay pending but unreachable from this UI until the shown one is
+ * accepted or revoked; a real multi-invite picker is more than this edge
+ * case has needed so far.
+ */
 export async function getMyPendingInvite(): Promise<MyPendingInvite | null> {
   const session = await getSession();
   const email = session?.user.email;
@@ -281,10 +292,11 @@ export async function getMyPendingInvite(): Promise<MyPendingInvite | null> {
     .select("id, email, role, status, created_at, workspaces(name)")
     .eq("status", "pending")
     .ilike("email", email)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
   if (error) throw error;
-  if (!data) return null;
-  const row = data as unknown as InviteRow & { workspaces: { name: string } | null };
+  const row = (data as unknown as (InviteRow & { workspaces: { name: string } | null })[])[0];
+  if (!row) return null;
   return {
     id: row.id,
     email: row.email,
