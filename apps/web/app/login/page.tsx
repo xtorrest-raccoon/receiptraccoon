@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { signInWithPassword, signUp } from "@rr/api";
@@ -65,9 +66,7 @@ export default function LoginPage() {
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em", marginBottom: 10 }}>
-            ReceiptRaccoon
-          </div>
+          <Image src="/logo.png" alt="ReceiptRaccoon" width={88} height={88} style={{ marginBottom: 14 }} />
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a confirmation link, then sign in.
           </div>
@@ -99,8 +98,8 @@ export default function LoginPage() {
           gap: 12,
         }}
       >
-        <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em" }}>ReceiptRaccoon</div>
-        <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 8 }}>
+        <Image src="/logo.png" alt="ReceiptRaccoon" width={72} height={72} style={{ alignSelf: "center", marginBottom: 4 }} />
+        <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 8, textAlign: "center" }}>
           {mode === "signUp" ? "Create your workspace" : "Sign in"}
         </div>
 

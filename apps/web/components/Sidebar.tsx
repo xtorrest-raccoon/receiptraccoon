@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { canViewTeamPage } from "@rr/shared";
@@ -7,7 +8,7 @@ import { signOut } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../lib/data";
 import { useCurrentUser, useHomeCurrency, useSetHomeCurrency } from "../lib/queries";
-import { DashboardIcon, LogoMark, ReceiptsIcon, TeamIcon } from "./icons";
+import { DashboardIcon, ReceiptsIcon, TeamIcon } from "./icons";
 
 interface NavItem {
   href: string;
@@ -39,17 +40,14 @@ export function Sidebar() {
         background: color.surface,
         borderRight: `1px solid ${color.border}`,
         flexDirection: "column",
-        padding: "20px 14px",
+        padding: "12px 14px 20px 14px",
         position: "sticky",
         top: 0,
         height: "100vh",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px 22px 8px" }}>
-        <LogoMark faceColor={color.textStrong} noseColor={color.brand} />
-        <div style={{ fontWeight: fontWeight.heavy, fontSize: fontSize.base + 2, letterSpacing: "-0.01em" }}>
-          ReceiptRaccoon
-        </div>
+      <div style={{ display: "flex", justifyContent: "center", padding: "0 8px 10px 8px" }}>
+        <Image src="/logo.png" alt="ReceiptRaccoon" width={140} height={140} />
       </div>
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
@@ -173,10 +171,7 @@ export function MobileTopBar() {
         zIndex: 5,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <LogoMark faceColor={color.textStrong} noseColor={color.brand} size={28} />
-        <div style={{ fontWeight: fontWeight.heavy, fontSize: fontSize.base }}>ReceiptRaccoon</div>
-      </div>
+      <Image src="/logo.png" alt="ReceiptRaccoon" width={44} height={44} />
       <div style={{ display: "flex", gap: 4 }}>
         {items.map((item) => {
           const active = pathname?.startsWith(item.href) ?? false;
