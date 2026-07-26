@@ -30,6 +30,7 @@ import { TextInput } from "../../components/TextInput";
 import { CategoryChip } from "../../components/CategoryChip";
 import { StatusBadge } from "../../components/StatusBadge";
 import { PickerSheet } from "../../components/PickerSheet";
+import { ZoomableImage } from "../../components/ZoomableImage";
 
 export default function ReceiptDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -261,9 +262,16 @@ export default function ReceiptDetailScreen() {
 
       {photoUrl && (
         <Modal visible={photoViewerOpen} transparent animationType="fade" onRequestClose={() => setPhotoViewerOpen(false)}>
-          <Pressable style={styles.photoViewerBackdrop} onPress={() => setPhotoViewerOpen(false)}>
-            <Image source={{ uri: photoUrl }} style={styles.photoViewerImage} contentFit="contain" />
-          </Pressable>
+          {/*
+           * Not a Pressable-to-close backdrop: the image itself now owns pinch,
+           * pan, and double-tap gestures (see ZoomableImage), so a tap on it
+           * needs to reach the gesture handler rather than closing the viewer.
+           * Closing goes through the × button (or the hardware back button,
+           * via Modal's own onRequestClose above).
+           */}
+          <View style={styles.photoViewerBackdrop}>
+            <ZoomableImage uri={photoUrl} style={styles.photoViewerImage} />
+          </View>
           <Pressable
             onPress={() => setPhotoViewerOpen(false)}
             style={[styles.photoViewerClose, { top: insets.top + 12 }]}
