@@ -11,6 +11,16 @@ function nameOf(users: WorkspaceUser[], id: string): string {
   return users.find((u) => u.id === id)?.name ?? "Unknown";
 }
 
+const selectStyle = {
+  width: "100%",
+  border: `1px solid ${color.borderStrong}`,
+  borderRadius: radius.sm,
+  padding: "4px 6px",
+  fontSize: fontSize.small,
+  background: color.surface,
+  color: color.text,
+};
+
 /**
  * Who can approve/reject vs. refund, and specifically whose expenses they're
  * scoped to — separated out from TeamMembersTable (which is spend analytics,
@@ -55,7 +65,7 @@ export function ReimbursementAuthorityTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1.6fr 1fr 1fr 2fr",
+          gridTemplateColumns: "1.6fr 1.3fr 2.2fr",
           padding: "10px 20px",
           fontSize: fontSize.tiny + 0.5,
           fontWeight: fontWeight.bold,
@@ -66,8 +76,7 @@ export function ReimbursementAuthorityTable({
         }}
       >
         <div>User</div>
-        <div>Approve / Reject</div>
-        <div>Refund</div>
+        <div>Approval authority</div>
         <div>Authority on</div>
       </div>
 
@@ -75,53 +84,72 @@ export function ReimbursementAuthorityTable({
         const admin = isAdmin(u.role);
         const editing = editingApproverId === u.id;
         const otherUsers = users.filter((other) => other.id !== u.id);
+
+        const selectedAuthority = [
+          ...(u.canApproveReimbursements ? ["approve"] : []),
+          ...(u.canProcessReimbursements ? ["process"] : []),
+        ];
+
         return (
-          <div key={u.id} style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
-            <div
-              className="grid sm:grid"
-              style={{
-                gridTemplateColumns: "1.6fr 1fr 1fr 2fr",
-                alignItems: "center",
-                padding: "12px 20px",
-                fontSize: fontSize.body,
-                gap: 8,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Avatar name={u.name} />
-                <div>
-                  <div style={{ fontWeight: fontWeight.bold }}>{u.name}</div>
-                  <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint, textTransform: "capitalize" }}>{u.role}</div>
-                </div>
+          <div
+            key={u.id}
+            className="grid sm:grid"
+            style={{
+              gridTemplateColumns: "1.6fr 1.3fr 2.2fr",
+              alignItems: "start",
+              padding: "12px 20px",
+              borderBottom: `1px solid ${color.borderSubtle}`,
+              fontSize: fontSize.body,
+              gap: 10,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Avatar name={u.name} />
+              <div>
+                <div style={{ fontWeight: fontWeight.bold }}>{u.name}</div>
+                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint, textTransform: "capitalize" }}>{u.role}</div>
               </div>
+            </div>
 
-              {admin ? (
-                <div style={{ fontSize: fontSize.small, color: color.textFaint, gridColumn: "2 / span 3" }}>
-                  Full authority over everyone (admin)
-                </div>
-              ) : (
-                <>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: fontSize.small, color: color.textMuted, cursor: canGrant ? "pointer" : "default" }}>
-                    <input
-                      type="checkbox"
-                      checked={u.canApproveReimbursements}
-                      disabled={!canGrant}
-                      onChange={(e) => setAuthority.mutate({ userId: u.id, canApprove: e.target.checked, canProcess: u.canProcessReimbursements })}
-                    />
-                    Approve
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: fontSize.small, color: color.textMuted, cursor: canGrant ? "pointer" : "default" }}>
-                    <input
-                      type="checkbox"
-                      checked={u.canProcessReimbursements}
-                      disabled={!canGrant}
-                      onChange={(e) => setAuthority.mutate({ userId: u.id, canApprove: u.canApproveReimbursements, canProcess: e.target.checked })}
-                    />
-                    Refund
-                  </label>
+            {admin ? (
+              <div style={{ fontSize: fontSize.small, color: color.textFaint, gridColumn: "2 / span 2" }}>
+                Full authority over everyone (admin)
+              </div>
+            ) : (
+              <>
+                <select
+                  multiple
+                  value={selectedAuthority}
+                  disabled={!canGrant}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    setAuthority.mutate({
+                      userId: u.id,
+                      canApprove: selected.includes("approve"),
+                      canProcess: selected.includes("process"),
+                    });
+                  }}
+                  style={{ ...selectStyle, height: 52 }}
+                >
+                  <option value="approve">Approve / Reject</option>
+                  <option value="process">Refund</option>
+                </select>
 
-                  {editing ? (
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {editing ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <select
+                      multiple
+                      value={assignmentDraft}
+                      onChange={(e) => setAssignmentDraft(Array.from(e.target.selectedOptions).map((o) => o.value))}
+                      style={{ ...selectStyle, height: Math.min(140, 30 + otherUsers.length * 22) }}
+                    >
+                      {otherUsers.map((other) => (
+                        <option key={other.id} value={other.id}>
+                          {other.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ display: "flex", gap: 10 }}>
                       <button
                         type="button"
                         onClick={saveAssignments}
@@ -137,58 +165,35 @@ export function ReimbursementAuthorityTable({
                         Cancel
                       </button>
                     </div>
-                  ) : (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      {u.canApproveReimbursements || u.canProcessReimbursements ? (
-                        u.assignedEmployeeIds.length === 0 ? (
-                          <span style={{ fontSize: fontSize.small, color: color.textFaint, fontStyle: "italic" }}>
-                            No one — not yet assigned
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: fontSize.small, color: color.textMuted }}>
-                            {u.assignedEmployeeIds.map((id) => nameOf(users, id)).join(", ")}
-                          </span>
-                        )
-                      ) : (
-                        <span style={{ fontSize: fontSize.small, color: color.textFaint }}>—</span>
-                      )}
-                      {canGrant ? (
-                        <button
-                          type="button"
-                          onClick={() => startEditing(u)}
-                          style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.brand, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                        >
-                          Edit
-                        </button>
-                      ) : null}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {editing ? (
-              <div style={{ padding: "0 20px 14px 20px", display: "flex", gap: 12, flexWrap: "wrap" }}>
-                {otherUsers.length === 0 ? (
-                  <span style={{ fontSize: fontSize.small, color: color.textFaint }}>No other members yet.</span>
+                  </div>
                 ) : (
-                  otherUsers.map((other) => (
-                    <label key={other.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: fontSize.small, color: color.textMuted, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={assignmentDraft.includes(other.id)}
-                        onChange={(e) =>
-                          setAssignmentDraft((prev) =>
-                            e.target.checked ? [...prev, other.id] : prev.filter((id) => id !== other.id),
-                          )
-                        }
-                      />
-                      {other.name}
-                    </label>
-                  ))
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {u.canApproveReimbursements || u.canProcessReimbursements ? (
+                      u.assignedEmployeeIds.length === 0 ? (
+                        <span style={{ fontSize: fontSize.small, color: color.textFaint, fontStyle: "italic" }}>
+                          No one — not yet assigned
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: fontSize.small, color: color.textMuted }}>
+                          {u.assignedEmployeeIds.map((id) => nameOf(users, id)).join(", ")}
+                        </span>
+                      )
+                    ) : (
+                      <span style={{ fontSize: fontSize.small, color: color.textFaint }}>—</span>
+                    )}
+                    {canGrant ? (
+                      <button
+                        type="button"
+                        onClick={() => startEditing(u)}
+                        style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.brand, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      >
+                        Edit
+                      </button>
+                    ) : null}
+                  </div>
                 )}
-              </div>
-            ) : null}
+              </>
+            )}
           </div>
         );
       })}
