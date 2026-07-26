@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { formatMoney, formatShortDate, isAdmin, type MileageTrip, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import type { WorkspaceUser } from "@rr/api";
 import { useCurrentUser } from "../lib/queries";
 import { useDataStore } from "../lib/store";
+import { MileageTripDrawer } from "./MileageTripDrawer";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
@@ -24,6 +26,8 @@ export function MileageTable({
   const { data: currentUser } = useCurrentUser();
   const admin = currentUser ? isAdmin(currentUser.role) : false;
   const { requestReimbursementChange } = useDataStore();
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const selectedTrip = trips.find((t) => t.id === selectedTripId) ?? null;
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden" }}>
@@ -65,13 +69,31 @@ export function MileageTable({
                   fontSize: fontSize.body,
                 }}
               >
-                <div style={{ color: color.textMuted }}>{formatShortDate(t.tripDate)}</div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTripId(t.id)}
+                  style={{ cursor: "pointer", color: color.textMuted, background: "none", border: "none", textAlign: "left", padding: 0, fontFamily: "inherit", fontSize: "inherit" }}
+                >
+                  {formatShortDate(t.tripDate)}
+                </button>
                 <div style={{ fontWeight: fontWeight.semibold }}>{nameOf(users, t.userId)}</div>
-                <div style={{ color: color.textStrong }}>{t.purpose}</div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTripId(t.id)}
+                  style={{ cursor: "pointer", color: color.textStrong, background: "none", border: "none", textAlign: "left", padding: 0, fontFamily: "inherit", fontSize: "inherit" }}
+                >
+                  {t.purpose}
+                </button>
                 <div style={{ color: color.textMuted }}>
                   {t.distance.toFixed(1)} {t.distanceUnit}
                 </div>
-                <div style={{ fontWeight: fontWeight.bold }}>{formatMoney(t.amountMinor, currency)}</div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTripId(t.id)}
+                  style={{ cursor: "pointer", fontWeight: fontWeight.bold, background: "none", border: "none", textAlign: "left", padding: 0, color: color.text, fontFamily: "inherit", fontSize: "inherit" }}
+                >
+                  {formatMoney(t.amountMinor, currency)}
+                </button>
                 <div>
                   {admin ? (
                     <select
@@ -120,19 +142,48 @@ export function MileageTable({
                   <span style={{ fontWeight: fontWeight.semibold }}>{nameOf(users, t.userId)}</span>
                   <span style={{ fontWeight: fontWeight.bold }}>{formatMoney(t.amountMinor, currency)}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", color: color.textMuted, fontSize: fontSize.small }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTripId(t.id)}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    color: color.textMuted,
+                    fontSize: fontSize.small,
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    textAlign: "left",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
                   <span>
                     {formatShortDate(t.tripDate)} · {t.purpose}
                   </span>
                   <span>
                     {t.distance.toFixed(1)} {t.distanceUnit}
                   </span>
-                </div>
+                </button>
               </div>
             </div>
           );
         })
       )}
+
+      {selectedTrip ? (
+        <MileageTripDrawer
+          trip={selectedTrip}
+          currency={currency}
+          creatorName={nameOf(users, selectedTrip.userId)}
+          admin={admin}
+          onClose={() => setSelectedTripId(null)}
+          onRequestStatusChange={(status) =>
+            requestReimbursementChange(selectedTrip.id, selectedTrip.purpose, status, selectedTrip.rejectionReason, "mileage_trip")
+          }
+        />
+      ) : null}
     </div>
   );
 }
