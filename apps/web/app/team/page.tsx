@@ -9,6 +9,7 @@ import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
 import { InviteTeammatePanel } from "../../components/InviteTeammatePanel";
+import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 
 /** Translucent red-on-dark panel, mixed from the `up` (bad-trend) token — there
  * is no dedicated "alert on dark" entry in @rr/ui-tokens. */
@@ -161,7 +162,12 @@ export default function TeamPage() {
         />
       </div>
 
-      {admin ? <InviteTeammatePanel /> : null}
+      {admin ? (
+        <>
+          <ProvisionMemberPanel />
+          <InviteTeammatePanel />
+        </>
+      ) : null}
     </div>
   );
 }

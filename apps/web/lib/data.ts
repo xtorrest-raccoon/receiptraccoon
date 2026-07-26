@@ -127,6 +127,31 @@ export function revokeInvite(id: string): Promise<void> {
   return api.revokeInvite(id);
 }
 
+/**
+ * Admin/owner-only: creates a brand-new account directly (no self-registration,
+ * no email) and returns the one-time temporary password to relay to that
+ * person. See /api/team/provision-member.
+ */
+export async function provisionMember(email: string, role: Role): Promise<{ email: string; tempPassword: string }> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/team/provision-member", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ email, role }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not create that account (HTTP ${res.status})`);
+  }
+  return body;
+}
+
+export function changePassword(newPassword: string): Promise<void> {
+  return api.changePassword(newPassword);
+}
+
 export function getMyPendingInvite(): Promise<MyPendingInvite | null> {
   return api.getMyPendingInvite();
 }

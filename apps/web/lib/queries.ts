@@ -202,6 +202,22 @@ export function useRevokeInvite() {
   });
 }
 
+export function useProvisionMember() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ email, role }: { email: string; role: Role }) => data.provisionMember(email, role),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useChangePassword() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (newPassword: string) => data.changePassword(newPassword),
+    onSuccess: invalidateAll,
+  });
+}
+
 /**
  * Accepting an invite changes the caller's entire workspace — clears the
  * whole cache rather than invalidating known keys, since every query result

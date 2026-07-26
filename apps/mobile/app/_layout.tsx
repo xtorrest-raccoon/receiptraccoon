@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { getSession, onAuthStateChange } from "@rr/api";
 import { AcceptInviteModal } from "../components/AcceptInviteModal";
+import { FinishSetupScreen } from "../components/FinishSetupScreen";
+import { useCurrentUser } from "../lib/queries";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
@@ -40,9 +42,22 @@ function AuthGate({ children }: { children: ReactNode }) {
   }, [session, segments, router]);
 
   if (session === "loading") return null;
+  if (!session) return <>{children}</>;
+  return <SignedInGate>{children}</SignedInGate>;
+}
+
+/**
+ * Split out from AuthGate so useCurrentUser() only ever runs once a session
+ * actually exists — otherwise it'd fire (and error, harmlessly but noisily)
+ * on every cold load before sign-in, same reasoning as AcceptInviteModal
+ * only ever being mounted here rather than unconditionally.
+ */
+function SignedInGate({ children }: { children: ReactNode }) {
+  const { data: currentUser } = useCurrentUser();
+  if (currentUser?.mustChangePassword) return <FinishSetupScreen />;
   return (
     <>
-      {session ? <AcceptInviteModal /> : null}
+      <AcceptInviteModal />
       {children}
     </>
   );

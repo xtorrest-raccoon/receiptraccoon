@@ -94,6 +94,19 @@ export async function signOut(): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Sets a real password for an admin/owner-provisioned account and clears
+ * mustChangePassword — the two happen together so the flag can never end up
+ * cleared without an actual password change (see 0008_admin_provisioned_accounts.sql).
+ */
+export async function changePassword(newPassword: string): Promise<void> {
+  const userId = await getCurrentUserId();
+  const { error: pwError } = await client().auth.updateUser({ password: newPassword });
+  if (pwError) throw pwError;
+  const { error: profileError } = await client().from("profiles").update({ must_change_password: false }).eq("id", userId);
+  if (profileError) throw profileError;
+}
+
 export async function getSession(): Promise<Session | null> {
   const { data, error } = await client().auth.getSession();
   if (error) throw error;
@@ -132,6 +145,8 @@ export interface CurrentUser {
   /** Independent of role — see 0007_reimbursement_authority.sql. */
   canApproveReimbursements: boolean;
   canProcessReimbursements: boolean;
+  /** True only for an admin/owner-provisioned account that hasn't set its own password yet — see 0008_admin_provisioned_accounts.sql. */
+  mustChangePassword: boolean;
 }
 
 interface MemberWithProfileRow {
@@ -143,14 +158,16 @@ interface MemberWithProfileRow {
   // this comes back as a single object, e.g. {"name":"Meals"}, not an array —
   // despite the untyped client's generic .select() overload claiming the
   // opposite. Trust the runtime shape here, not the loose inferred type.
-  profiles: { display_name: string } | null;
+  // must_change_password is only ever selected by getCurrentUser, not
+  // listUsers — optional here rather than a second near-duplicate type.
+  profiles: { display_name: string; must_change_password?: boolean } | null;
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
   const userId = await getCurrentUserId();
   const { data, error } = await client()
     .from("workspace_members")
-    .select("role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name)")
+    .select("role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name, must_change_password)")
     .eq("user_id", userId)
     .limit(1)
     .single();
@@ -163,6 +180,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     jobTitle: row.job_title,
     canApproveReimbursements: row.can_approve_reimbursements,
     canProcessReimbursements: row.can_process_reimbursements,
+    mustChangePassword: row.profiles?.must_change_password ?? false,
   };
 }
 

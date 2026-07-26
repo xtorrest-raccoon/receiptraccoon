@@ -40,6 +40,10 @@ export function getCurrentUser(): Promise<api.CurrentUser> {
   return api.getCurrentUser();
 }
 
+export function signOut(): Promise<void> {
+  return api.signOut();
+}
+
 /**
  * The signed-in user's own id, read from the local session (no network round
  * trip — supabase-js keeps the session in memory/AsyncStorage) rather than

@@ -7,11 +7,13 @@ import type { Session } from "@supabase/supabase-js";
 import { getSession, onAuthStateChange } from "@rr/api";
 import { color } from "@rr/ui-tokens";
 import { DataStoreProvider } from "../lib/store";
+import { useCurrentUser } from "../lib/queries";
 import { MobileTopBar, Sidebar } from "./Sidebar";
 import { ReceiptDrawer } from "./ReceiptDrawer";
 import { AddReceiptDrawer } from "./AddReceiptDrawer";
 import { RejectionModal } from "./RejectionModal";
 import { AcceptInviteBanner } from "./AcceptInviteBanner";
+import { SetPasswordScreen } from "./SetPasswordScreen";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
@@ -70,19 +72,33 @@ function AppShellBody({
 
   return (
     <DataStoreProvider>
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: color.bgWeb, color: color.text }}>
-        <AcceptInviteBanner />
-        <MobileTopBar />
-        <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-          <Sidebar />
-          <div className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-9 lg:py-7" style={{ paddingBottom: 60 }}>
-            {children}
+      <PasswordGate>
+        <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: color.bgWeb, color: color.text }}>
+          <AcceptInviteBanner />
+          <MobileTopBar />
+          <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+            <Sidebar />
+            <div className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-9 lg:py-7" style={{ paddingBottom: 60 }}>
+              {children}
+            </div>
           </div>
         </div>
-      </div>
-      <ReceiptDrawer />
-      <AddReceiptDrawer />
-      <RejectionModal />
+        <ReceiptDrawer />
+        <AddReceiptDrawer />
+        <RejectionModal />
+      </PasswordGate>
     </DataStoreProvider>
   );
+}
+
+/**
+ * Blocks everything below it — including the drawers/modals, not just the
+ * sidebar — until an admin/owner-provisioned account has set its own
+ * password. useCurrentUser() lives inside DataStoreProvider's QueryClient
+ * boundary, so this has to sit here rather than in AppShell itself.
+ */
+function PasswordGate({ children }: { children: ReactNode }) {
+  const { data: currentUser } = useCurrentUser();
+  if (currentUser?.mustChangePassword) return <SetPasswordScreen />;
+  return <>{children}</>;
 }
