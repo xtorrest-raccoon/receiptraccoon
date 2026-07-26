@@ -26,6 +26,7 @@ import {
 import { Text } from "../../components/Text";
 import { TextInput } from "../../components/TextInput";
 import { TripRow } from "../../components/TripRow";
+import { TripDetailModal } from "../../components/TripDetailModal";
 import { SwipeToDelete } from "../../components/SwipeToDelete";
 
 export default function MileageScreen() {
@@ -54,6 +55,9 @@ export default function MileageScreen() {
   const [calcError, setCalcError] = useState<string | null>(null);
   /** Non-null only once a successful lookup has resolved a distance to save. */
   const [calculated, setCalculated] = useState<CalculatedDistance | null>(null);
+
+  /** Non-null when a non-editable trip's read-only details are open — see TripDetailModal. */
+  const [viewingTrip, setViewingTrip] = useState<MileageTrip | null>(null);
 
   if (!currency || !unit || rateMilli === undefined || isLoading || !trips) {
     return (
@@ -341,7 +345,7 @@ export default function MileageScreen() {
                     trip={t}
                     currency={currency}
                     displayUnit={unit}
-                    {...(editable ? { onPress: () => startEdit(t) } : {})}
+                    onPress={editable ? () => startEdit(t) : () => setViewingTrip(t)}
                   />
                 </SwipeToDelete>
               );
@@ -349,6 +353,13 @@ export default function MileageScreen() {
           </View>
         )}
       </ScrollView>
+
+      <TripDetailModal
+        trip={viewingTrip}
+        currency={currency}
+        displayUnit={unit}
+        onClose={() => setViewingTrip(null)}
+      />
     </View>
   );
 }
