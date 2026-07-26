@@ -66,7 +66,7 @@ export default function LoginPage() {
             textAlign: "center",
           }}
         >
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={132} height={132} style={{ marginBottom: 14 }} />
+          <Image src="/logo.png" alt="ReceiptRaccoon" width={132} height={132} style={{ display: "block", margin: "0 auto 14px" }} />
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a confirmation link, then sign in.
           </div>
