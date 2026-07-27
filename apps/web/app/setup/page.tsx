@@ -9,6 +9,14 @@ import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 import { InviteTeammatePanel } from "../../components/InviteTeammatePanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 
+function SectionHeading({ children }: { children: string }) {
+  return (
+    <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.bold, color: color.textFaint, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 28, marginBottom: 10 }}>
+      {children}
+    </div>
+  );
+}
+
 /**
  * Everything about how this workspace is configured, in one place — account
  * creation, invites, the reimbursement approval hierarchy, and workspace-wide
@@ -48,37 +56,52 @@ export default function SetupPage() {
         How this workspace is configured — accounts, invites, and who can approve or refund what.
       </div>
 
-      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, maxWidth: 280 }}>
-        <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
-          Home currency
+      <div className="flex flex-wrap" style={{ gap: 16 }}>
+        <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 220, flex: "0 0 auto" }}>
+          <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
+            Home currency
+          </div>
+          <select
+            value={homeCurrency ?? "EUR"}
+            onChange={(e) => setHomeCurrency.mutate(e.target.value)}
+            style={{
+              width: "100%",
+              border: `1px solid ${color.borderStrong}`,
+              borderRadius: radius.sm,
+              padding: "7px 10px",
+              fontSize: fontSize.small + 0.5,
+              fontWeight: fontWeight.semibold,
+              background: color.surface,
+              color: color.text,
+            }}
+          >
+            {CURRENCIES.map((cur) => (
+              <option key={cur} value={cur}>
+                {cur}
+              </option>
+            ))}
+          </select>
+          <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
+            Foreign receipts are auto-converted at scan time using the latest rate.
+          </div>
         </div>
-        <select
-          value={homeCurrency ?? "EUR"}
-          onChange={(e) => setHomeCurrency.mutate(e.target.value)}
-          style={{
-            width: "100%",
-            border: `1px solid ${color.borderStrong}`,
-            borderRadius: radius.sm,
-            padding: "7px 10px",
-            fontSize: fontSize.small + 0.5,
-            fontWeight: fontWeight.semibold,
-            background: color.surface,
-            color: color.text,
-          }}
-        >
-          {CURRENCIES.map((cur) => (
-            <option key={cur} value={cur}>
-              {cur}
-            </option>
-          ))}
-        </select>
-        <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
-          Foreign receipts are auto-converted at scan time using the latest rate.
+
+        <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 180, flex: "0 0 auto" }}>
+          <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
+            Active seats
+          </div>
+          <div style={{ fontSize: fontSize.stat - 4, fontWeight: fontWeight.heavy }}>{users.length}</div>
+          <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
+            Everyone currently in this workspace.
+          </div>
         </div>
       </div>
 
+      <SectionHeading>Account access</SectionHeading>
       <ProvisionMemberPanel />
       <InviteTeammatePanel />
+
+      <SectionHeading>Approval hierarchy</SectionHeading>
       <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
     </div>
   );
