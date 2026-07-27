@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { CurrentUser, WorkspaceUser } from "@rr/api";
 import { canManageReimbursementAuthority, isAdmin } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { useSetReimbursementAssignments, useSetReimbursementAuthority } from "../lib/queries";
+import { useRemoveMember, useSetReimbursementAssignments, useSetReimbursementAuthority } from "../lib/queries";
 import { Avatar } from "./Avatar";
 
 function nameOf(users: WorkspaceUser[], id: string): string {
@@ -134,7 +134,19 @@ export function ReimbursementAuthorityTable({
 }) {
   const setAuthority = useSetReimbursementAuthority();
   const setAssignments = useSetReimbursementAssignments();
+  const removeMember = useRemoveMember();
   const canGrant = canManageReimbursementAuthority(currentUser.role, currentUser);
+  // Stricter than canGrant on purpose — removing someone's access is more
+  // severe than granting/revoking a capability, so it stays admin/owner-only
+  // even for a super user who can already manage authority.
+  const canRemove = isAdmin(currentUser.role);
+
+  const remove = (u: WorkspaceUser) => {
+    if (!window.confirm(`Remove ${u.name} from this workspace? Their receipts and mileage stay on record, but they lose access immediately.`)) {
+      return;
+    }
+    removeMember.mutate(u.id);
+  };
 
   return (
     // No overflow: hidden here (unlike other tables in this app) — the
@@ -193,6 +205,15 @@ export function ReimbursementAuthorityTable({
                   <span style={{ textTransform: "capitalize" }}>{u.role}</span>
                   {!admin && LEVEL_STATUS[level] ? ` · ${LEVEL_STATUS[level]}` : ""}
                 </div>
+                {canRemove && u.id !== currentUser.id && u.role !== "owner" ? (
+                  <button
+                    type="button"
+                    onClick={() => remove(u)}
+                    style={{ fontSize: fontSize.tiny + 0.5, color: color.up, background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
+                  >
+                    Remove
+                  </button>
+                ) : null}
               </div>
             </div>
 

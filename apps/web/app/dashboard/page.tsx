@@ -3,7 +3,7 @@
 import { formatDelta, formatMoney } from "@rr/shared";
 import { color, fontSize, fontWeight } from "@rr/ui-tokens";
 import { TODAY } from "../../lib/data";
-import { useDashboard } from "../../lib/queries";
+import { useCurrentUser, useDashboard } from "../../lib/queries";
 import { StatCard } from "../../components/StatCard";
 import { SpendBarChart } from "../../components/SpendBarChart";
 import { SpendPacingCard } from "../../components/SpendPacingCard";
@@ -21,6 +21,7 @@ const TODAY_LABEL = new Date(`${TODAY}T00:00:00`).toLocaleDateString("en-US", {
 const CURRENT_MONTH = TODAY.slice(0, 7);
 
 export default function DashboardPage() {
+  const { data: currentUser } = useCurrentUser();
   const { data: dashboard } = useDashboard(CURRENT_MONTH);
   if (!dashboard) return null;
   const { stats, currency } = dashboard;
@@ -31,7 +32,9 @@ export default function DashboardPage() {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 22 }}>
         <div>
-          <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em" }}>Dashboard</div>
+          <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em" }}>
+            {currentUser ? `Welcome back, ${currentUser.name}` : "Dashboard"}
+          </div>
           <div style={{ fontSize: fontSize.body, color: color.textMuted, marginTop: 2 }}>{TODAY_LABEL}</div>
         </div>
       </div>

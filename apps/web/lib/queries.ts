@@ -154,6 +154,14 @@ export function useSetReimbursementAssignments() {
   });
 }
 
+export function useRemoveMember() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (userId: string) => data.removeMember(userId),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useSetHomeCurrency() {
   const invalidateAll = useInvalidateAll();
   return useMutation({

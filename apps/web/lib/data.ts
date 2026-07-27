@@ -119,6 +119,10 @@ export function setReimbursementAssignments(approverUserId: string, employeeIds:
   return api.setReimbursementAssignments(approverUserId, employeeIds);
 }
 
+export function removeMember(userId: string): Promise<void> {
+  return api.removeMember(userId);
+}
+
 export function listWorkspaceInvites(): Promise<WorkspaceInvite[]> {
   return api.listWorkspaceInvites();
 }

@@ -253,6 +253,36 @@ export async function setReimbursementAssignments(approverUserId: string, employ
 }
 
 /**
+ * Removes someone from the caller's workspace — revokes access immediately
+ * (RLS gates everything on workspace membership), but deliberately does NOT
+ * touch their receipts/mileage trips or their account itself: those stay on
+ * record, attributed to them, for audit continuity. Re-provisioning or
+ * re-inviting the same email later restores access, not history.
+ *
+ * workspace_members' own RLS write policy (owner/admin-only) already covers
+ * this delete — no service role needed. Also clears any reimbursement
+ * assignments naming them (either side) so nothing stale lingers once
+ * they're gone.
+ */
+export async function removeMember(userId: string): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error: approverErr } = await client()
+    .from("reimbursement_assignments")
+    .delete()
+    .eq("workspace_id", wsId)
+    .eq("approver_id", userId);
+  if (approverErr) throw approverErr;
+  const { error: employeeErr } = await client()
+    .from("reimbursement_assignments")
+    .delete()
+    .eq("workspace_id", wsId)
+    .eq("employee_id", userId);
+  if (employeeErr) throw employeeErr;
+  const { error } = await client().from("workspace_members").delete().eq("workspace_id", wsId).eq("user_id", userId);
+  if (error) throw error;
+}
+
+/**
  * Grants/revokes another member's reimbursement authority. Goes through the
  * grant_reimbursement_authority() RPC rather than updating workspace_members
  * directly — that table's RLS write policy is owner/admin-only for good
