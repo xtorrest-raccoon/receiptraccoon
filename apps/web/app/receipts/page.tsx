@@ -7,7 +7,6 @@ import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
 import { useDataStore } from "../../lib/store";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
-import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
 import { DownloadIcon, UploadIcon } from "../../components/icons";
 
 function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
@@ -181,8 +180,6 @@ export default function ReceiptsPage() {
       </div>
 
       <ReceiptsTable receipts={receipts ?? []} categories={categories} users={users} />
-
-      <ManageCategoriesPanel categories={categories} />
     </div>
   );
 }

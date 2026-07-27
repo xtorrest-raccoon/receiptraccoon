@@ -136,11 +136,11 @@ export function revokeInvite(id: string): Promise<void> {
 }
 
 /**
- * Admin/owner-only: creates a brand-new account directly (no self-registration,
- * no email) and returns the one-time temporary password to relay to that
- * person. See /api/team/provision-member.
+ * Admin/owner-only: creates a brand-new account directly (no self-registration)
+ * and returns the one-time temporary password to relay to that person, plus
+ * whether the welcome email went out. See /api/team/provision-member.
  */
-export async function provisionMember(email: string, role: Role): Promise<{ email: string; tempPassword: string }> {
+export async function provisionMember(email: string, role: Role): Promise<{ email: string; tempPassword: string; emailSent: boolean }> {
   const session = await api.getSession();
   if (!session) throw new Error("Not signed in");
 

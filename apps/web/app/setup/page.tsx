@@ -4,10 +4,10 @@ import Link from "next/link";
 import { canManageReimbursementAuthority } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../../lib/data";
-import { useCurrentUser, useHomeCurrency, useSetHomeCurrency, useUsers } from "../../lib/queries";
+import { useCategories, useCurrentUser, useHomeCurrency, useSetHomeCurrency, useUsers } from "../../lib/queries";
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
-import { InviteTeammatePanel } from "../../components/InviteTeammatePanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
+import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
 
 function SectionHeading({ children }: { children: string }) {
   return (
@@ -27,6 +27,7 @@ function SectionHeading({ children }: { children: string }) {
 export default function SetupPage() {
   const { data: currentUser } = useCurrentUser();
   const { data: users } = useUsers();
+  const { data: categories } = useCategories();
   const { data: homeCurrency } = useHomeCurrency();
   const setHomeCurrency = useSetHomeCurrency();
 
@@ -47,7 +48,7 @@ export default function SetupPage() {
     );
   }
 
-  if (!users) return null;
+  if (!users || !categories) return null;
 
   return (
     <div>
@@ -99,10 +100,12 @@ export default function SetupPage() {
 
       <SectionHeading>Account access</SectionHeading>
       <ProvisionMemberPanel />
-      <InviteTeammatePanel />
 
       <SectionHeading>Approval hierarchy</SectionHeading>
       <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
+
+      <SectionHeading>Categories</SectionHeading>
+      <ManageCategoriesPanel categories={categories} />
     </div>
   );
 }
