@@ -99,6 +99,19 @@ export async function signOut(): Promise<void> {
  * mustChangePassword — the two happen together so the flag can never end up
  * cleared without an actual password change (see 0008_admin_provisioned_accounts.sql).
  */
+/**
+ * Sends the "reset your password" email — same Supabase mechanism as the
+ * forced-password-change flow's underlying auth, just self-service instead
+ * of admin-provisioned. redirectTo must be an allow-listed URL in Supabase's
+ * Auth settings (the web app's own domain already is, from setting up
+ * invites/confirmation earlier) — clicking the emailed link lands there with
+ * a temporary recovery session, which changePassword() below then uses.
+ */
+export async function requestPasswordReset(email: string, redirectTo: string): Promise<void> {
+  const { error } = await client().auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
 export async function changePassword(newPassword: string): Promise<void> {
   const userId = await getCurrentUserId();
   const { error: pwError } = await client().auth.updateUser({ password: newPassword });

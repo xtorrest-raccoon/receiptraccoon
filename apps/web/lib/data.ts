@@ -160,6 +160,10 @@ export function changePassword(newPassword: string): Promise<void> {
   return api.changePassword(newPassword);
 }
 
+export function requestPasswordReset(email: string): Promise<void> {
+  return api.requestPasswordReset(email, `${window.location.origin}/reset-password`);
+}
+
 export function getMyPendingInvite(): Promise<MyPendingInvite | null> {
   return api.getMyPendingInvite();
 }

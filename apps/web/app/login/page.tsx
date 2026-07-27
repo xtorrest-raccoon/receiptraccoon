@@ -4,19 +4,20 @@ import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { signInWithPassword, signUp } from "@rr/api";
+import { requestPasswordReset, signInWithPassword, signUp } from "@rr/api";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+  const [mode, setMode] = useState<"signIn" | "signUp" | "forgotPassword">("signIn");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmPending, setConfirmPending] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !busy;
+  const canSubmit = email.trim().length > 0 && (mode === "forgotPassword" || password.length > 0) && !busy;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,6 +25,11 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
+      if (mode === "forgotPassword") {
+        await requestPasswordReset(email.trim(), `${window.location.origin}/reset-password`);
+        setResetSent(true);
+        return;
+      }
       if (mode === "signUp") {
         const { session } = await signUp(email.trim(), password, name.trim() || undefined);
         // With email confirmation on (Supabase's default), signUp succeeds but
@@ -44,6 +50,19 @@ export default function LoginPage() {
       setBusy(false);
     }
   };
+
+  if (resetSent) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: color.bgWeb }}>
+        <div style={{ width: 340, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 28, textAlign: "center" }}>
+          <Image src="/logo.png" alt="ReceiptRaccoon" width={132} height={132} style={{ display: "block", margin: "0 auto 14px" }} />
+          <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
+            Check <strong>{email.trim()}</strong> for a link to reset your password.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (confirmPending) {
     return (
@@ -100,7 +119,7 @@ export default function LoginPage() {
       >
         <Image src="/logo.png" alt="ReceiptRaccoon" width={132} height={132} style={{ alignSelf: "center", marginBottom: 4 }} />
         <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 8, textAlign: "center" }}>
-          {mode === "signUp" ? "Create your workspace" : "Sign in"}
+          {mode === "signUp" ? "Create your workspace" : mode === "forgotPassword" ? "Reset your password" : "Sign in"}
         </div>
 
         {mode === "signUp" && (
@@ -119,14 +138,26 @@ export default function LoginPage() {
           autoComplete="email"
           style={inputStyle}
         />
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          type="password"
-          autoComplete="current-password"
-          style={inputStyle}
-        />
+        {mode !== "forgotPassword" && (
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            type="password"
+            autoComplete="current-password"
+            style={inputStyle}
+          />
+        )}
+
+        {mode === "signIn" && (
+          <button
+            type="button"
+            onClick={() => setMode("forgotPassword")}
+            style={{ alignSelf: "flex-end", padding: 0, border: "none", background: "none", color: color.brand, fontWeight: fontWeight.semibold, fontSize: fontSize.small, cursor: "pointer" }}
+          >
+            Forgot password?
+          </button>
+        )}
 
         {error && <div style={{ fontSize: fontSize.small, color: color.up }}>{error}</div>}
 
@@ -146,25 +177,44 @@ export default function LoginPage() {
             opacity: canSubmit ? 1 : 0.5,
           }}
         >
-          {busy ? "…" : mode === "signUp" ? "Create account" : "Sign in"}
+          {busy ? "…" : mode === "signUp" ? "Create account" : mode === "forgotPassword" ? "Send reset link" : "Sign in"}
         </button>
 
-        <button
-          type="button"
-          onClick={() => setMode(mode === "signUp" ? "signIn" : "signUp")}
-          style={{
-            marginTop: 4,
-            padding: "6px 0",
-            border: "none",
-            background: "none",
-            color: color.brand,
-            fontWeight: fontWeight.semibold,
-            fontSize: fontSize.small,
-            cursor: "pointer",
-          }}
-        >
-          {mode === "signUp" ? "Already have an account? Sign in" : "New here? Create an account"}
-        </button>
+        {mode === "forgotPassword" ? (
+          <button
+            type="button"
+            onClick={() => setMode("signIn")}
+            style={{
+              marginTop: 4,
+              padding: "6px 0",
+              border: "none",
+              background: "none",
+              color: color.brand,
+              fontWeight: fontWeight.semibold,
+              fontSize: fontSize.small,
+              cursor: "pointer",
+            }}
+          >
+            Back to sign in
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setMode(mode === "signUp" ? "signIn" : "signUp")}
+            style={{
+              marginTop: 4,
+              padding: "6px 0",
+              border: "none",
+              background: "none",
+              color: color.brand,
+              fontWeight: fontWeight.semibold,
+              fontSize: fontSize.small,
+              cursor: "pointer",
+            }}
+          >
+            {mode === "signUp" ? "Already have an account? Sign in" : "New here? Create an account"}
+          </button>
+        )}
       </form>
     </div>
   );

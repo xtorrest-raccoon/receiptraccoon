@@ -19,6 +19,12 @@ import { SetPasswordScreen } from "./SetPasswordScreen";
 import "../lib/supabase";
 
 const LOGIN_PATH = "/login";
+// Reached via the emailed recovery link, which briefly has no session at all
+// (Supabase is still processing the token from the URL) and then a recovery
+// session once it has — exempt from both halves of the normal redirect rule
+// below, since neither "no session -> /login" nor "has session -> /dashboard"
+// is right while someone's in the middle of resetting their password.
+const RESET_PASSWORD_PATH = "/reset-password";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -34,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (session === "loading") return;
+    if (session === "loading" || pathname === RESET_PASSWORD_PATH) return;
     const onLoginPage = pathname === LOGIN_PATH;
     if (!session && !onLoginPage) {
       router.replace(LOGIN_PATH);
@@ -63,8 +69,8 @@ function AppShellBody({
 }) {
   // The login page renders its own full-screen layout — no sidebar/top bar
   // around it, same reason the mobile app's (auth) group sits outside the
-  // tab navigator.
-  if (pathname === LOGIN_PATH) return <>{children}</>;
+  // tab navigator. Reset-password is the same shape, for the same reason.
+  if (pathname === LOGIN_PATH || pathname === RESET_PASSWORD_PATH) return <>{children}</>;
 
   if (session === "loading" || !session) {
     return <div style={{ minHeight: "100vh", background: color.bgWeb }} />;

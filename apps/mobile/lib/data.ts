@@ -45,6 +45,16 @@ export function signOut(): Promise<void> {
 }
 
 /**
+ * The actual password-setting screen only exists on the web app (see
+ * SetPasswordForm) — not duplicated here, same reasoning as
+ * FinishSetupScreen for admin-provisioned accounts. The emailed reset link
+ * points at the web app's /reset-password instead of a mobile deep link.
+ */
+export function requestPasswordReset(email: string): Promise<void> {
+  return api.requestPasswordReset(email, `${getApiBaseUrl()}/reset-password`);
+}
+
+/**
  * The signed-in user's own id, read from the local session (no network round
  * trip — supabase-js keeps the session in memory/AsyncStorage) rather than
  * getCurrentUser(), which does a real join query just for this.

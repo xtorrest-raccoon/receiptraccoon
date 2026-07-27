@@ -235,6 +235,13 @@ export function useChangePassword() {
   });
 }
 
+/** No cache invalidation — sending the reset email doesn't change any cached read. */
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (email: string) => data.requestPasswordReset(email),
+  });
+}
+
 /**
  * Accepting an invite changes the caller's entire workspace — clears the
  * whole cache rather than invalidating known keys, since every query result
