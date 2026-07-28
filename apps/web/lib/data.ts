@@ -55,6 +55,11 @@ export function setReceiptReclaim(id: string, minor: number): Promise<void> {
   return api.setReclaimMinor(id, minor);
 }
 
+/** Only permitted while pending or rejected — see @rr/shared's canDeleteReceipt. Mirrors mobile's swipe-to-delete. */
+export function deleteReceipt(id: string): Promise<boolean> {
+  return api.deleteReceipt(id);
+}
+
 export function getTeam(month?: string): Promise<TeamResponse> {
   return api.getTeam(month);
 }

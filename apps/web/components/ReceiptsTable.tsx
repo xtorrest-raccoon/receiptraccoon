@@ -2,6 +2,7 @@
 
 import {
   categoryChipColor,
+  canDeleteReceipt,
   canTransitionReimbursement,
   formatMoney,
   formatShortDate,
@@ -14,10 +15,11 @@ import {
 import type { Receipt } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
-import { useCurrentUser, useSetCategory } from "../lib/queries";
+import { useCurrentUser, useDeleteReceipt, useSetCategory } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 import { Avatar } from "./Avatar";
 import { CategoryChip } from "./Chips";
+import { TrashIcon } from "./icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
@@ -41,6 +43,17 @@ export function ReceiptsTable({
   // options their capability doesn't cover (e.g. approve-only can't reimburse).
   const canAct = currentUser ? isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser) : false;
   const setCategory = useSetCategory();
+  const deleteReceipt = useDeleteReceipt();
+
+  // Own receipt, still pending or rejected — same rule as mobile's
+  // swipe-to-delete (canDeleteReceipt), scoped to the creator here rather
+  // than extending it to admin-on-others'-receipts, which nobody's asked for.
+  const canDelete = (r: Receipt) => currentUser?.id === r.createdBy && canDeleteReceipt(r.reimbursementStatus);
+
+  const confirmDelete = (r: Receipt) => {
+    if (!window.confirm(`Delete the receipt from ${r.vendor ?? "this vendor"}? This can't be undone.`)) return;
+    deleteReceipt.mutate(r.id);
+  };
 
   if (receipts.length === 0) {
     return (
@@ -57,7 +70,7 @@ export function ReceiptsTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr",
+          gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 0.4fr",
           padding: "12px 20px",
           fontSize: fontSize.tiny + 0.5,
           fontWeight: fontWeight.bold,
@@ -75,6 +88,7 @@ export function ReceiptsTable({
         <div>Tax</div>
         <div>Total</div>
         <div>Reimbursement</div>
+        <div />
       </div>
 
       {receipts.map((r) => (
@@ -82,7 +96,7 @@ export function ReceiptsTable({
           <div
             className="hidden sm:grid"
             style={{
-              gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr",
+              gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 0.4fr",
               alignItems: "center",
               padding: "13px 20px",
               borderBottom: `1px solid ${color.borderSubtle}`,
@@ -190,6 +204,18 @@ export function ReceiptsTable({
                 </span>
               )}
             </div>
+            <div>
+              {canDelete(r) ? (
+                <button
+                  type="button"
+                  onClick={() => confirmDelete(r)}
+                  aria-label="Delete receipt"
+                  style={{ cursor: "pointer", background: "none", border: "none", padding: 4, display: "flex" }}
+                >
+                  <TrashIcon color={color.textFaint} />
+                </button>
+              ) : null}
+            </div>
           </div>
 
           {/* Stacked card layout below the 640px breakpoint. */}
@@ -259,6 +285,27 @@ export function ReceiptsTable({
                 </span>
               )}
             </div>
+            {canDelete(r) ? (
+              <button
+                type="button"
+                onClick={() => confirmDelete(r)}
+                style={{
+                  alignSelf: "flex-start",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  color: color.textFaint,
+                  fontSize: fontSize.small,
+                }}
+              >
+                <TrashIcon color={color.textFaint} />
+                Delete
+              </button>
+            ) : null}
           </div>
         </div>
       ))}

@@ -27,6 +27,7 @@ export default function TeamPage() {
   const admin = currentUser ? isAdmin(currentUser.role) : false;
 
   const [mileageUserFilter, setMileageUserFilter] = useState("All");
+  const [mileageStatusFilter, setMileageStatusFilter] = useState<"All" | ReimbursementStatus>("All");
   const [receiptSearch, setReceiptSearch] = useState("");
   const [receiptCategoryFilter, setReceiptCategoryFilter] = useState("All");
   const [receiptStatusFilter, setReceiptStatusFilter] = useState<"All" | ReimbursementStatus>("All");
@@ -45,6 +46,12 @@ export default function TeamPage() {
   const mileageOutstandingMinor = useMemo(() => {
     return (mileage ?? []).filter((t) => isOutstanding(t.reimbursementStatus)).reduce((sum, t) => sum + t.amountMinor, 0);
   }, [mileage]);
+
+  // Status filter narrows the table only — the outstanding total above stays
+  // computed from the full unfiltered list, same "filter is display-only"
+  // pattern as receiptStatusFilter.
+  const filteredMileage =
+    mileageStatusFilter === "All" ? mileage ?? [] : (mileage ?? []).filter((t) => t.reimbursementStatus === mileageStatusFilter);
 
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts.
   const filteredReceipts =
@@ -282,12 +289,32 @@ export default function TeamPage() {
                 </option>
               ))}
             </select>
+            <select
+              value={mileageStatusFilter}
+              onChange={(e) => setMileageStatusFilter(e.target.value as "All" | ReimbursementStatus)}
+              style={{
+                padding: "7px 10px",
+                borderRadius: radius.sm + 1,
+                border: `1px solid ${color.borderStrong}`,
+                fontSize: fontSize.small,
+                fontWeight: fontWeight.semibold,
+                background: color.surface,
+                color: color.text,
+              }}
+            >
+              <option value="All">All statuses</option>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {reimbursementChip[s].label}
+                </option>
+              ))}
+            </select>
             <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.heavy }}>{formatMoney(mileageOutstandingMinor, team.currency)}</div>
           </div>
         </div>
 
         <MileageTable
-          trips={mileage ?? []}
+          trips={filteredMileage}
           currency={team.currency}
           users={users}
         />

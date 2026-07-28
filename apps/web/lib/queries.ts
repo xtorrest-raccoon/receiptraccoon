@@ -136,6 +136,14 @@ export function useSetReceiptReclaim() {
   });
 }
 
+export function useDeleteReceipt() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: string) => data.deleteReceipt(id),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useSetReimbursementAuthority() {
   const invalidateAll = useInvalidateAll();
   return useMutation({

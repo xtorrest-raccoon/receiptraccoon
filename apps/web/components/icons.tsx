@@ -69,6 +69,15 @@ export function MileageIcon({ color }: { color: string }) {
   );
 }
 
+export function TrashIcon({ color }: { color: string }) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M2 3.5h10M5.5 3.5V2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5" fill="none" stroke={color} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.2 3.5l.5 8a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9l.5-8" fill="none" stroke={color} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function DownloadIcon({ color }: { color: string }) {
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden="true">
