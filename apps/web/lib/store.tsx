@@ -51,6 +51,15 @@ interface DataStoreValue {
   setRejectionReason: (reason: string) => void;
   confirmRejection: () => void;
   cancelRejection: () => void;
+
+  /**
+   * Set when a status change is rejected server-side (e.g. the
+   * self-approval-blocked-by-assigned-approver trigger) — the mutation
+   * itself has no other error affordance, so this is the only way the
+   * failure is ever visible instead of the control just silently reverting.
+   */
+  statusChangeError: string | null;
+  dismissStatusChangeError: () => void;
 }
 
 const DataStoreContext = createContext<DataStoreValue | null>(null);
@@ -68,14 +77,23 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const closeAddReceipt = useCallback(() => setAddReceiptOpen(false), []);
 
   const [rejectionModal, setRejectionModal] = useState<RejectionModalState | null>(null);
+  const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
+  const dismissStatusChangeError = useCallback(() => setStatusChangeError(null), []);
 
   const mutateStatus = useCallback(
     (entityType: ReimbursableEntityType, id: string, status: ReimbursementStatus, reason?: string) => {
+      setStatusChangeError(null);
       const payload = reason === undefined ? { id, status } : { id, status, reason };
+      const onError = (err: unknown) => {
+        // Supabase throws its PostgrestError object directly (not wrapped in
+        // an Error), so this checks for a .message rather than instanceof.
+        const message = typeof err === "object" && err !== null && "message" in err ? String(err.message) : null;
+        setStatusChangeError(message || "Couldn't update the status.");
+      };
       if (entityType === "mileage_trip") {
-        setMileageReimbursementStatus.mutate(payload);
+        setMileageReimbursementStatus.mutate(payload, { onError });
       } else {
-        setReimbursementStatus.mutate(payload);
+        setReimbursementStatus.mutate(payload, { onError });
       }
     },
     [setReimbursementStatus, setMileageReimbursementStatus],
@@ -124,6 +142,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       setRejectionReason,
       confirmRejection,
       cancelRejection,
+      statusChangeError,
+      dismissStatusChangeError,
     }),
     [
       selectedReceiptId,
@@ -137,6 +157,8 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       setRejectionReason,
       confirmRejection,
       cancelRejection,
+      statusChangeError,
+      dismissStatusChangeError,
     ],
   );
 

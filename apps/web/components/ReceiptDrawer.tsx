@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   canEditReceiptAmount,
   canTransitionReimbursement,
@@ -35,6 +36,10 @@ export function ReceiptDrawer() {
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const setReceiptReclaim = useSetReceiptReclaim();
   const [reclaimText, setReclaimText] = useState("");
+  // This drawer is mounted globally (opened from Receipts, Team, or Mileage
+  // via the same shared store) but status changes are only ever done from
+  // Team — same reasoning as ReceiptsTable/MileageTable's own gate.
+  const onTeamPage = usePathname().startsWith("/team");
 
   useEffect(() => {
     setReclaimText(receipt ? minorToDecimalString(reclaimMinor(receipt), receipt.currency) : "");
@@ -42,7 +47,7 @@ export function ReceiptDrawer() {
 
   if (!selectedReceiptId || !receipt || !currentUser || !users) return null;
 
-  const canAct = isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser);
+  const canAct = onTeamPage && (isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser));
   const creatorName = users.find((u) => u.id === receipt.createdBy)?.name ?? "Unknown";
   const paymentMethod = formatPaymentMethod(receipt.paymentBrand, receipt.paymentLast4);
   const amountEditable = canEditReceiptAmount(receipt.reimbursementStatus);

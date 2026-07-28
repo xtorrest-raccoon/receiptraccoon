@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   categoryChipColor,
   canDeleteReceipt,
@@ -38,10 +39,13 @@ export function ReceiptsTable({
 }) {
   const { openReceipt, requestReimbursementChange } = useDataStore();
   const { data: currentUser } = useCurrentUser();
-  // Admin/owner or anyone granted approve/process authority sees the status
-  // control; canTransitionReimbursement below then disables the specific
-  // options their capability doesn't cover (e.g. approve-only can't reimburse).
-  const canAct = currentUser ? isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser) : false;
+  // Status changes only ever happen from Team, regardless of role/authority
+  // — Receipts (personal) always shows a read-only chip. Admin/owner or
+  // anyone granted approve/process authority sees the status control there;
+  // canTransitionReimbursement below then disables the specific options
+  // their capability doesn't cover (e.g. approve-only can't reimburse).
+  const onTeamPage = usePathname().startsWith("/team");
+  const canAct = onTeamPage && currentUser ? isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser) : false;
   const setCategory = useSetCategory();
   const deleteReceipt = useDeleteReceipt();
 

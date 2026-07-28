@@ -14,6 +14,7 @@ import { AddReceiptDrawer } from "./AddReceiptDrawer";
 import { RejectionModal } from "./RejectionModal";
 import { AcceptInviteBanner } from "./AcceptInviteBanner";
 import { TrialEndedBanner } from "./TrialEndedBanner";
+import { StatusChangeErrorBanner } from "./StatusChangeErrorBanner";
 import { SetPasswordScreen } from "./SetPasswordScreen";
 import { BillingGate } from "./BillingGate";
 // Side-effect import: creates this app's Supabase client and registers it
@@ -85,6 +86,7 @@ function AppShellBody({
           <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: color.bgWeb, color: color.text }}>
             <TrialEndedBanner />
             <AcceptInviteBanner />
+            <StatusChangeErrorBanner />
             <MobileTopBar />
             <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
               <Sidebar />

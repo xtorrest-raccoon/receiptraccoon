@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   canTransitionReimbursement,
   currencySymbol,
@@ -35,8 +36,10 @@ export function MileageTable({
   users: WorkspaceUser[];
 }) {
   const { data: currentUser } = useCurrentUser();
-  const admin = currentUser ? isAdmin(currentUser.role) : false;
-  const canAct = currentUser ? admin || hasAnyReimbursementAuthority(currentUser) : false;
+  // Status changes only ever happen from Team, regardless of role/authority
+  // — the Mileage tab (personal) always shows a read-only chip.
+  const onTeamPage = usePathname().startsWith("/team");
+  const canAct = onTeamPage && currentUser ? isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser) : false;
   const { requestReimbursementChange } = useDataStore();
   const deleteTrip = useDeleteMileageTrip();
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
