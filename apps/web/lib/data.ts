@@ -97,6 +97,11 @@ export function getHomeCurrency(): Promise<string> {
   return api.getHomeCurrency();
 }
 
+/** Workspace default rate — per-user overrides (see MileageRatesPanel) fall back to this. */
+export function getMileageRateMilli(): Promise<number> {
+  return api.getMileageRateMilli();
+}
+
 export function setHomeCurrency(code: string): Promise<void> {
   return api.setHomeCurrency(code);
 }
@@ -123,6 +128,11 @@ export function listUsers(): Promise<api.WorkspaceUser[]> {
 
 export function setReimbursementAuthority(userId: string, canApprove: boolean, canProcess: boolean): Promise<void> {
   return api.setReimbursementAuthority(userId, canApprove, canProcess);
+}
+
+/** Owner/admin-only. Pass null to fall back to the workspace's default rate. */
+export function setUserMileageRate(userId: string, rateMilli: number | null): Promise<void> {
+  return api.setUserMileageRate(userId, rateMilli);
 }
 
 export function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {

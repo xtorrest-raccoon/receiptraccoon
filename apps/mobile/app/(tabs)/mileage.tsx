@@ -20,7 +20,7 @@ import {
   useDistanceUnit,
   useHomeCurrency,
   useMileage,
-  useMileageRateMilli,
+  useMyMileageRateMilli,
   useUpdateMileageTrip,
 } from "../../lib/queries";
 import { Text } from "../../components/Text";
@@ -34,7 +34,9 @@ export default function MileageScreen() {
 
   const { data: currency } = useHomeCurrency();
   const { data: unit } = useDistanceUnit();
-  const { data: rateMilli } = useMileageRateMilli();
+  // My own effective rate — my per-user override if an owner/admin set one,
+  // else the workspace default. Same rate addMileageTrip itself will use.
+  const { data: rateMilli } = useMyMileageRateMilli();
   const { data: trips, isLoading } = useMileage();
   const addMileageTrip = useAddMileageTrip();
   const updateMileageTrip = useUpdateMileageTrip();
@@ -80,7 +82,8 @@ export default function MileageScreen() {
   const distanceValue = entryMode === "automatic" ? calculated?.distance ?? NaN : manualDistanceValue;
   // Computed locally from the same rate/currency already loaded for this
   // screen, rather than a round-trip per keystroke — mathematically identical
-  // to what addMileageTrip will save, since both read the same workspace rate.
+  // to what addMileageTrip will save, since both resolve the caller's own
+  // effective rate the same way (see getEffectiveMileageRateMilli).
   const estimateMinor =
     !isNaN(distanceValue) && distanceValue > 0
       ? mileageAmountForTrip(distanceValue, unit, rateMilli, currency)
@@ -200,7 +203,9 @@ export default function MileageScreen() {
               {formatDistance(monthDistanceInUnit, unit)} logged
             </Text>
           </View>
-          {/* Read-only. The rate is a workspace setting, edited in Settings. */}
+          {/* Read-only here. This is MY effective rate — either a per-user
+              override an owner/admin set for me, or the workspace default
+              from Settings if they haven't. */}
           <View style={styles.rateCard}>
             <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               Rate

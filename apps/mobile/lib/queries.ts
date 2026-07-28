@@ -32,6 +32,10 @@ export function useMileageRateMilli() {
   return useQuery({ queryKey: ["mileageRateMilli"], queryFn: data.getMileageRateMilli });
 }
 
+export function useMyMileageRateMilli() {
+  return useQuery({ queryKey: ["myMileageRateMilli"], queryFn: data.getMyMileageRateMilli });
+}
+
 export function useCategories() {
   return useQuery({ queryKey: ["categories"], queryFn: data.listCategories });
 }
@@ -91,6 +95,7 @@ const ALL_QUERY_KEYS = [
   "workspaceName",
   "distanceUnit",
   "mileageRateMilli",
+  "myMileageRateMilli",
   "owedToUser",
 ];
 

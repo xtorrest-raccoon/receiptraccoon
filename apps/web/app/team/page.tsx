@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { canViewTeamPage, formatMoney, currencySymbol, isAdmin, isOutstanding, rateToDecimalString, type ReimbursementStatus } from "@rr/shared";
+import { canViewTeamPage, formatMoney, isAdmin, isOutstanding, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useMileage, useReceipts, useTeam, useUsers } from "../../lib/queries";
 import { exportReceiptsCsv } from "../../lib/receiptsCsv";
@@ -263,9 +263,10 @@ export default function TeamPage() {
           <div>
             <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Mileage reimbursements</div>
             <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
-              {/* Rates carry three decimals; formatMoney would round 0.675 to 0.68. */}
-              Logged from the mobile app · rate {currencySymbol(team.currency)}
-              {rateToDecimalString(team.mileageRateMilli)}/mi
+              {/* No single rate shown here anymore — each person can have their
+                  own (see Setup's Mileage rates), so the table's own Rate
+                  column is the accurate per-trip figure, not this subtitle. */}
+              Logged from the mobile app · rate varies per person, see each row
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>

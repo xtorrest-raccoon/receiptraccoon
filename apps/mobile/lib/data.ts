@@ -115,6 +115,11 @@ export function setMileageRateMilli(value: number): Promise<void> {
   return api.setMileageRateMilli(value);
 }
 
+/** The rate MY trips actually use — my own per-user override if an owner/admin set one, else the workspace default. */
+export function getMyMileageRateMilli(): Promise<number> {
+  return api.getMyMileageRateMilli();
+}
+
 /** What a trip would be worth if saved now — same rate the save itself will use. */
 export function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): Promise<number> {
   return api.estimateMileageAmountMinor(distance, unit);

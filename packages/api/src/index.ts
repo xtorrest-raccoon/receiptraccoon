@@ -178,6 +178,10 @@ interface MemberWithProfileRow {
   job_title: string | null;
   can_approve_reimbursements: boolean;
   can_process_reimbursements: boolean;
+  // Only ever selected by listUsers, not getCurrentUser — optional here
+  // rather than a second near-duplicate type, same reasoning as
+  // must_change_password below.
+  mileage_rate_milli?: number | null;
   // Confirmed against a live query (not assumed): a many-to-one embed like
   // this comes back as a single object, e.g. {"name":"Meals"}, not an array —
   // despite the untyped client's generic .select() overload claiming the
@@ -247,6 +251,8 @@ export interface WorkspaceUser {
    * owner/admin, who have blanket authority regardless of this list.
    */
   assignedEmployeeIds: string[];
+  /** Null means "inherit the workspace's default rate" — see 0013_per_user_mileage_rate.sql. */
+  mileageRateMilli: number | null;
 }
 
 /**
@@ -261,7 +267,7 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
   const [membersRes, assignmentsRes] = await Promise.all([
     client()
       .from("workspace_members")
-      .select("user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name)")
+      .select("user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, mileage_rate_milli, profiles(display_name)")
       .eq("workspace_id", wsId),
     client().from("reimbursement_assignments").select("approver_id, employee_id").eq("workspace_id", wsId),
   ]);
@@ -276,6 +282,7 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
     jobTitle: m.job_title,
     canApproveReimbursements: m.can_approve_reimbursements,
     canProcessReimbursements: m.can_process_reimbursements,
+    mileageRateMilli: m.mileage_rate_milli ?? null,
     assignedEmployeeIds: assignments.filter((a) => a.approver_id === m.user_id).map((a) => a.employee_id),
   }));
 }
@@ -351,6 +358,23 @@ export async function setReimbursementAuthority(
     p_can_approve: canApprove,
     p_can_process: canProcess,
   });
+  if (error) throw error;
+}
+
+/**
+ * Owner/admin-only, enforced by workspace_members' existing members_write
+ * RLS policy (no RPC/super-user carve-out needed here, unlike
+ * setReimbursementAuthority — a mileage rate is a payroll decision, not
+ * something a granted-authority member should set for themselves or
+ * others). Pass null to fall back to the workspace's own default rate.
+ */
+export async function setUserMileageRate(userId: string, rateMilli: number | null): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error } = await client()
+    .from("workspace_members")
+    .update({ mileage_rate_milli: rateMilli })
+    .eq("workspace_id", wsId)
+    .eq("user_id", userId);
   if (error) throw error;
 }
 
@@ -529,10 +553,32 @@ export async function setMileageRateMilli(value: number): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * The rate the CALLER's own trips actually use — their own
+ * workspace_members.mileage_rate_milli override if an owner/admin set one,
+ * else the workspace's default. See 0013_per_user_mileage_rate.sql.
+ */
+async function getEffectiveMileageRateMilli(ws: WorkspaceRow): Promise<number> {
+  const userId = await getCurrentUserId();
+  const { data, error } = await client()
+    .from("workspace_members")
+    .select("mileage_rate_milli")
+    .eq("workspace_id", ws.id)
+    .eq("user_id", userId)
+    .single();
+  if (error) throw error;
+  return (data as { mileage_rate_milli: number | null }).mileage_rate_milli ?? ws.mileage_rate_milli;
+}
+
+export async function getMyMileageRateMilli(): Promise<number> {
+  return getEffectiveMileageRateMilli(await getWorkspaceRow());
+}
+
 /** What a trip WOULD be worth if saved now — same rate the save itself will use. */
 export async function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): Promise<number> {
   const row = await getWorkspaceRow();
-  return mileageAmountForTrip(distance, unit, row.mileage_rate_milli, row.home_currency);
+  const rateMilli = await getEffectiveMileageRateMilli(row);
+  return mileageAmountForTrip(distance, unit, rateMilli, row.home_currency);
 }
 
 // ── categories ───────────────────────────────────────────────────────────
@@ -927,9 +973,13 @@ export async function addMileageTrip(input: {
   const userId = await getCurrentUserId();
   const wsId = await getCurrentWorkspaceId();
   const ws = await getWorkspaceRow();
-  // Frozen onto this trip at entry — existing trips keep their own rate even
-  // if the workspace rate changes later. Same reasoning as fx_rate on receipts.
-  const amountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, ws.mileage_rate_milli, ws.home_currency);
+  // The caller's own effective rate (their per-user override if an
+  // owner/admin set one, else the workspace default) — frozen onto this
+  // trip at entry, same reasoning as fx_rate on receipts: existing trips
+  // keep their own rate even if the workspace default or their override
+  // changes later.
+  const rateMilli = await getEffectiveMileageRateMilli(ws);
+  const amountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, rateMilli, ws.home_currency);
   const { data, error } = await client()
     .from("mileage_trips")
     .insert({
@@ -939,7 +989,7 @@ export async function addMileageTrip(input: {
       purpose: input.purpose,
       distance: input.distance,
       distance_unit: input.distanceUnit,
-      rate_milli: ws.mileage_rate_milli,
+      rate_milli: rateMilli,
       amount_minor: amountMinor,
       reimbursement_status: "pending",
       start_address: input.startAddress ?? null,

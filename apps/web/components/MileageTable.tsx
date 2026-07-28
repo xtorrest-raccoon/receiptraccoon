@@ -3,10 +3,12 @@
 import { useState } from "react";
 import {
   canTransitionReimbursement,
+  currencySymbol,
   formatMoney,
   formatShortDate,
   hasAnyReimbursementAuthority,
   isAdmin,
+  rateToDecimalString,
   type MileageTrip,
   type ReimbursementStatus,
 } from "@rr/shared";
@@ -54,7 +56,7 @@ export function MileageTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1fr 1.4fr 1.3fr 0.9fr 0.9fr 1fr 28px",
+          gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1fr 28px",
           padding: "10px 20px",
           fontSize: fontSize.tiny,
           fontWeight: fontWeight.bold,
@@ -68,6 +70,7 @@ export function MileageTable({
         <div>User</div>
         <div>Purpose</div>
         <div>Distance</div>
+        <div>Rate</div>
         <div>Amount</div>
         <div>Status</div>
         <div />
@@ -83,7 +86,7 @@ export function MileageTable({
               <div
                 className="hidden sm:grid"
                 style={{
-                  gridTemplateColumns: "1fr 1.4fr 1.3fr 0.9fr 0.9fr 1fr 28px",
+                  gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1fr 28px",
                   alignItems: "center",
                   padding: "11px 20px",
                   borderBottom: `1px solid ${color.borderSubtle}`,
@@ -107,6 +110,13 @@ export function MileageTable({
                 </button>
                 <div style={{ color: color.textMuted }}>
                   {t.distance.toFixed(1)} {t.distanceUnit}
+                </div>
+                {/* Frozen onto the trip at entry — this person's own rate at
+                    the time, not today's workspace default or override.
+                    Always per-mile, regardless of the trip's own distanceUnit. */}
+                <div style={{ color: color.textMuted, fontSize: fontSize.small }}>
+                  {currencySymbol(currency)}
+                  {rateToDecimalString(t.rateMilli)}/mi
                 </div>
                 <button
                   type="button"
