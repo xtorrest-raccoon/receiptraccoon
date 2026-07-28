@@ -56,7 +56,7 @@ export function MileageTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1.2fr",
+          gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 0.75fr",
           padding: "10px 20px",
           fontSize: fontSize.tiny,
           fontWeight: fontWeight.bold,
@@ -85,7 +85,7 @@ export function MileageTable({
               <div
                 className="hidden sm:grid"
                 style={{
-                  gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1.2fr",
+                  gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 0.75fr",
                   alignItems: "center",
                   padding: "11px 20px",
                   borderBottom: `1px solid ${color.borderSubtle}`,
