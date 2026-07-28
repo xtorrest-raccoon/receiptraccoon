@@ -155,32 +155,30 @@ export default function TeamPage() {
             gap: 12,
           }}
         >
-          <div>
-            <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Receipts</div>
-            <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.heavy, marginTop: 4 }}>
-              {formatMoney(receiptsOutstandingMinor, team.currency)}
-            </div>
+          <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Receipts</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => exportReceiptsCsv(filteredReceipts, users, "receiptraccoon-team-receipts.csv")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "7px 12px",
+                borderRadius: radius.sm + 1,
+                background: color.brand,
+                color: color.surface,
+                fontWeight: fontWeight.bold,
+                fontSize: fontSize.small,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <DownloadIcon color={color.surface} />
+              Export CSV
+            </button>
+            <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.heavy }}>{formatMoney(receiptsOutstandingMinor, team.currency)}</div>
           </div>
-          <button
-            type="button"
-            onClick={() => exportReceiptsCsv(filteredReceipts, users, "receiptraccoon-team-receipts.csv")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "7px 12px",
-              borderRadius: radius.sm + 1,
-              background: color.brand,
-              color: color.surface,
-              fontWeight: fontWeight.bold,
-              fontSize: fontSize.small,
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <DownloadIcon color={color.surface} />
-            Export CSV
-          </button>
         </div>
         <div className="flex flex-wrap" style={{ gap: 10, padding: "14px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
           <input
