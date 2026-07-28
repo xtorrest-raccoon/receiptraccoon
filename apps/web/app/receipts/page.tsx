@@ -1,78 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { countryForCurrency, countryName, formatMoney, formatShortDate, hasAnyReimbursementAuthority, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt, type ReimbursementStatus } from "@rr/shared";
-import type { WorkspaceUser } from "@rr/api";
+import { type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
 import { useDataStore } from "../../lib/store";
+import { exportReceiptsCsv } from "../../lib/receiptsCsv";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
 import { DownloadIcon, UploadIcon } from "../../components/icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
-function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
-  const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
-  const header = [
-    "Date", "Vendor", "User", "Category", "Country", "Currency", "Net amount", "Tax", "Total",
-    "Currency conversion", "Comment", "Reimbursement",
-  ];
-  const lines = [header, ...rows.map((r) => [
-    r.receiptDate ?? "",
-    r.vendor ?? "",
-    nameOf(r.createdBy),
-    r.categoryName ?? "Other",
-    // Prefer the country actually detected on the receipt (real, not a
-    // currency-based guess — the only way to tell French from German EUR
-    // receipts). Falls back to the currency-based guess for receipts
-    // captured before country detection existed, or a genuinely unclear photo.
-    r.country ? countryName(r.country) : countryForCurrency(r.originalCurrency ?? r.currency),
-    r.currency,
-    reclaimedNetMinor(r) !== null ? formatMoney(reclaimedNetMinor(r)!, r.currency) : "",
-    reclaimedTaxMinor(r) !== null ? formatMoney(reclaimedTaxMinor(r)!, r.currency) : "",
-    formatMoney(r.totalMinor, r.currency),
-    // Same info as the web Receipt drawer's "Currency conversion" banner —
-    // only populated for a receipt that was actually printed in a different
-    // currency (see @rr/shared's Receipt type).
-    r.originalCurrency && r.originalTotalMinor !== null
-      ? `Originally ${formatMoney(r.originalTotalMinor, r.originalCurrency)} at ${r.fxRate}${r.fxRateDate ? ` on ${formatShortDate(r.fxRateDate)}` : ""}`
-      : "",
-    r.comment ?? "",
-    r.reimbursementStatus,
-  ])];
-  // Excel doesn't assume UTF-8 for a bare CSV — without the BOM it reads "€"
-  // (multi-byte UTF-8) as the system codepage and mangles it into "â‚¬".
-  const csv = "﻿" + lines.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "receiptraccoon-receipts.csv";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
+/**
+ * Always scoped to the signed-in user's own receipts, for everyone
+ * regardless of role — the company-wide, filterable-by-user view moved to
+ * Team, which is the one place for reviewing everyone's spend. RLS would
+ * enforce the "own only" half of this anyway for a plain member, but an
+ * admin/owner gets scoped down here too now, on purpose, to keep this page a
+ * personal expense log.
+ */
 export default function ReceiptsPage() {
   const { data: categories } = useCategories();
   const { data: currentUser } = useCurrentUser();
   const { data: users } = useUsers();
-  // Anyone who can act on others' receipts needs to be able to filter to
-  // them first — not just admin/owner, now that approve/process authority
-  // can be granted to a plain member too.
-  const admin = currentUser ? isAdmin(currentUser.role) || hasAnyReimbursementAuthority(currentUser) : false;
   const { openAddReceipt } = useDataStore();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [userFilter, setUserFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<"All" | ReimbursementStatus>("All");
 
-  const { data: receipts } = useReceipts({ q: search || undefined, categoryName: categoryFilter, userId: userFilter });
-  const { data: allForExport } = useReceipts({ categoryName: categoryFilter, userId: userFilter });
+  const { data: receipts } = useReceipts({ q: search || undefined, categoryName: categoryFilter, userId: currentUser?.id });
+  const { data: allForExport } = useReceipts({ categoryName: categoryFilter, userId: currentUser?.id });
 
-  if (!categories || !users) return null;
+  if (!categories || !users || !currentUser) return null;
 
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts —
   // the row count per workspace doesn't justify a server-side filter here.
@@ -106,7 +66,7 @@ export default function ReceiptsPage() {
           </button>
           <button
             type="button"
-            onClick={() => exportCsv(filteredForExport, users)}
+            onClick={() => exportReceiptsCsv(filteredForExport, users, "receiptraccoon-my-receipts.csv")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -183,28 +143,6 @@ export default function ReceiptsPage() {
             </option>
           ))}
         </select>
-        {admin ? (
-          <select
-            value={userFilter}
-            onChange={(e) => setUserFilter(e.target.value)}
-            style={{
-              padding: "10px 14px",
-              borderRadius: radius.md,
-              border: `1px solid ${color.borderStrong}`,
-              fontSize: fontSize.body,
-              background: color.surface,
-              fontWeight: fontWeight.semibold,
-              color: color.text,
-            }}
-          >
-            <option value="All">All users</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
-        ) : null}
       </div>
 
       <ReceiptsTable receipts={filteredReceipts} categories={categories} users={users} />

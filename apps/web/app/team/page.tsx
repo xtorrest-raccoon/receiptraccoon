@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { canViewTeamPage, formatMoney, currencySymbol, isAdmin, isOutstanding, rateToDecimalString } from "@rr/shared";
-import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { useCurrentUser, useMileage, useTeam, useUsers } from "../../lib/queries";
+import { canViewTeamPage, formatMoney, currencySymbol, isAdmin, isOutstanding, rateToDecimalString, type ReimbursementStatus } from "@rr/shared";
+import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
+import { useCategories, useCurrentUser, useMileage, useReceipts, useTeam, useUsers } from "../../lib/queries";
+import { exportReceiptsCsv } from "../../lib/receiptsCsv";
 import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
+import { ReceiptsTable } from "../../components/ReceiptsTable";
+import { DownloadIcon } from "../../components/icons";
+
+const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
 /** Translucent red-on-dark panel, mixed from the `up` (bad-trend) token — there
  * is no dedicated "alert on dark" entry in @rr/ui-tokens. */
@@ -22,14 +27,28 @@ export default function TeamPage() {
   const admin = currentUser ? isAdmin(currentUser.role) : false;
 
   const [mileageUserFilter, setMileageUserFilter] = useState("All");
+  const [receiptSearch, setReceiptSearch] = useState("");
+  const [receiptCategoryFilter, setReceiptCategoryFilter] = useState("All");
+  const [receiptStatusFilter, setReceiptStatusFilter] = useState<"All" | ReimbursementStatus>("All");
+  const [receiptUserFilter, setReceiptUserFilter] = useState("All");
 
   const { data: team } = useTeam();
   const { data: users } = useUsers();
+  const { data: categories } = useCategories();
   const { data: mileage } = useMileage(mileageUserFilter === "All" ? undefined : mileageUserFilter);
+  const { data: receipts } = useReceipts({
+    q: receiptSearch || undefined,
+    categoryName: receiptCategoryFilter,
+    userId: receiptUserFilter === "All" ? undefined : receiptUserFilter,
+  });
 
   const mileageOutstandingMinor = useMemo(() => {
     return (mileage ?? []).filter((t) => isOutstanding(t.reimbursementStatus)).reduce((sum, t) => sum + t.amountMinor, 0);
   }, [mileage]);
+
+  // Client-side, same reasoning as categoryName in @rr/api's listReceipts.
+  const filteredReceipts =
+    receiptStatusFilter === "All" ? receipts ?? [] : (receipts ?? []).filter((r) => r.reimbursementStatus === receiptStatusFilter);
 
   if (!currentUser || !allowed) {
     return (
@@ -46,7 +65,7 @@ export default function TeamPage() {
     );
   }
 
-  if (!team || !users) return null;
+  if (!team || !users || !categories) return null;
 
   return (
     <div>
@@ -107,6 +126,120 @@ export default function TeamPage() {
           <TeamMembersTable members={team.members} currency={team.currency} />
         </>
       ) : null}
+
+      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "16px 20px",
+            borderBottom: `1px solid ${color.borderSubtle}`,
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Receipts</div>
+          <button
+            type="button"
+            onClick={() => exportReceiptsCsv(filteredReceipts, users, "receiptraccoon-team-receipts.csv")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "7px 12px",
+              borderRadius: radius.sm + 1,
+              background: color.brand,
+              color: color.surface,
+              fontWeight: fontWeight.bold,
+              fontSize: fontSize.small,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <DownloadIcon color={color.surface} />
+            Export CSV
+          </button>
+        </div>
+        <div className="flex flex-wrap" style={{ gap: 10, padding: "14px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
+          <input
+            placeholder="Search by vendor…"
+            value={receiptSearch}
+            onChange={(e) => setReceiptSearch(e.target.value)}
+            style={{
+              flex: 1,
+              minWidth: 180,
+              maxWidth: 280,
+              padding: "8px 12px",
+              borderRadius: radius.sm + 1,
+              border: `1px solid ${color.borderStrong}`,
+              fontSize: fontSize.small,
+              background: color.surface,
+            }}
+          />
+          <select
+            value={receiptCategoryFilter}
+            onChange={(e) => setReceiptCategoryFilter(e.target.value)}
+            style={{
+              padding: "7px 10px",
+              borderRadius: radius.sm + 1,
+              border: `1px solid ${color.borderStrong}`,
+              fontSize: fontSize.small,
+              fontWeight: fontWeight.semibold,
+              background: color.surface,
+              color: color.text,
+            }}
+          >
+            <option value="All">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            value={receiptStatusFilter}
+            onChange={(e) => setReceiptStatusFilter(e.target.value as "All" | ReimbursementStatus)}
+            style={{
+              padding: "7px 10px",
+              borderRadius: radius.sm + 1,
+              border: `1px solid ${color.borderStrong}`,
+              fontSize: fontSize.small,
+              fontWeight: fontWeight.semibold,
+              background: color.surface,
+              color: color.text,
+            }}
+          >
+            <option value="All">All statuses</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {reimbursementChip[s].label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={receiptUserFilter}
+            onChange={(e) => setReceiptUserFilter(e.target.value)}
+            style={{
+              padding: "7px 10px",
+              borderRadius: radius.sm + 1,
+              border: `1px solid ${color.borderStrong}`,
+              fontSize: fontSize.small,
+              fontWeight: fontWeight.semibold,
+              background: color.surface,
+              color: color.text,
+            }}
+          >
+            <option value="All">All users</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <ReceiptsTable receipts={filteredReceipts} categories={categories} users={users} />
+      </div>
 
       <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden", marginTop: 16 }}>
         <div
