@@ -8,6 +8,8 @@ import { useCategories, useCurrentUser, useHomeCurrency, useSetHomeCurrency, use
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
+import { PaymentSetupPanel } from "../../components/PaymentSetupPanel";
+import { InvoiceList } from "../../components/InvoiceList";
 
 function SectionHeading({ children }: { children: string }) {
   return (
@@ -49,6 +51,8 @@ export default function SetupPage() {
   }
 
   if (!users || !categories) return null;
+
+  const canManageBilling = currentUser.role === "owner" || currentUser.role === "admin";
 
   return (
     <div>
@@ -106,6 +110,16 @@ export default function SetupPage() {
 
       <SectionHeading>Categories</SectionHeading>
       <ManageCategoriesPanel categories={categories} />
+
+      {canManageBilling ? (
+        <>
+          <SectionHeading>Payment setup</SectionHeading>
+          <PaymentSetupPanel currentUser={currentUser} />
+
+          <SectionHeading>Invoices</SectionHeading>
+          <InvoiceList />
+        </>
+      ) : null}
     </div>
   );
 }

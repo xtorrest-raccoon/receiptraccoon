@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
+import { syncSeats } from "../lib/data";
 import { useAcceptInvite, useMyPendingInvite } from "../lib/queries";
 
 /**
@@ -59,7 +60,10 @@ export function AcceptInviteBanner() {
           disabled={acceptInvite.isPending}
           onClick={() =>
             acceptInvite.mutate(invite.id, {
-              onSuccess: () => router.replace("/dashboard"),
+              onSuccess: () => {
+                syncSeats();
+                router.replace("/dashboard");
+              },
             })
           }
           style={{

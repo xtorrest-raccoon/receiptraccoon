@@ -150,6 +150,8 @@ async function getCurrentWorkspaceId(): Promise<string> {
   return (data as { workspace_id: string }).workspace_id;
 }
 
+export type BillingStatus = "inactive" | "active" | "past_due" | "canceled";
+
 export interface CurrentUser {
   id: string;
   name: string;
@@ -160,6 +162,15 @@ export interface CurrentUser {
   canProcessReimbursements: boolean;
   /** True only for an admin/owner-provisioned account that hasn't set its own password yet — see 0008_admin_provisioned_accounts.sql. */
   mustChangePassword: boolean;
+  /** Workspace-wide, not personal — see 0010_workspace_billing.sql. Everyone in a workspace shares its billing status. */
+  billingStatus: BillingStatus;
+  /** Null once the trial has ended (converted to a real subscription or never started) — see 0011_billing_trial.sql. */
+  trialEndsAt: string | null;
+  /** True once the 5-seat trial cap was exceeded and billing started immediately — see /api/billing/sync-seats. */
+  trialEndedEarly: boolean;
+  /** True once a paid subscription is scheduled to stop at currentPeriodEnd — see 0012_billing_cancellation.sql. */
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
 }
 
 interface MemberWithProfileRow {
@@ -174,13 +185,22 @@ interface MemberWithProfileRow {
   // must_change_password is only ever selected by getCurrentUser, not
   // listUsers — optional here rather than a second near-duplicate type.
   profiles: { display_name: string; must_change_password?: boolean } | null;
+  workspaces: {
+    billing_status: BillingStatus;
+    trial_ends_at: string | null;
+    trial_ended_early: boolean;
+    cancel_at_period_end: boolean;
+    current_period_end: string | null;
+  } | null;
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
   const userId = await getCurrentUserId();
   const { data, error } = await client()
     .from("workspace_members")
-    .select("role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name, must_change_password)")
+    .select(
+      "role, job_title, can_approve_reimbursements, can_process_reimbursements, profiles(display_name, must_change_password), workspaces(billing_status, trial_ends_at, trial_ended_early, cancel_at_period_end, current_period_end)",
+    )
     .eq("user_id", userId)
     .limit(1)
     .single();
@@ -194,7 +214,23 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     canApproveReimbursements: row.can_approve_reimbursements,
     canProcessReimbursements: row.can_process_reimbursements,
     mustChangePassword: row.profiles?.must_change_password ?? false,
+    billingStatus: row.workspaces?.billing_status ?? "inactive",
+    trialEndsAt: row.workspaces?.trial_ends_at ?? null,
+    trialEndedEarly: row.workspaces?.trial_ended_early ?? false,
+    cancelAtPeriodEnd: row.workspaces?.cancel_at_period_end ?? false,
+    currentPeriodEnd: row.workspaces?.current_period_end ?? null,
   };
+}
+
+/**
+ * Clears the one-time "your trial ended early" notice for the whole
+ * workspace. Relies on workspaces_update's existing owner/admin-only RLS
+ * policy rather than a bespoke check — same reasoning as setHomeCurrency.
+ */
+export async function dismissTrialEndedNotice(): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error } = await client().from("workspaces").update({ trial_ended_early: false }).eq("id", wsId);
+  if (error) throw error;
 }
 
 export interface WorkspaceUser {

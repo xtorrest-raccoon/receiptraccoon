@@ -235,6 +235,48 @@ export function useChangePassword() {
   });
 }
 
+/** No cache invalidation — this only ever returns a URL to redirect to. */
+export function useCreateCheckoutSession() {
+  return useMutation({
+    mutationFn: () => data.createCheckoutSession(),
+  });
+}
+
+/** No cache invalidation — this only ever returns a URL to redirect to. */
+export function useCreatePortalSession() {
+  return useMutation({
+    mutationFn: () => data.createPortalSession(),
+  });
+}
+
+export function useInvoices() {
+  return useQuery({ queryKey: ["invoices"], queryFn: data.listInvoices });
+}
+
+export function useDismissTrialEndedNotice() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: () => data.dismissTrialEndedNotice(),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useCancelSubscription() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: () => data.cancelSubscription(),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useResumeSubscription() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: () => data.resumeSubscription(),
+    onSuccess: invalidateAll,
+  });
+}
+
 /** No cache invalidation — sending the reset email doesn't change any cached read. */
 export function useRequestPasswordReset() {
   return useMutation({

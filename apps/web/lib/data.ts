@@ -160,6 +160,115 @@ export function changePassword(newPassword: string): Promise<void> {
   return api.changePassword(newPassword);
 }
 
+/** Owner-only. Returns a Stripe Checkout URL to redirect the browser to. */
+export async function createCheckoutSession(): Promise<{ url: string }> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/billing/create-checkout-session", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not start checkout (HTTP ${res.status})`);
+  }
+  return body;
+}
+
+/**
+ * Best-effort — called after anything that changes workspace headcount
+ * (creating or removing a member, accepting an invite) so Stripe's
+ * subscription quantity stays accurate. A no-op if the workspace has no
+ * subscription yet, so safe to call unconditionally.
+ */
+export async function syncSeats(): Promise<void> {
+  const session = await api.getSession();
+  if (!session) return;
+  await fetch("/api/billing/sync-seats", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  }).catch(() => {});
+}
+
+/** Owner/admin-only. Returns a Stripe Billing Portal URL for managing the card on file. */
+export async function createPortalSession(): Promise<{ url: string }> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/billing/create-portal-session", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not open billing portal (HTTP ${res.status})`);
+  }
+  return body;
+}
+
+export interface Invoice {
+  id: string;
+  number: string | null;
+  createdAt: string;
+  amountPaidMinor: number;
+  currency: string;
+  status: string | null;
+  hostedInvoiceUrl: string | null;
+  invoicePdf: string | null;
+}
+
+/** Owner/admin-only. Straight from Stripe — no local invoice storage. */
+export async function listInvoices(): Promise<Invoice[]> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/billing/invoices", {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not load invoices (HTTP ${res.status})`);
+  }
+  return body.invoices;
+}
+
+/** Owner/admin-only, clears the one-time "trial ended early" notice for the whole workspace. */
+export function dismissTrialEndedNotice(): Promise<void> {
+  return api.dismissTrialEndedNotice();
+}
+
+/** Owner/admin-only. Immediate during a trial; cancel_at_period_end otherwise — see /api/billing/cancel-subscription. */
+export async function cancelSubscription(): Promise<{ canceled: true; immediately: boolean; accessUntil?: string }> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/billing/cancel-subscription", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not cancel the subscription (HTTP ${res.status})`);
+  }
+  return body;
+}
+
+/** Owner/admin-only. Undoes a pending cancel_at_period_end before it takes effect. */
+export async function resumeSubscription(): Promise<void> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/billing/resume-subscription", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not resume the subscription (HTTP ${res.status})`);
+  }
+}
+
 export function requestPasswordReset(email: string): Promise<void> {
   return api.requestPasswordReset(email, `${window.location.origin}/reset-password`);
 }

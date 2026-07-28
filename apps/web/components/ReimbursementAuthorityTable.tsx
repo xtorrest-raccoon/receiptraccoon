@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getSession, signInWithPassword, type CurrentUser, type WorkspaceUser } from "@rr/api";
 import { canManageReimbursementAuthority, isAdmin } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
+import { syncSeats } from "../lib/data";
 import { useRemoveMember, useSetReimbursementAssignments, useSetReimbursementAuthority } from "../lib/queries";
 import { Avatar } from "./Avatar";
 
@@ -347,7 +348,7 @@ export function ReimbursementAuthorityTable({
           targetName={removing.name}
           onCancel={() => setRemoving(null)}
           onConfirmed={() => {
-            removeMember.mutate(removing.id);
+            removeMember.mutate(removing.id, { onSuccess: syncSeats });
             setRemoving(null);
           }}
         />

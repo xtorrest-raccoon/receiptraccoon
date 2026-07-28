@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Role } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
+import { syncSeats } from "../lib/data";
 import { useProvisionMember } from "../lib/queries";
 
 const ROLES: Role[] = ["member", "admin"];
@@ -28,6 +29,7 @@ export function ProvisionMemberPanel() {
         onSuccess: (res) => {
           setResult(res);
           setEmail("");
+          syncSeats();
         },
       },
     );
