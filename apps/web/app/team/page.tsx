@@ -148,7 +148,7 @@ export default function TeamPage() {
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "center",
             padding: "16px 20px",
             borderBottom: `1px solid ${color.borderSubtle}`,
             flexWrap: "wrap",
@@ -156,7 +156,68 @@ export default function TeamPage() {
           }}
         >
           <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Receipts</div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <div className="flex flex-wrap" style={{ alignItems: "center", gap: 10 }}>
+            <input
+              placeholder="Search by vendor…"
+              value={receiptSearch}
+              onChange={(e) => setReceiptSearch(e.target.value)}
+              style={{
+                minWidth: 160,
+                maxWidth: 200,
+                padding: "7px 10px",
+                borderRadius: radius.sm + 1,
+                border: `1px solid ${color.borderStrong}`,
+                fontSize: fontSize.small,
+                background: color.surface,
+              }}
+            />
+            <select
+              value={receiptCategoryFilter}
+              onChange={(e) => setReceiptCategoryFilter(e.target.value)}
+              style={{
+                padding: "7px 10px",
+                borderRadius: radius.sm + 1,
+                border: `1px solid ${color.borderStrong}`,
+                fontSize: fontSize.small,
+                fontWeight: fontWeight.semibold,
+                background: color.surface,
+                color: color.text,
+              }}
+            >
+              <option value="All">All categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <MultiSelectDropdown
+              options={STATUS_OPTIONS.map((s) => ({ value: s, label: reimbursementChip[s].label }))}
+              selected={receiptStatusFilter}
+              onChange={(next) => setReceiptStatusFilter(next as ReimbursementStatus[])}
+              emptyLabel="No statuses selected"
+              buttonStyle={filterSelectStyle}
+            />
+            <select
+              value={receiptUserFilter}
+              onChange={(e) => setReceiptUserFilter(e.target.value)}
+              style={{
+                padding: "7px 10px",
+                borderRadius: radius.sm + 1,
+                border: `1px solid ${color.borderStrong}`,
+                fontSize: fontSize.small,
+                fontWeight: fontWeight.semibold,
+                background: color.surface,
+                color: color.text,
+              }}
+            >
+              <option value="All">All users</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={() => exportReceiptsCsv(filteredReceipts, users, "receiptraccoon-team-receipts.csv")}
@@ -179,70 +240,6 @@ export default function TeamPage() {
             </button>
             <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.heavy }}>{formatMoney(receiptsOutstandingMinor, team.currency)}</div>
           </div>
-        </div>
-        <div className="flex flex-wrap" style={{ gap: 10, padding: "14px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
-          <input
-            placeholder="Search by vendor…"
-            value={receiptSearch}
-            onChange={(e) => setReceiptSearch(e.target.value)}
-            style={{
-              flex: 1,
-              minWidth: 180,
-              maxWidth: 280,
-              padding: "8px 12px",
-              borderRadius: radius.sm + 1,
-              border: `1px solid ${color.borderStrong}`,
-              fontSize: fontSize.small,
-              background: color.surface,
-            }}
-          />
-          <select
-            value={receiptCategoryFilter}
-            onChange={(e) => setReceiptCategoryFilter(e.target.value)}
-            style={{
-              padding: "7px 10px",
-              borderRadius: radius.sm + 1,
-              border: `1px solid ${color.borderStrong}`,
-              fontSize: fontSize.small,
-              fontWeight: fontWeight.semibold,
-              background: color.surface,
-              color: color.text,
-            }}
-          >
-            <option value="All">All categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <MultiSelectDropdown
-            options={STATUS_OPTIONS.map((s) => ({ value: s, label: reimbursementChip[s].label }))}
-            selected={receiptStatusFilter}
-            onChange={(next) => setReceiptStatusFilter(next as ReimbursementStatus[])}
-            emptyLabel="No statuses selected"
-            buttonStyle={filterSelectStyle}
-          />
-          <select
-            value={receiptUserFilter}
-            onChange={(e) => setReceiptUserFilter(e.target.value)}
-            style={{
-              padding: "7px 10px",
-              borderRadius: radius.sm + 1,
-              border: `1px solid ${color.borderStrong}`,
-              fontSize: fontSize.small,
-              fontWeight: fontWeight.semibold,
-              background: color.surface,
-              color: color.text,
-            }}
-          >
-            <option value="All">All users</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
         </div>
         <ReceiptsTable receipts={filteredReceipts} categories={categories} users={users} />
       </div>
