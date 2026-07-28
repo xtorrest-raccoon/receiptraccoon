@@ -12,9 +12,10 @@ import {
 } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import type { WorkspaceUser } from "@rr/api";
-import { useCurrentUser } from "../lib/queries";
+import { useCurrentUser, useDeleteMileageTrip } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 import { MileageTripDrawer } from "./MileageTripDrawer";
+import { TrashIcon } from "./icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
@@ -35,15 +36,25 @@ export function MileageTable({
   const admin = currentUser ? isAdmin(currentUser.role) : false;
   const canAct = currentUser ? admin || hasAnyReimbursementAuthority(currentUser) : false;
   const { requestReimbursementChange } = useDataStore();
+  const deleteTrip = useDeleteMileageTrip();
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const selectedTrip = trips.find((t) => t.id === selectedTripId) ?? null;
+
+  // Own trip, still pending — the only status @rr/api's deleteMileageTrip
+  // actually permits (unlike receipts, rejected mileage stays put).
+  const canDelete = (t: MileageTrip) => currentUser?.id === t.userId && t.reimbursementStatus === "pending";
+
+  const confirmDelete = (t: MileageTrip) => {
+    if (!window.confirm(`Delete the trip "${t.purpose}"? This can't be undone.`)) return;
+    deleteTrip.mutate(t.id);
+  };
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden" }}>
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1fr 1.4fr 1.3fr 0.9fr 0.9fr 1fr",
+          gridTemplateColumns: "1fr 1.4fr 1.3fr 0.9fr 0.9fr 1fr 28px",
           padding: "10px 20px",
           fontSize: fontSize.tiny,
           fontWeight: fontWeight.bold,
@@ -59,6 +70,7 @@ export function MileageTable({
         <div>Distance</div>
         <div>Amount</div>
         <div>Status</div>
+        <div />
       </div>
 
       {trips.length === 0 ? (
@@ -71,7 +83,7 @@ export function MileageTable({
               <div
                 className="hidden sm:grid"
                 style={{
-                  gridTemplateColumns: "1fr 1.4fr 1.3fr 0.9fr 0.9fr 1fr",
+                  gridTemplateColumns: "1fr 1.4fr 1.3fr 0.9fr 0.9fr 1fr 28px",
                   alignItems: "center",
                   padding: "11px 20px",
                   borderBottom: `1px solid ${color.borderSubtle}`,
@@ -141,6 +153,18 @@ export function MileageTable({
                     </span>
                   )}
                 </div>
+                <div>
+                  {canDelete(t) ? (
+                    <button
+                      type="button"
+                      onClick={() => confirmDelete(t)}
+                      aria-label="Delete trip"
+                      style={{ cursor: "pointer", background: "none", border: "none", padding: 4, display: "flex" }}
+                    >
+                      <TrashIcon color={color.textFaint} />
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
               <div
@@ -175,6 +199,27 @@ export function MileageTable({
                     {t.distance.toFixed(1)} {t.distanceUnit}
                   </span>
                 </button>
+                {canDelete(t) ? (
+                  <button
+                    type="button"
+                    onClick={() => confirmDelete(t)}
+                    style={{
+                      alignSelf: "flex-start",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: "pointer",
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      color: color.textFaint,
+                      fontSize: fontSize.small,
+                    }}
+                  >
+                    <TrashIcon color={color.textFaint} />
+                    Delete
+                  </button>
+                ) : null}
               </div>
             </div>
           );

@@ -485,7 +485,7 @@ export async function setWorkspaceName(name: string): Promise<void> {
 }
 
 /** Plain ISO codes — real receipts store their amount already converted at write time, so no FX table is needed here (contrast mock-api's FX_FROM_EUR). */
-export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY", "MXN", "INR", "BRL"];
+export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY", "MXN", "INR", "BRL", "SEK"];
 
 export async function getHomeCurrency(): Promise<string> {
   return (await getWorkspaceRow()).home_currency;

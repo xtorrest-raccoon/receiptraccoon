@@ -70,7 +70,7 @@ export function ReceiptsTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 0.4fr",
+          gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 28px",
           padding: "12px 20px",
           fontSize: fontSize.tiny + 0.5,
           fontWeight: fontWeight.bold,
@@ -96,7 +96,7 @@ export function ReceiptsTable({
           <div
             className="hidden sm:grid"
             style={{
-              gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 0.4fr",
+              gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 28px",
               alignItems: "center",
               padding: "13px 20px",
               borderBottom: `1px solid ${color.borderSubtle}`,

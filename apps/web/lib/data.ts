@@ -72,6 +72,11 @@ export function addMileageTrip(input: { tripDate: string; purpose: string; dista
   return api.addMileageTrip(input);
 }
 
+/** Only permitted while pending — same rule mobile's swipe-to-delete relies on. */
+export function deleteMileageTrip(id: string): Promise<boolean> {
+  return api.deleteMileageTrip(id);
+}
+
 export function setMileageReimbursementStatus(id: string, status: ReimbursementStatus, reason?: string): Promise<void> {
   return api.setMileageReimbursementStatus(id, status, reason);
 }

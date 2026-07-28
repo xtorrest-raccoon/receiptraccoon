@@ -195,6 +195,14 @@ export function useAddMileageTrip() {
   });
 }
 
+export function useDeleteMileageTrip() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: string) => data.deleteMileageTrip(id),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useAddCategoryName() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
