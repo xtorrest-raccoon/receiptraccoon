@@ -143,7 +143,7 @@ export default function TeamPage() {
         </>
       ) : null}
 
-      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden" }}>
+      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], overflow: "hidden", marginTop: 16 }}>
         <div
           style={{
             display: "flex",
