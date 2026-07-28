@@ -51,6 +51,24 @@ export function SetupIcon({ color }: { color: string }) {
   );
 }
 
+export function MileageIcon({ color }: { color: string }) {
+  return (
+    <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true">
+      <path
+        d="M4 12l1.2-4.2A2 2 0 0 1 7.1 6.4h5.8a2 2 0 0 1 1.9 1.4L16 12"
+        fill="none"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <rect x={2.5} y={12} width={15} height={3.4} rx={1.4} fill="none" stroke={color} strokeWidth={1.6} />
+      <circle cx={6} cy={15.6} r={1.3} fill={color} />
+      <circle cx={14} cy={15.6} r={1.3} fill={color} />
+    </svg>
+  );
+}
+
 export function DownloadIcon({ color }: { color: string }) {
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden="true">

@@ -1,0 +1,112 @@
+"use client";
+
+import { useState } from "react";
+import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
+import { TODAY } from "../lib/data";
+import { useAddMileageTrip, useCurrentUser, useHomeCurrency, useMileage, useUsers } from "../lib/queries";
+import { MileageTable } from "./MileageTable";
+
+/**
+ * Rendered by the top-level /mileage page. MileageTable elsewhere (Team
+ * page) is the admin/manager-facing everyone's-trips view; this is the
+ * counterpart for someone who works entirely on web and never installs
+ * mobile: log a trip and see their own reimbursement status. No explicit
+ * per-user filtering needed beyond passing currentUser.id to useMileage —
+ * RLS already limits a plain member to their own rows regardless.
+ */
+export function MyMileagePanel() {
+  const { data: currentUser } = useCurrentUser();
+  const { data: users } = useUsers();
+  const { data: homeCurrency } = useHomeCurrency();
+  const { data: trips } = useMileage(currentUser?.id);
+  const addTrip = useAddMileageTrip();
+
+  const [purpose, setPurpose] = useState("");
+  const [tripDate, setTripDate] = useState(TODAY);
+  const [distance, setDistance] = useState("");
+  const [distanceUnit, setDistanceUnit] = useState<"mi" | "km">("mi");
+
+  const canSubmit = purpose.trim() !== "" && tripDate !== "" && Number(distance) > 0;
+
+  const submit = () => {
+    if (!canSubmit) return;
+    addTrip.mutate(
+      { tripDate, purpose: purpose.trim(), distance: Number(distance), distanceUnit },
+      {
+        onSuccess: () => {
+          setPurpose("");
+          setDistance("");
+        },
+      },
+    );
+  };
+
+  if (!users || !homeCurrency) return null;
+
+  return (
+    <div>
+      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, marginBottom: 16 }}>
+        <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, marginBottom: 12 }}>Log a trip</div>
+        <div className="flex flex-wrap" style={{ gap: 8, marginBottom: 10 }}>
+          <input
+            placeholder="Purpose (e.g. Client visit)"
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            style={{ flex: "1 1 220px", padding: "9px 14px", borderRadius: radius.md, border: `1px solid ${color.borderStrong}`, fontSize: fontSize.body }}
+          />
+          <input
+            type="date"
+            value={tripDate}
+            onChange={(e) => setTripDate(e.target.value)}
+            style={{ padding: "9px 14px", borderRadius: radius.md, border: `1px solid ${color.borderStrong}`, fontSize: fontSize.body }}
+          />
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            placeholder="Distance"
+            value={distance}
+            onChange={(e) => setDistance(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+            }}
+            style={{ width: 110, padding: "9px 14px", borderRadius: radius.md, border: `1px solid ${color.borderStrong}`, fontSize: fontSize.body }}
+          />
+          <select
+            value={distanceUnit}
+            onChange={(e) => setDistanceUnit(e.target.value as "mi" | "km")}
+            style={{ padding: "9px 10px", borderRadius: radius.md, border: `1px solid ${color.borderStrong}`, fontSize: fontSize.body, background: color.surface, color: color.text }}
+          >
+            <option value="mi">mi</option>
+            <option value="km">km</option>
+          </select>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!canSubmit || addTrip.isPending}
+            style={{
+              padding: "9px 16px",
+              borderRadius: radius.md,
+              background: color.brand,
+              color: color.surface,
+              fontWeight: fontWeight.bold,
+              fontSize: fontSize.body,
+              border: "none",
+              cursor: canSubmit ? "pointer" : "not-allowed",
+              opacity: canSubmit && !addTrip.isPending ? 1 : 0.6,
+            }}
+          >
+            {addTrip.isPending ? "…" : "Add trip"}
+          </button>
+        </div>
+        {addTrip.isError ? (
+          <div style={{ fontSize: fontSize.small, color: color.up }}>
+            {addTrip.error instanceof Error ? addTrip.error.message : "Couldn't log that trip."}
+          </div>
+        ) : null}
+      </div>
+
+      <MileageTable trips={trips ?? []} currency={homeCurrency} users={users} />
+    </div>
+  );
+}

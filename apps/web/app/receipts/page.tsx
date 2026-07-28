@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { countryForCurrency, countryName, formatMoney, formatShortDate, hasAnyReimbursementAuthority, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt } from "@rr/shared";
+import { countryForCurrency, countryName, formatMoney, formatShortDate, hasAnyReimbursementAuthority, isAdmin, reclaimedNetMinor, reclaimedTaxMinor, type Receipt, type ReimbursementStatus } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
-import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
+import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
 import { useDataStore } from "../../lib/store";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
 import { DownloadIcon, UploadIcon } from "../../components/icons";
+
+const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 
 function exportCsv(rows: Receipt[], users: WorkspaceUser[]) {
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
@@ -65,11 +67,17 @@ export default function ReceiptsPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [userFilter, setUserFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | ReimbursementStatus>("All");
 
   const { data: receipts } = useReceipts({ q: search || undefined, categoryName: categoryFilter, userId: userFilter });
   const { data: allForExport } = useReceipts({ categoryName: categoryFilter, userId: userFilter });
 
   if (!categories || !users) return null;
+
+  // Client-side, same reasoning as categoryName in @rr/api's listReceipts —
+  // the row count per workspace doesn't justify a server-side filter here.
+  const filteredReceipts = statusFilter === "All" ? receipts ?? [] : (receipts ?? []).filter((r) => r.reimbursementStatus === statusFilter);
+  const filteredForExport = statusFilter === "All" ? allForExport ?? [] : (allForExport ?? []).filter((r) => r.reimbursementStatus === statusFilter);
 
   return (
     <div>
@@ -98,7 +106,7 @@ export default function ReceiptsPage() {
           </button>
           <button
             type="button"
-            onClick={() => exportCsv(allForExport ?? [], users)}
+            onClick={() => exportCsv(filteredForExport, users)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -155,6 +163,26 @@ export default function ReceiptsPage() {
             </option>
           ))}
         </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "All" | ReimbursementStatus)}
+          style={{
+            padding: "10px 14px",
+            borderRadius: radius.md,
+            border: `1px solid ${color.borderStrong}`,
+            fontSize: fontSize.body,
+            background: color.surface,
+            fontWeight: fontWeight.semibold,
+            color: color.text,
+          }}
+        >
+          <option value="All">All statuses</option>
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {reimbursementChip[s].label}
+            </option>
+          ))}
+        </select>
         {admin ? (
           <select
             value={userFilter}
@@ -179,7 +207,7 @@ export default function ReceiptsPage() {
         ) : null}
       </div>
 
-      <ReceiptsTable receipts={receipts ?? []} categories={categories} users={users} />
+      <ReceiptsTable receipts={filteredReceipts} categories={categories} users={users} />
     </div>
   );
 }

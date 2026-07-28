@@ -7,7 +7,7 @@ import { canManageReimbursementAuthority, canViewTeamPage } from "@rr/shared";
 import { signOut, type CurrentUser } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
 import { useCurrentUser } from "../lib/queries";
-import { DashboardIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
+import { DashboardIcon, MileageIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
 
 interface NavItem {
   href: string;
@@ -20,6 +20,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", Icon: DashboardIcon },
   { href: "/receipts", label: "Receipts", Icon: ReceiptsIcon },
+  { href: "/mileage", label: "Mileage", Icon: MileageIcon },
   { href: "/team", label: "Team", Icon: TeamIcon, visible: (u) => canViewTeamPage(u.role, u) },
   // Only whoever can grant reimbursement authority in the first place —
   // same audience the Setup page itself gates on.
