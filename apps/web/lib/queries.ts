@@ -27,14 +27,6 @@ export function useHomeCurrency() {
   return useQuery({ queryKey: ["homeCurrency"], queryFn: data.getHomeCurrency });
 }
 
-export function useMileageRateMilli() {
-  return useQuery({ queryKey: ["mileageRateMilli"], queryFn: data.getMileageRateMilli });
-}
-
-export function useDistanceUnit() {
-  return useQuery({ queryKey: ["distanceUnit"], queryFn: data.getDistanceUnit });
-}
-
 export function useWorkspaceName() {
   return useQuery({ queryKey: ["workspaceName"], queryFn: data.getWorkspaceName });
 }
@@ -97,8 +89,6 @@ const ALL_QUERY_KEYS = [
   "mileage",
   "categories",
   "homeCurrency",
-  "mileageRateMilli",
-  "distanceUnit",
   "workspaceInvites",
   "workspaceName",
   "users",
@@ -159,14 +149,6 @@ export function useSetReimbursementAuthority() {
   return useMutation({
     mutationFn: ({ userId, canApprove, canProcess }: { userId: string; canApprove: boolean; canProcess: boolean }) =>
       data.setReimbursementAuthority(userId, canApprove, canProcess),
-    onSuccess: invalidateAll,
-  });
-}
-
-export function useSetUserMileageRate() {
-  const invalidateAll = useInvalidateAll();
-  return useMutation({
-    mutationFn: ({ userId, rateMilli }: { userId: string; rateMilli: number | null }) => data.setUserMileageRate(userId, rateMilli),
     onSuccess: invalidateAll,
   });
 }

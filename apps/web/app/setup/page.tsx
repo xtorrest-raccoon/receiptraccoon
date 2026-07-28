@@ -4,11 +4,10 @@ import Link from "next/link";
 import { canManageReimbursementAuthority } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../../lib/data";
-import { useCategories, useCurrentUser, useDistanceUnit, useHomeCurrency, useMileageRateMilli, useSetHomeCurrency, useUsers } from "../../lib/queries";
+import { useCategories, useCurrentUser, useHomeCurrency, useSetHomeCurrency, useUsers } from "../../lib/queries";
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
-import { MileageRatesPanel } from "../../components/MileageRatesPanel";
 import { PaymentSetupPanel } from "../../components/PaymentSetupPanel";
 import { InvoiceList } from "../../components/InvoiceList";
 
@@ -32,8 +31,6 @@ export default function SetupPage() {
   const { data: users } = useUsers();
   const { data: categories } = useCategories();
   const { data: homeCurrency } = useHomeCurrency();
-  const { data: mileageRateMilli } = useMileageRateMilli();
-  const { data: distanceUnit } = useDistanceUnit();
   const setHomeCurrency = useSetHomeCurrency();
 
   const allowed = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
@@ -53,7 +50,7 @@ export default function SetupPage() {
     );
   }
 
-  if (!users || !categories || mileageRateMilli === undefined || !homeCurrency || !distanceUnit) return null;
+  if (!users || !categories || !homeCurrency) return null;
 
   const canManageBilling = currentUser.role === "owner" || currentUser.role === "admin";
 
@@ -110,9 +107,6 @@ export default function SetupPage() {
 
       <SectionHeading>Approval hierarchy</SectionHeading>
       <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
-
-      <SectionHeading>Mileage rates</SectionHeading>
-      <MileageRatesPanel users={users} workspaceRateMilli={mileageRateMilli} workspaceUnit={distanceUnit} currency={homeCurrency} />
 
       <SectionHeading>Categories</SectionHeading>
       <ManageCategoriesPanel categories={categories} />
