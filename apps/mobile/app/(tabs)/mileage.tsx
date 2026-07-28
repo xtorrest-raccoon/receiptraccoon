@@ -86,7 +86,7 @@ export default function MileageScreen() {
   // effective rate the same way (see getEffectiveMileageRateMilli).
   const estimateMinor =
     !isNaN(distanceValue) && distanceValue > 0
-      ? mileageAmountForTrip(distanceValue, unit, rateMilli, currency)
+      ? mileageAmountForTrip(distanceValue, unit, rateMilli, unit, currency)
       : null;
 
   const closeForm = () => {

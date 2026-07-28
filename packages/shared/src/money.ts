@@ -130,23 +130,32 @@ export function mileageAmountMinor(
 }
 
 /**
- * What a trip is worth, given the workspace's canonical PER-MILE rate and the unit
- * the trip was actually logged in.
+ * What a trip is worth, given a rate expressed per `rateUnit` and the unit
+ * the trip's distance was actually logged in — converts distance into
+ * `rateUnit`'s terms rather than assuming the rate is always per-mile.
+ * Getting this backwards previously underpaid every km-rate workspace by
+ * ~38% (a rate meant as "per km" was applied as if it were "per mile") —
+ * see 0014_mileage_rate_unit.sql.
  *
- * One implementation so the mobile entry form, the web team table, and the server
- * cannot disagree about someone's reimbursement.
+ * One implementation so the mobile entry form, the web team table, and the
+ * server cannot disagree about someone's reimbursement.
  */
 export function mileageAmountForTrip(
   distance: number,
   distanceUnit: "mi" | "km",
-  ratePerMileMilli: number,
+  rateMilli: number,
+  rateUnit: "mi" | "km",
   currency: string,
 ): number {
-  const distanceInMiles =
-    distanceUnit === "mi" ? new Decimal(distance) : new Decimal(distance).dividedBy(MI_TO_KM);
+  const distanceInRateUnit =
+    distanceUnit === rateUnit
+      ? new Decimal(distance)
+      : rateUnit === "mi"
+        ? new Decimal(distance).dividedBy(MI_TO_KM)
+        : new Decimal(distance).times(MI_TO_KM);
 
-  return distanceInMiles
-    .times(ratePerMileMilli)
+  return distanceInRateUnit
+    .times(rateMilli)
     .times(minorUnitsPerUnit(currency))
     .dividedBy(RATE_SCALE)
     .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)

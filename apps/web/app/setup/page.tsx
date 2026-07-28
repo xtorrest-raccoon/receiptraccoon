@@ -4,7 +4,7 @@ import Link from "next/link";
 import { canManageReimbursementAuthority } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../../lib/data";
-import { useCategories, useCurrentUser, useHomeCurrency, useMileageRateMilli, useSetHomeCurrency, useUsers } from "../../lib/queries";
+import { useCategories, useCurrentUser, useDistanceUnit, useHomeCurrency, useMileageRateMilli, useSetHomeCurrency, useUsers } from "../../lib/queries";
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
@@ -33,6 +33,7 @@ export default function SetupPage() {
   const { data: categories } = useCategories();
   const { data: homeCurrency } = useHomeCurrency();
   const { data: mileageRateMilli } = useMileageRateMilli();
+  const { data: distanceUnit } = useDistanceUnit();
   const setHomeCurrency = useSetHomeCurrency();
 
   const allowed = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
@@ -52,7 +53,7 @@ export default function SetupPage() {
     );
   }
 
-  if (!users || !categories || mileageRateMilli === undefined || !homeCurrency) return null;
+  if (!users || !categories || mileageRateMilli === undefined || !homeCurrency || !distanceUnit) return null;
 
   const canManageBilling = currentUser.role === "owner" || currentUser.role === "admin";
 
@@ -111,7 +112,7 @@ export default function SetupPage() {
       <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
 
       <SectionHeading>Mileage rates</SectionHeading>
-      <MileageRatesPanel users={users} workspaceRateMilli={mileageRateMilli} currency={homeCurrency} />
+      <MileageRatesPanel users={users} workspaceRateMilli={mileageRateMilli} workspaceUnit={distanceUnit} currency={homeCurrency} />
 
       <SectionHeading>Categories</SectionHeading>
       <ManageCategoriesPanel categories={categories} />

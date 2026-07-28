@@ -119,6 +119,8 @@ export interface MileageTrip {
    * from current workspace settings.
    */
   rateMilli: number;
+  /** The unit rateMilli is expressed per — see 0014_mileage_rate_unit.sql. Also frozen at entry. */
+  rateUnit: DistanceUnit;
   amountMinor: number;
   reimbursementStatus: ReimbursementStatus;
   rejectionReason: string | null;

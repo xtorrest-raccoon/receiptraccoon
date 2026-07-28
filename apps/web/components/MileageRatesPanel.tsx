@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { currencySymbol, parseRateToMilli, rateToDecimalString } from "@rr/shared";
+import { currencySymbol, parseRateToMilli, rateToDecimalString, type DistanceUnit } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useSetUserMileageRate } from "../lib/queries";
@@ -17,10 +17,12 @@ import { Avatar } from "./Avatar";
 export function MileageRatesPanel({
   users,
   workspaceRateMilli,
+  workspaceUnit,
   currency,
 }: {
   users: WorkspaceUser[];
   workspaceRateMilli: number;
+  workspaceUnit: DistanceUnit;
   currency: string;
 }) {
   return (
@@ -30,18 +32,19 @@ export function MileageRatesPanel({
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
           Per person, in case reimbursement policy varies by country — leave blank to use the workspace default (
           {currencySymbol(currency)}
-          {rateToDecimalString(workspaceRateMilli)}/mi).
+          {rateToDecimalString(workspaceRateMilli)}/{workspaceUnit}
+          ), same unit as Setup's home mileage setting.
         </div>
       </div>
 
       {users.map((u) => (
-        <MileageRateRow key={u.id} user={u} currency={currency} />
+        <MileageRateRow key={u.id} user={u} currency={currency} unit={workspaceUnit} />
       ))}
     </div>
   );
 }
 
-function MileageRateRow({ user, currency }: { user: WorkspaceUser; currency: string }) {
+function MileageRateRow({ user, currency, unit }: { user: WorkspaceUser; currency: string; unit: DistanceUnit }) {
   const setRate = useSetUserMileageRate();
   const [text, setText] = useState(user.mileageRateMilli !== null ? rateToDecimalString(user.mileageRateMilli) : "");
 
@@ -87,7 +90,7 @@ function MileageRateRow({ user, currency }: { user: WorkspaceUser; currency: str
             color: color.text,
           }}
         />
-        <span style={{ fontSize: fontSize.small, color: color.textFaint }}>/mi</span>
+        <span style={{ fontSize: fontSize.small, color: color.textFaint }}>/{unit}</span>
       </div>
     </div>
   );

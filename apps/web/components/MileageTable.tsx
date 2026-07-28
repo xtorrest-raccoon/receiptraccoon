@@ -112,11 +112,11 @@ export function MileageTable({
                   {t.distance.toFixed(1)} {t.distanceUnit}
                 </div>
                 {/* Frozen onto the trip at entry — this person's own rate at
-                    the time, not today's workspace default or override.
-                    Always per-mile, regardless of the trip's own distanceUnit. */}
+                    the time, not today's workspace default or override. Per
+                    rateUnit, which may differ from the trip's own distanceUnit. */}
                 <div style={{ color: color.textMuted, fontSize: fontSize.small }}>
                   {currencySymbol(currency)}
-                  {rateToDecimalString(t.rateMilli)}/mi
+                  {rateToDecimalString(t.rateMilli)}/{t.rateUnit}
                 </div>
                 <button
                   type="button"

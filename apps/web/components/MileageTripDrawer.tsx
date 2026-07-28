@@ -189,7 +189,7 @@ export function MileageTripDrawer({
             <span>Rate</span>
             <span>
               {currencySymbol(currency)}
-              {rateToDecimalString(trip.rateMilli)} per {trip.distanceUnit}
+              {rateToDecimalString(trip.rateMilli)} per {trip.rateUnit}
             </span>
           </div>
           <div

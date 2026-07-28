@@ -10,7 +10,7 @@
  */
 
 import * as api from "@rr/api";
-import type { DashboardResponse, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
+import type { DashboardResponse, DistanceUnit, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
 
 export type { CurrentUser, WorkspaceUser } from "@rr/api";
 
@@ -100,6 +100,11 @@ export function getHomeCurrency(): Promise<string> {
 /** Workspace default rate — per-user overrides (see MileageRatesPanel) fall back to this. */
 export function getMileageRateMilli(): Promise<number> {
   return api.getMileageRateMilli();
+}
+
+/** The unit the workspace's mileage rate is expressed per — see 0014_mileage_rate_unit.sql. */
+export function getDistanceUnit(): Promise<DistanceUnit> {
+  return api.getDistanceUnit();
 }
 
 export function setHomeCurrency(code: string): Promise<void> {

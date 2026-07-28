@@ -66,7 +66,7 @@ export function TripDetailModal({
                   <Text style={styles.detailLabel}>Rate</Text>
                   <Text style={styles.detailValue}>
                     {currencySymbol(currency)}
-                    {rateToDecimalString(trip.rateMilli)} per {trip.distanceUnit}
+                    {rateToDecimalString(trip.rateMilli)} per {trip.rateUnit}
                   </Text>
                 </View>
                 <View style={[styles.detailRow, styles.detailFinalRow]}>

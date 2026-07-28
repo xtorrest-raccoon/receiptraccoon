@@ -578,7 +578,7 @@ export async function getMyMileageRateMilli(): Promise<number> {
 export async function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): Promise<number> {
   const row = await getWorkspaceRow();
   const rateMilli = await getEffectiveMileageRateMilli(row);
-  return mileageAmountForTrip(distance, unit, rateMilli, row.home_currency);
+  return mileageAmountForTrip(distance, unit, rateMilli, row.mileage_unit, row.home_currency);
 }
 
 // ── categories ───────────────────────────────────────────────────────────
@@ -928,6 +928,7 @@ interface TripRow {
   distance: number;
   distance_unit: DistanceUnit;
   rate_milli: number;
+  rate_unit: DistanceUnit;
   amount_minor: number;
   reimbursement_status: ReimbursementStatus;
   rejection_reason: string | null;
@@ -945,6 +946,7 @@ function mapTripRow(row: TripRow): MileageTrip {
     distance: row.distance,
     distanceUnit: row.distance_unit,
     rateMilli: row.rate_milli,
+    rateUnit: row.rate_unit,
     amountMinor: row.amount_minor,
     reimbursementStatus: row.reimbursement_status,
     rejectionReason: row.rejection_reason,
@@ -979,7 +981,11 @@ export async function addMileageTrip(input: {
   // keep their own rate even if the workspace default or their override
   // changes later.
   const rateMilli = await getEffectiveMileageRateMilli(ws);
-  const amountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, rateMilli, ws.home_currency);
+  // The rate is expressed per the workspace's CURRENT mileage_unit (see
+  // Settings' "Reimbursement rate per {unit}" label) — frozen alongside the
+  // rate itself, so a later unit change can't silently misinterpret this
+  // trip's already-locked-in rate. See 0014_mileage_rate_unit.sql.
+  const amountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, rateMilli, ws.mileage_unit, ws.home_currency);
   const { data, error } = await client()
     .from("mileage_trips")
     .insert({
@@ -989,6 +995,7 @@ export async function addMileageTrip(input: {
       purpose: input.purpose,
       distance: input.distance,
       distance_unit: input.distanceUnit,
+      rate_unit: ws.mileage_unit,
       rate_milli: rateMilli,
       amount_minor: amountMinor,
       reimbursement_status: "pending",
@@ -1026,7 +1033,7 @@ export async function updateMileageTrip(
   if (patch.distance !== undefined && patch.distance > 0) {
     const ws = await getWorkspaceRow();
     update.distance = patch.distance;
-    update.amount_minor = mileageAmountForTrip(patch.distance, row.distance_unit, row.rate_milli, ws.home_currency);
+    update.amount_minor = mileageAmountForTrip(patch.distance, row.distance_unit, row.rate_milli, row.rate_unit, ws.home_currency);
   }
 
   const { data, error } = await client().from("mileage_trips").update(update).eq("id", id).select("*").single();
