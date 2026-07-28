@@ -20,10 +20,6 @@ export function useHomeCurrency() {
   return useQuery({ queryKey: ["homeCurrency"], queryFn: data.getHomeCurrency });
 }
 
-export function useWorkspaceName() {
-  return useQuery({ queryKey: ["workspaceName"], queryFn: data.getWorkspaceName });
-}
-
 export function useDistanceUnit() {
   return useQuery({ queryKey: ["distanceUnit"], queryFn: data.getDistanceUnit });
 }
@@ -92,7 +88,6 @@ const ALL_QUERY_KEYS = [
   "categories",
   "availableMonths",
   "homeCurrency",
-  "workspaceName",
   "distanceUnit",
   "mileageRateMilli",
   "myMileageRateMilli",
@@ -148,11 +143,6 @@ export function useDeleteReceipt() {
 export function useSetHomeCurrency() {
   const invalidateAll = useInvalidateAll();
   return useMutation({ mutationFn: (code: string) => data.setHomeCurrency(code), onSuccess: invalidateAll });
-}
-
-export function useSetWorkspaceName() {
-  const invalidateAll = useInvalidateAll();
-  return useMutation({ mutationFn: (name: string) => data.setWorkspaceName(name), onSuccess: invalidateAll });
 }
 
 export function useSetDistanceUnit() {

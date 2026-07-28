@@ -155,7 +155,10 @@ export default function TeamPage() {
             gap: 12,
           }}
         >
-          <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Receipts</div>
+          <div>
+            <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Receipts</div>
+            <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>Uploaded from the mobile or web app</div>
+          </div>
           <div className="flex flex-wrap" style={{ alignItems: "center", gap: 10 }}>
             <input
               placeholder="Search by vendor…"

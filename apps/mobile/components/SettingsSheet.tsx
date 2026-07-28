@@ -13,7 +13,6 @@ import { Text } from "./Text";
 import { TextInput } from "./TextInput";
 
 export interface SettingsDraft {
-  workspaceName: string;
   distanceUnit: DistanceUnit;
   rateMilli: number;
   homeCurrency: string;
@@ -44,7 +43,6 @@ export function SettingsSheet({
   onClose: () => void;
   onSignOut: () => void;
 }) {
-  const [workspaceName, setWorkspaceName] = useState(initial.workspaceName);
   const [unit, setUnit] = useState<DistanceUnit>(initial.distanceUnit);
   const [currency, setCurrency] = useState(initial.homeCurrency);
   const [rateText, setRateText] = useState(rateToDecimalString(initial.rateMilli));
@@ -53,11 +51,10 @@ export function SettingsSheet({
   // leave stale edits sitting in the fields.
   useEffect(() => {
     if (!visible) return;
-    setWorkspaceName(initial.workspaceName);
     setUnit(initial.distanceUnit);
     setCurrency(initial.homeCurrency);
     setRateText(rateToDecimalString(initial.rateMilli));
-  }, [visible, initial.workspaceName, initial.distanceUnit, initial.homeCurrency, initial.rateMilli]);
+  }, [visible, initial.distanceUnit, initial.homeCurrency, initial.rateMilli]);
 
   /**
    * Switching unit converts the rate in the field, so it stays worth roughly the
@@ -76,12 +73,11 @@ export function SettingsSheet({
 
   const parsedRate = parseRateToMilli(rateText);
   const rateValid = parsedRate !== null && parsedRate > 0;
-  const nameValid = workspaceName.trim().length > 0;
-  const canSave = rateValid && nameValid;
+  const canSave = rateValid;
 
   const save = () => {
     if (!canSave) return;
-    onSave({ workspaceName: workspaceName.trim(), distanceUnit: unit, rateMilli: parsedRate, homeCurrency: currency });
+    onSave({ distanceUnit: unit, rateMilli: parsedRate, homeCurrency: currency });
     onClose();
   };
 
@@ -92,18 +88,7 @@ export function SettingsSheet({
           <Text style={styles.title}>Settings</Text>
 
           <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled">
-            <Text style={styles.sectionLabel}>Workspace name</Text>
-            <Text style={styles.sectionHint}>Shown to teammates you invite.</Text>
-            <TextInput
-              value={workspaceName}
-              onChangeText={setWorkspaceName}
-              placeholder="My Workspace"
-              placeholderTextColor={rn(color.textFaint)}
-              style={[styles.nameInput, !nameValid && styles.rateInputInvalid]}
-            />
-            {!nameValid && <Text style={styles.rateError}>Enter a workspace name.</Text>}
-
-            <Text style={[styles.sectionLabel, { marginTop: 18 }]}>Distance unit</Text>
+            <Text style={styles.sectionLabel}>Distance unit</Text>
             <Text style={styles.sectionHint}>Used for mileage and the per-unit rate.</Text>
             <View style={styles.segmented}>
               {(["mi", "km"] as const).map((u) => {
@@ -244,16 +229,6 @@ const styles = StyleSheet.create({
   },
   segmentLabelOn: {
     color: "#fff",
-  },
-  nameInput: {
-    borderWidth: 1,
-    borderColor: rn(color.borderStrong),
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    fontWeight: "700",
-    color: rn(color.text),
   },
   rateRow: {
     flexDirection: "row",
