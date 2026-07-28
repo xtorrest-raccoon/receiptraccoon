@@ -10,9 +10,13 @@ import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
+import { MultiSelectDropdown, multiSelectControlStyle } from "../../components/MultiSelectDropdown";
 import { DownloadIcon } from "../../components/icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
+// Rejected/reimbursed are settled — default to what still needs action.
+const DEFAULT_STATUS_FILTER: ReimbursementStatus[] = ["pending", "approved"];
+const filterSelectStyle = { ...multiSelectControlStyle, width: 170, padding: "7px 10px", fontSize: fontSize.small, fontWeight: fontWeight.semibold };
 
 /** Translucent red-on-dark panel, mixed from the `up` (bad-trend) token — there
  * is no dedicated "alert on dark" entry in @rr/ui-tokens. */
@@ -27,10 +31,10 @@ export default function TeamPage() {
   const admin = currentUser ? isAdmin(currentUser.role) : false;
 
   const [mileageUserFilter, setMileageUserFilter] = useState("All");
-  const [mileageStatusFilter, setMileageStatusFilter] = useState<"All" | ReimbursementStatus>("All");
+  const [mileageStatusFilter, setMileageStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
   const [receiptSearch, setReceiptSearch] = useState("");
   const [receiptCategoryFilter, setReceiptCategoryFilter] = useState("All");
-  const [receiptStatusFilter, setReceiptStatusFilter] = useState<"All" | ReimbursementStatus>("All");
+  const [receiptStatusFilter, setReceiptStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
   const [receiptUserFilter, setReceiptUserFilter] = useState("All");
 
   const { data: team } = useTeam();
@@ -50,12 +54,10 @@ export default function TeamPage() {
   // Status filter narrows the table only — the outstanding total above stays
   // computed from the full unfiltered list, same "filter is display-only"
   // pattern as receiptStatusFilter.
-  const filteredMileage =
-    mileageStatusFilter === "All" ? mileage ?? [] : (mileage ?? []).filter((t) => t.reimbursementStatus === mileageStatusFilter);
+  const filteredMileage = (mileage ?? []).filter((t) => mileageStatusFilter.includes(t.reimbursementStatus));
 
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts.
-  const filteredReceipts =
-    receiptStatusFilter === "All" ? receipts ?? [] : (receipts ?? []).filter((r) => r.reimbursementStatus === receiptStatusFilter);
+  const filteredReceipts = (receipts ?? []).filter((r) => receiptStatusFilter.includes(r.reimbursementStatus));
 
   if (!currentUser || !allowed) {
     return (
@@ -204,26 +206,13 @@ export default function TeamPage() {
               </option>
             ))}
           </select>
-          <select
-            value={receiptStatusFilter}
-            onChange={(e) => setReceiptStatusFilter(e.target.value as "All" | ReimbursementStatus)}
-            style={{
-              padding: "7px 10px",
-              borderRadius: radius.sm + 1,
-              border: `1px solid ${color.borderStrong}`,
-              fontSize: fontSize.small,
-              fontWeight: fontWeight.semibold,
-              background: color.surface,
-              color: color.text,
-            }}
-          >
-            <option value="All">All statuses</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {reimbursementChip[s].label}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            options={STATUS_OPTIONS.map((s) => ({ value: s, label: reimbursementChip[s].label }))}
+            selected={receiptStatusFilter}
+            onChange={(next) => setReceiptStatusFilter(next as ReimbursementStatus[])}
+            emptyLabel="No statuses selected"
+            buttonStyle={filterSelectStyle}
+          />
           <select
             value={receiptUserFilter}
             onChange={(e) => setReceiptUserFilter(e.target.value)}
@@ -290,26 +279,13 @@ export default function TeamPage() {
                 </option>
               ))}
             </select>
-            <select
-              value={mileageStatusFilter}
-              onChange={(e) => setMileageStatusFilter(e.target.value as "All" | ReimbursementStatus)}
-              style={{
-                padding: "7px 10px",
-                borderRadius: radius.sm + 1,
-                border: `1px solid ${color.borderStrong}`,
-                fontSize: fontSize.small,
-                fontWeight: fontWeight.semibold,
-                background: color.surface,
-                color: color.text,
-              }}
-            >
-              <option value="All">All statuses</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {reimbursementChip[s].label}
-                </option>
-              ))}
-            </select>
+            <MultiSelectDropdown
+              options={STATUS_OPTIONS.map((s) => ({ value: s, label: reimbursementChip[s].label }))}
+              selected={mileageStatusFilter}
+              onChange={(next) => setMileageStatusFilter(next as ReimbursementStatus[])}
+              emptyLabel="No statuses selected"
+              buttonStyle={filterSelectStyle}
+            />
             <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.heavy }}>{formatMoney(mileageOutstandingMinor, team.currency)}</div>
           </div>
         </div>

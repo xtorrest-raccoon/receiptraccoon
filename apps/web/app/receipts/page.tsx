@@ -7,9 +7,14 @@ import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/
 import { useDataStore } from "../../lib/store";
 import { exportReceiptsCsv } from "../../lib/receiptsCsv";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
+import { MultiSelectDropdown, multiSelectControlStyle } from "../../components/MultiSelectDropdown";
 import { DownloadIcon, UploadIcon } from "../../components/icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
+// Rejected/reimbursed are settled — the default view is what still needs
+// action. "All" isn't a discrete choice in a checkbox list; unchecking
+// everything means "show nothing", the standard multi-select filter meaning.
+const DEFAULT_STATUS_FILTER: ReimbursementStatus[] = ["pending", "approved"];
 
 /**
  * Always scoped to the signed-in user's own receipts, for everyone
@@ -27,7 +32,7 @@ export default function ReceiptsPage() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState<"All" | ReimbursementStatus>("All");
+  const [statusFilter, setStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
 
   const { data: receipts } = useReceipts({ q: search || undefined, categoryName: categoryFilter, userId: currentUser?.id });
   const { data: allForExport } = useReceipts({ categoryName: categoryFilter, userId: currentUser?.id });
@@ -36,8 +41,8 @@ export default function ReceiptsPage() {
 
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts —
   // the row count per workspace doesn't justify a server-side filter here.
-  const filteredReceipts = statusFilter === "All" ? receipts ?? [] : (receipts ?? []).filter((r) => r.reimbursementStatus === statusFilter);
-  const filteredForExport = statusFilter === "All" ? allForExport ?? [] : (allForExport ?? []).filter((r) => r.reimbursementStatus === statusFilter);
+  const filteredReceipts = (receipts ?? []).filter((r) => statusFilter.includes(r.reimbursementStatus));
+  const filteredForExport = (allForExport ?? []).filter((r) => statusFilter.includes(r.reimbursementStatus));
 
   return (
     <div>
@@ -123,26 +128,13 @@ export default function ReceiptsPage() {
             </option>
           ))}
         </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as "All" | ReimbursementStatus)}
-          style={{
-            padding: "10px 14px",
-            borderRadius: radius.md,
-            border: `1px solid ${color.borderStrong}`,
-            fontSize: fontSize.body,
-            background: color.surface,
-            fontWeight: fontWeight.semibold,
-            color: color.text,
-          }}
-        >
-          <option value="All">All statuses</option>
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {reimbursementChip[s].label}
-            </option>
-          ))}
-        </select>
+        <MultiSelectDropdown
+          options={STATUS_OPTIONS.map((s) => ({ value: s, label: reimbursementChip[s].label }))}
+          selected={statusFilter}
+          onChange={(next) => setStatusFilter(next as ReimbursementStatus[])}
+          emptyLabel="No statuses selected"
+          buttonStyle={{ ...multiSelectControlStyle, width: 200, padding: "10px 14px", fontSize: fontSize.body, fontWeight: fontWeight.semibold }}
+        />
       </div>
 
       <ReceiptsTable receipts={filteredReceipts} categories={categories} users={users} />

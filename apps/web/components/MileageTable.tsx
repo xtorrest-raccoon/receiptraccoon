@@ -56,7 +56,7 @@ export function MileageTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1fr 28px",
+          gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1.2fr",
           padding: "10px 20px",
           fontSize: fontSize.tiny,
           fontWeight: fontWeight.bold,
@@ -73,7 +73,6 @@ export function MileageTable({
         <div>Rate</div>
         <div>Amount</div>
         <div>Status</div>
-        <div />
       </div>
 
       {trips.length === 0 ? (
@@ -86,7 +85,7 @@ export function MileageTable({
               <div
                 className="hidden sm:grid"
                 style={{
-                  gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1fr 28px",
+                  gridTemplateColumns: "1fr 1.4fr 1.1fr 0.8fr 0.8fr 0.9fr 1.2fr",
                   alignItems: "center",
                   padding: "11px 20px",
                   borderBottom: `1px solid ${color.borderSubtle}`,
@@ -125,7 +124,7 @@ export function MileageTable({
                 >
                   {formatMoney(t.amountMinor, currency)}
                 </button>
-                <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {canAct ? (
                     <select
                       value={status}
@@ -162,14 +161,12 @@ export function MileageTable({
                       {reimbursementChip[status].label}
                     </span>
                   )}
-                </div>
-                <div>
                   {canDelete(t) ? (
                     <button
                       type="button"
                       onClick={() => confirmDelete(t)}
                       aria-label="Delete trip"
-                      style={{ cursor: "pointer", background: "none", border: "none", padding: 4, display: "flex" }}
+                      style={{ cursor: "pointer", background: "none", border: "none", padding: 0, display: "flex", flexShrink: 0 }}
                     >
                       <TrashIcon color={color.textFaint} />
                     </button>

@@ -70,7 +70,7 @@ export function ReceiptsTable({
       <div
         className="hidden sm:grid"
         style={{
-          gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 28px",
+          gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 1.2fr",
           padding: "12px 20px",
           fontSize: fontSize.tiny + 0.5,
           fontWeight: fontWeight.bold,
@@ -88,7 +88,6 @@ export function ReceiptsTable({
         <div>Tax</div>
         <div>Total</div>
         <div>Reimbursement</div>
-        <div />
       </div>
 
       {receipts.map((r) => (
@@ -96,7 +95,7 @@ export function ReceiptsTable({
           <div
             className="hidden sm:grid"
             style={{
-              gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 0.95fr 28px",
+              gridTemplateColumns: "0.9fr 1.4fr 1.1fr 1.1fr 0.8fr 0.75fr 0.8fr 1.2fr",
               alignItems: "center",
               padding: "13px 20px",
               borderBottom: `1px solid ${color.borderSubtle}`,
@@ -166,7 +165,7 @@ export function ReceiptsTable({
             >
               {formatMoney(r.totalMinor, r.currency)}
             </button>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {canAct ? (
                 <select
                   value={r.reimbursementStatus}
@@ -203,14 +202,12 @@ export function ReceiptsTable({
                   {reimbursementChip[r.reimbursementStatus].label}
                 </span>
               )}
-            </div>
-            <div>
               {canDelete(r) ? (
                 <button
                   type="button"
                   onClick={() => confirmDelete(r)}
                   aria-label="Delete receipt"
-                  style={{ cursor: "pointer", background: "none", border: "none", padding: 4, display: "flex" }}
+                  style={{ cursor: "pointer", background: "none", border: "none", padding: 0, display: "flex", flexShrink: 0 }}
                 >
                   <TrashIcon color={color.textFaint} />
                 </button>
