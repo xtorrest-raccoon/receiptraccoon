@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { canViewTeamPage, formatMoney, isAdmin, isOutstanding, type ReimbursementStatus } from "@rr/shared";
+import { canViewTeamPage, formatMoney, isAdmin, isOutstanding, reclaimMinor, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useMileage, useReceipts, useTeam, useUsers } from "../../lib/queries";
 import { exportReceiptsCsv } from "../../lib/receiptsCsv";
@@ -50,6 +50,13 @@ export default function TeamPage() {
   const mileageOutstandingMinor = useMemo(() => {
     return (mileage ?? []).filter((t) => isOutstanding(t.reimbursementStatus)).reduce((sum, t) => sum + t.amountMinor, 0);
   }, [mileage]);
+
+  // Same "pending refund" figure, for receipts — independent of the status
+  // filter below (same reasoning as mileageOutstandingMinor), so toggling
+  // which rows show doesn't change what's actually still owed.
+  const receiptsOutstandingMinor = useMemo(() => {
+    return (receipts ?? []).filter((r) => isOutstanding(r.reimbursementStatus)).reduce((sum, r) => sum + reclaimMinor(r), 0);
+  }, [receipts]);
 
   // Status filter narrows the table only — the outstanding total above stays
   // computed from the full unfiltered list, same "filter is display-only"
@@ -149,26 +156,29 @@ export default function TeamPage() {
           }}
         >
           <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Receipts</div>
-          <button
-            type="button"
-            onClick={() => exportReceiptsCsv(filteredReceipts, users, "receiptraccoon-team-receipts.csv")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "7px 12px",
-              borderRadius: radius.sm + 1,
-              background: color.brand,
-              color: color.surface,
-              fontWeight: fontWeight.bold,
-              fontSize: fontSize.small,
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <DownloadIcon color={color.surface} />
-            Export CSV
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.heavy }}>{formatMoney(receiptsOutstandingMinor, team.currency)}</div>
+            <button
+              type="button"
+              onClick={() => exportReceiptsCsv(filteredReceipts, users, "receiptraccoon-team-receipts.csv")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "7px 12px",
+                borderRadius: radius.sm + 1,
+                background: color.brand,
+                color: color.surface,
+                fontWeight: fontWeight.bold,
+                fontSize: fontSize.small,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <DownloadIcon color={color.surface} />
+              Export CSV
+            </button>
+          </div>
         </div>
         <div className="flex flex-wrap" style={{ gap: 10, padding: "14px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
           <input
