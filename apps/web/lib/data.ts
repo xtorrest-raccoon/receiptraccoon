@@ -18,8 +18,16 @@ export type { CurrentUser, WorkspaceUser } from "@rr/api";
 export const TODAY = new Date().toISOString().slice(0, 10);
 export const CURRENCIES = api.SUPPORTED_CURRENCIES;
 
-export function getDashboard(month?: string): Promise<DashboardResponse> {
-  return api.getDashboard(month);
+/**
+ * Personal-only, regardless of role — the Dashboard is "how am I doing",
+ * the Team tab is where an owner/admin sees the whole workspace. Reads the
+ * id off the local session (no extra network round trip) rather than
+ * getCurrentUser(), which does a real join query just for this.
+ */
+export async function getDashboard(month?: string): Promise<DashboardResponse> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+  return api.getDashboard(month, session.user.id);
 }
 
 export function listReceipts(

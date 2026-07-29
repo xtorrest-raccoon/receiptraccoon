@@ -564,7 +564,7 @@ export function getTeam(month = "2026-07"): TeamResponse {
     teamMileageTotalMinor: toHome(monthTrips.reduce((s, t) => s + t.amountMinor, 0)),
     userCount: USERS.length,
     needsReviewCount:
-      monthReceipts.filter((r) => r.status === "needs_review").length +
+      monthReceipts.filter((r) => r.reimbursementStatus === "pending").length +
       monthTrips.filter((t) => t.reimbursementStatus === "pending").length,
     topSpenderName: members[0]?.name ?? null,
     members,

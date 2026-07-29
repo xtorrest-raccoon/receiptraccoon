@@ -1113,11 +1113,10 @@ async function fetchAllTrips(userId?: string): Promise<MileageTrip[]> {
 }
 
 /**
- * `userId`: omit for the workspace-wide view (Team page, and an owner/admin's
- * own web Dashboard — see DESIGN_V2_DELTA.md's reasoning that an admin's
- * figures should mean "outstanding in the business", not just their own
- * handful of receipts). Pass the caller's own id for a personal-only view —
- * mobile always does this, since approval happens on web, not on the phone.
+ * `userId`: omit for the workspace-wide view (Team page only — that's where
+ * approving/reviewing everyone's claims happens). Pass the caller's own id
+ * for a personal-only view — both the web Dashboard and mobile always do
+ * this, so "how am I doing" stays personal even for an owner/admin.
  */
 export async function getDashboard(month?: string, userId?: string): Promise<DashboardResponse> {
   const today = new Date().toISOString().slice(0, 10);
@@ -1218,7 +1217,7 @@ export async function getTeam(month?: string): Promise<TeamResponse> {
     teamMileageTotalMinor: monthTrips.reduce((s, t) => s + t.amountMinor, 0),
     userCount: users.length,
     needsReviewCount:
-      monthReceipts.filter((r) => r.status === "needs_review").length +
+      monthReceipts.filter((r) => r.reimbursementStatus === "pending").length +
       monthTrips.filter((t) => t.reimbursementStatus === "pending").length,
     topSpenderName: members[0]?.name ?? null,
     members,
