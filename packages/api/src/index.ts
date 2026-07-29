@@ -522,6 +522,20 @@ export async function setHomeCurrency(code: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Opt-in — a daily digest email listing each approver's own pending decisions. See 0016_daily_approval_reminders.sql. */
+export async function getDailyApprovalRemindersEnabled(): Promise<boolean> {
+  const wsId = await getCurrentWorkspaceId();
+  const { data, error } = await client().from("workspaces").select("daily_approval_reminders_enabled").eq("id", wsId).single();
+  if (error) throw error;
+  return (data as { daily_approval_reminders_enabled: boolean }).daily_approval_reminders_enabled;
+}
+
+export async function setDailyApprovalRemindersEnabled(enabled: boolean): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error } = await client().from("workspaces").update({ daily_approval_reminders_enabled: enabled }).eq("id", wsId);
+  if (error) throw error;
+}
+
 export async function getDistanceUnit(): Promise<DistanceUnit> {
   return (await getWorkspaceRow()).mileage_unit;
 }

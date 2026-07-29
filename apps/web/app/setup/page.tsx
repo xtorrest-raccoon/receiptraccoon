@@ -8,6 +8,7 @@ import { useCategories, useCurrentUser, useHomeCurrency, useSetHomeCurrency, use
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
+import { NotificationsPanel } from "../../components/NotificationsPanel";
 import { PaymentSetupPanel } from "../../components/PaymentSetupPanel";
 import { InvoiceList } from "../../components/InvoiceList";
 
@@ -110,6 +111,9 @@ export default function SetupPage() {
 
       <SectionHeading>Categories</SectionHeading>
       <ManageCategoriesPanel categories={categories} />
+
+      <SectionHeading>Notifications</SectionHeading>
+      <NotificationsPanel />
 
       {canManageBilling ? (
         <>

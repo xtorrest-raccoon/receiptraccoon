@@ -102,6 +102,14 @@ export function getHomeCurrency(): Promise<string> {
   return api.getHomeCurrency();
 }
 
+export function getDailyApprovalRemindersEnabled(): Promise<boolean> {
+  return api.getDailyApprovalRemindersEnabled();
+}
+
+export function setDailyApprovalRemindersEnabled(enabled: boolean): Promise<void> {
+  return api.setDailyApprovalRemindersEnabled(enabled);
+}
+
 export function setHomeCurrency(code: string): Promise<void> {
   return api.setHomeCurrency(code);
 }

@@ -27,6 +27,18 @@ export function useHomeCurrency() {
   return useQuery({ queryKey: ["homeCurrency"], queryFn: data.getHomeCurrency });
 }
 
+export function useDailyApprovalRemindersEnabled() {
+  return useQuery({ queryKey: ["dailyApprovalRemindersEnabled"], queryFn: data.getDailyApprovalRemindersEnabled });
+}
+
+export function useSetDailyApprovalRemindersEnabled() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (enabled: boolean) => data.setDailyApprovalRemindersEnabled(enabled),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useWorkspaceName() {
   return useQuery({ queryKey: ["workspaceName"], queryFn: data.getWorkspaceName });
 }
@@ -89,6 +101,7 @@ const ALL_QUERY_KEYS = [
   "mileage",
   "categories",
   "homeCurrency",
+  "dailyApprovalRemindersEnabled",
   "workspaceInvites",
   "workspaceName",
   "users",
