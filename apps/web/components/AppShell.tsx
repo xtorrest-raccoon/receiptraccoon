@@ -28,6 +28,10 @@ const LOGIN_PATH = "/login";
 // below, since neither "no session -> /login" nor "has session -> /dashboard"
 // is right while someone's in the middle of resetting their password.
 const RESET_PASSWORD_PATH = "/reset-password";
+// The public marketing page — same "signed-out visitors stay, signed-in
+// visitors get bounced to the app" treatment as the login page itself.
+const LANDING_PATH = "/";
+const PUBLIC_PATHS = new Set([LOGIN_PATH, LANDING_PATH]);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -44,10 +48,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (session === "loading" || pathname === RESET_PASSWORD_PATH) return;
-    const onLoginPage = pathname === LOGIN_PATH;
-    if (!session && !onLoginPage) {
+    const onPublicPath = PUBLIC_PATHS.has(pathname);
+    if (!session && !onPublicPath) {
       router.replace(LOGIN_PATH);
-    } else if (session && onLoginPage) {
+    } else if (session && onPublicPath) {
       router.replace("/dashboard");
     }
   }, [session, pathname, router]);
@@ -72,8 +76,9 @@ function AppShellBody({
 }) {
   // The login page renders its own full-screen layout — no sidebar/top bar
   // around it, same reason the mobile app's (auth) group sits outside the
-  // tab navigator. Reset-password is the same shape, for the same reason.
-  if (pathname === LOGIN_PATH || pathname === RESET_PASSWORD_PATH) return <>{children}</>;
+  // tab navigator. Reset-password and the public landing page are the same
+  // shape, for the same reason.
+  if (pathname === LOGIN_PATH || pathname === RESET_PASSWORD_PATH || pathname === LANDING_PATH) return <>{children}</>;
 
   if (session === "loading" || !session) {
     return <div style={{ minHeight: "100vh", background: color.bgWeb }} />;
