@@ -116,25 +116,29 @@ function LandingNav() {
 
 function HeroVisual() {
   return (
-    <div
-      style={{
-        position: "relative",
-        borderRadius: radius["3xl"],
-        aspectRatio: "3 / 2",
-        overflow: "hidden",
-        border: `1px solid ${color.border}`,
-      }}
-    >
-      {/* Licensed stock photo, supplied directly by the workspace owner --
-          already has its own "Receipt scanned" card baked into the bottom,
-          so the floating chips below only take the two top corners. */}
-      <Image src="/hero-photo.png" alt="Reviewing a scanned receipt" fill priority style={{ objectFit: "cover" }} />
+    // No overflow:hidden here -- the two chips below deliberately float half
+    // off the photo's corners, so clipping has to happen one level in (on
+    // the photo's own frame only), not on this outer positioning context.
+    <div style={{ position: "relative", margin: "20px 16px 28px" }}>
+      <div
+        style={{
+          position: "relative",
+          borderRadius: radius["3xl"],
+          aspectRatio: "3 / 2",
+          overflow: "hidden",
+          border: `1px solid ${color.border}`,
+        }}
+      >
+        {/* Licensed stock photo, supplied directly by the workspace owner --
+            already has its own "Receipt scanned" card baked into the bottom. */}
+        <Image src="/hero-photo.png" alt="Reviewing a scanned receipt" fill priority style={{ objectFit: "cover" }} />
+      </div>
 
       <div
         style={{
           position: "absolute",
-          top: 20,
-          right: 20,
+          top: -20,
+          right: -16,
           background: color.surface,
           borderRadius: radius.lg,
           padding: "12px 16px",
@@ -149,8 +153,8 @@ function HeroVisual() {
       <div
         style={{
           position: "absolute",
-          top: 20,
-          left: 20,
+          bottom: -20,
+          left: -16,
           background: color.surface,
           borderRadius: radius.lg,
           padding: "12px 16px",
