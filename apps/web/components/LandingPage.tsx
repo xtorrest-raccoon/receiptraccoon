@@ -247,6 +247,8 @@ interface Step {
   icon: IconComponent;
   title: string;
   body: string;
+  /** Real photo for this step's visual, if supplied -- falls back to the icon illustration otherwise. */
+  photo?: string;
 }
 
 const STEPS: Step[] = [
@@ -255,6 +257,7 @@ const STEPS: Step[] = [
     icon: CameraIcon,
     title: "Capture",
     body: "Take a photo on your phone or drag a file into the browser. ReceiptRaccoon reads the vendor, date, total, tax, and category automatically — you just check it over.",
+    photo: "/Capture-photo.png",
   },
   {
     n: "02",
@@ -270,14 +273,14 @@ const STEPS: Step[] = [
   },
 ];
 
-function StepVisual({ n, icon: Icon }: { n: string; icon: IconComponent }) {
+function StepVisual({ n, icon: Icon, photo }: { n: string; icon: IconComponent; photo?: string | undefined }) {
   return (
     <div
       style={{
         position: "relative",
         borderRadius: radius["2xl"],
         aspectRatio: "16 / 10",
-        background: color.surfaceMuted,
+        background: photo ? undefined : color.surfaceMuted,
         border: `1px solid ${color.border}`,
         display: "flex",
         alignItems: "center",
@@ -285,20 +288,36 @@ function StepVisual({ n, icon: Icon }: { n: string; icon: IconComponent }) {
         overflow: "hidden",
       }}
     >
-      <span style={{ position: "absolute", top: 14, left: 18, fontSize: 46, fontWeight: fontWeight.heavy, color: color.border }}>{n}</span>
-      <div
+      {photo ? (
+        <Image src={photo} alt="" fill style={{ objectFit: "cover" }} />
+      ) : (
+        <div
+          style={{
+            width: 84,
+            height: 84,
+            borderRadius: radius["2xl"],
+            background: color.brandTint,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon color={color.brand} size={40} />
+        </div>
+      )}
+      <span
         style={{
-          width: 84,
-          height: 84,
-          borderRadius: radius["2xl"],
-          background: color.brandTint,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          position: "absolute",
+          top: 14,
+          left: 18,
+          fontSize: 46,
+          fontWeight: fontWeight.heavy,
+          color: photo ? "rgba(255,255,255,0.85)" : color.border,
+          textShadow: photo ? "0 2px 10px rgba(0,0,0,0.35)" : undefined,
         }}
       >
-        <Icon color={color.brand} size={40} />
-      </div>
+        {n}
+      </span>
     </div>
   );
 }
@@ -326,7 +345,7 @@ function HowItWorks() {
                 <p style={{ fontSize: fontSize.lg, color: color.textMuted, lineHeight: 1.6, maxWidth: 440 }}>{step.body}</p>
               </div>
               <div style={{ flex: 1, width: "100%" }}>
-                <StepVisual n={step.n} icon={step.icon} />
+                <StepVisual n={step.n} icon={step.icon} photo={step.photo} />
               </div>
             </div>
           ))}
