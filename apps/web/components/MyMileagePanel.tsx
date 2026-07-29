@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
+import type { ReimbursementStatus } from "@rr/shared";
+import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { TODAY } from "../lib/data";
 import { useAddMileageTrip, useCurrentUser, useHomeCurrency, useMileage, useUsers } from "../lib/queries";
 import { MileageTable } from "./MileageTable";
+import { MultiSelectDropdown, multiSelectControlStyle } from "./MultiSelectDropdown";
+
+const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
+// Rejected/reimbursed are settled — default to what still needs action.
+const DEFAULT_STATUS_FILTER: ReimbursementStatus[] = ["pending", "approved"];
 
 /**
  * Rendered by the top-level /mileage page. MileageTable elsewhere (Team
@@ -25,6 +31,7 @@ export function MyMileagePanel() {
   const [tripDate, setTripDate] = useState(TODAY);
   const [distance, setDistance] = useState("");
   const [distanceUnit, setDistanceUnit] = useState<"mi" | "km">("mi");
+  const [statusFilter, setStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
 
   const canSubmit = purpose.trim() !== "" && tripDate !== "" && Number(distance) > 0;
 
@@ -42,6 +49,8 @@ export function MyMileagePanel() {
   };
 
   if (!users || !homeCurrency) return null;
+
+  const filteredTrips = (trips ?? []).filter((t) => statusFilter.includes(t.reimbursementStatus));
 
   return (
     <div>
@@ -106,7 +115,17 @@ export function MyMileagePanel() {
         ) : null}
       </div>
 
-      <MileageTable trips={trips ?? []} currency={homeCurrency} users={users} />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <MultiSelectDropdown
+          options={STATUS_OPTIONS.map((s) => ({ value: s, label: reimbursementChip[s].label }))}
+          selected={statusFilter}
+          onChange={(next) => setStatusFilter(next as ReimbursementStatus[])}
+          emptyLabel="No statuses selected"
+          buttonStyle={{ ...multiSelectControlStyle, width: 200, padding: "9px 14px", fontSize: fontSize.body, fontWeight: fontWeight.semibold }}
+        />
+      </div>
+
+      <MileageTable trips={filteredTrips} currency={homeCurrency} users={users} />
     </div>
   );
 }
