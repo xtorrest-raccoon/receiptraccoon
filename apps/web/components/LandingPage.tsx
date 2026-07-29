@@ -120,28 +120,15 @@ function HeroVisual() {
       style={{
         position: "relative",
         borderRadius: radius["3xl"],
-        aspectRatio: "4 / 3",
-        background: `linear-gradient(135deg, ${color.brandTint}, ${color.bgWeb})`,
+        aspectRatio: "3 / 2",
+        overflow: "hidden",
         border: `1px solid ${color.border}`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
-      <div
-        style={{
-          width: 120,
-          height: 120,
-          borderRadius: radius["2xl"],
-          background: color.surface,
-          boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CameraIcon color={color.brand} size={56} />
-      </div>
+      {/* Licensed stock photo, supplied directly by the workspace owner --
+          already has its own "Receipt scanned" card baked into the bottom,
+          so the floating chips below only take the two top corners. */}
+      <Image src="/hero-photo.png" alt="Reviewing a scanned receipt" fill priority style={{ objectFit: "cover" }} />
 
       <div
         style={{
@@ -151,7 +138,7 @@ function HeroVisual() {
           background: color.surface,
           borderRadius: radius.lg,
           padding: "12px 16px",
-          boxShadow: "0 10px 24px rgba(0,0,0,0.14)",
+          boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
         }}
       >
         <div style={{ fontSize: fontSize.tiny, color: color.textFaint, fontWeight: fontWeight.semibold }}>This month</div>
@@ -162,12 +149,12 @@ function HeroVisual() {
       <div
         style={{
           position: "absolute",
-          bottom: 20,
+          top: 20,
           left: 20,
           background: color.surface,
           borderRadius: radius.lg,
           padding: "12px 16px",
-          boxShadow: "0 10px 24px rgba(0,0,0,0.14)",
+          boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
         }}
       >
         <div style={{ fontSize: fontSize.tiny, color: color.textFaint, fontWeight: fontWeight.semibold }}>Awaiting approval</div>
