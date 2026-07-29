@@ -109,8 +109,10 @@ export function AddReceiptDrawer() {
 
     const isDuplicate = await findDuplicateReceipt(vendor, date.trim() || null, totalMinor);
     if (isDuplicate) {
+      // Vendor+date+total matching isn't proof — two identical coffees on the
+      // same day would match too. Framed as a question, not an assertion.
       const proceed = window.confirm(
-        "This looks like a duplicate — a receipt from the same vendor, on the same date, for the same amount is already on record. Save anyway?",
+        `You already have a receipt from "${vendor.trim()}" on this date for this amount. Is this a different purchase?`,
       );
       if (!proceed) return;
     }

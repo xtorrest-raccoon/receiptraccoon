@@ -67,12 +67,14 @@ export default function ConfirmScreen() {
 
     const isDuplicate = await findDuplicateReceipt(vendor, date.trim() || null, totalMinor);
     if (isDuplicate) {
+      // Vendor+date+total matching isn't proof — two identical coffees on the
+      // same day would match too. Framed as a question, not an assertion.
       Alert.alert(
-        "This looks like a duplicate",
-        "A receipt from the same vendor, on the same date, for the same amount is already on record. Save anyway?",
+        "Possible duplicate?",
+        `You already have a receipt from "${vendor.trim()}" on this date for this amount. Is this a different purchase?`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Save anyway", onPress: () => doSave() },
+          { text: "Yes, save it", onPress: () => doSave() },
         ],
       );
       return;
