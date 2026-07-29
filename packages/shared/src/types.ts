@@ -236,7 +236,10 @@ export interface TeamResponse {
   agedOver30Minor: number;
   agedOver30Count: number;
   teamTotalMinor: number;
+  /** This month's mileage trips, at each trip's own frozen rate — see MileageTrip.rateMilli. */
+  teamMileageTotalMinor: number;
   userCount: number;
+  /** Receipts still flagged needs_review (low extraction confidence) plus mileage trips still pending, this month. */
   needsReviewCount: number;
   topSpenderName: string | null;
   members: TeamMemberSummary[];

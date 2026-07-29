@@ -537,6 +537,7 @@ export function getOwedToUserSummary(): OwedToUserSummary {
 
 export function getTeam(month = "2026-07"): TeamResponse {
   const monthReceipts = RECEIPTS.filter((r) => inMonth(r.receiptDate ?? "", month));
+  const monthTrips = TRIPS.filter((t) => inMonth(t.tripDate, month));
   const allOutstanding = RECEIPTS.filter((r) => isOutstanding(r.reimbursementStatus));
   const tripsOutstanding = TRIPS.filter((t) => isOutstanding(t.reimbursementStatus));
   const mileageOutstandingMinor = tripsOutstanding.reduce((s, t) => s + t.amountMinor, 0);
@@ -560,8 +561,11 @@ export function getTeam(month = "2026-07"): TeamResponse {
     agedOver30Minor: toHome(agedOver30.reduce((s, r) => s + reclaimMinor(r), 0)),
     agedOver30Count: agedOver30.length,
     teamTotalMinor: toHome(monthReceipts.reduce((s, r) => s + reclaimMinor(r), 0)),
+    teamMileageTotalMinor: toHome(monthTrips.reduce((s, t) => s + t.amountMinor, 0)),
     userCount: USERS.length,
-    needsReviewCount: monthReceipts.filter((r) => r.status === "needs_review").length,
+    needsReviewCount:
+      monthReceipts.filter((r) => r.status === "needs_review").length +
+      monthTrips.filter((t) => t.reimbursementStatus === "pending").length,
     topSpenderName: members[0]?.name ?? null,
     members,
     mileage: [...TRIPS].sort((a, b) => b.tripDate.localeCompare(a.tripDate)).map(presentTrip),

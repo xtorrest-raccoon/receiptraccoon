@@ -1201,6 +1201,7 @@ export async function getTeam(month?: string): Promise<TeamResponse> {
   ]);
 
   const monthReceipts = allReceipts.filter((r) => inMonth(r.receiptDate ?? "", targetMonth));
+  const monthTrips = allTrips.filter((t) => inMonth(t.tripDate, targetMonth));
   const allOutstanding = allReceipts.filter((r) => isOutstanding(r.reimbursementStatus));
   const tripsOutstanding = allTrips.filter((t) => isOutstanding(t.reimbursementStatus));
   const mileageOutstandingMinor = tripsOutstanding.reduce((s, t) => s + t.amountMinor, 0);
@@ -1214,8 +1215,11 @@ export async function getTeam(month?: string): Promise<TeamResponse> {
     agedOver30Minor: agedOver30.reduce((s, r) => s + reclaimMinor(r), 0),
     agedOver30Count: agedOver30.length,
     teamTotalMinor: monthReceipts.reduce((s, r) => s + reclaimMinor(r), 0),
+    teamMileageTotalMinor: monthTrips.reduce((s, t) => s + t.amountMinor, 0),
     userCount: users.length,
-    needsReviewCount: monthReceipts.filter((r) => r.status === "needs_review").length,
+    needsReviewCount:
+      monthReceipts.filter((r) => r.status === "needs_review").length +
+      monthTrips.filter((t) => t.reimbursementStatus === "pending").length,
     topSpenderName: members[0]?.name ?? null,
     members,
     mileage: [...allTrips].sort((a, b) => b.tripDate.localeCompare(a.tripDate)),

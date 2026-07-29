@@ -132,10 +132,11 @@ export default function TeamPage() {
             ) : null}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" style={{ marginBottom: 18 }}>
-            <StatCard label="Team spend this month" value={formatMoney(team.teamTotalMinor, team.currency)} valueSize={fontSize.stat - 2} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4" style={{ marginBottom: 18 }}>
+            <StatCard label="Team spend this month (receipts)" value={formatMoney(team.teamTotalMinor, team.currency)} valueSize={fontSize.stat - 2} />
+            <StatCard label="Team mileage cost this month" value={formatMoney(team.teamMileageTotalMinor, team.currency)} valueSize={fontSize.stat - 2} />
             <StatCard label="Active users" value={team.userCount} valueSize={fontSize.stat - 2} />
-            <StatCard label="Needs review" value={team.needsReviewCount} valueSize={fontSize.stat - 2} />
+            <StatCard label="Pending review" value={team.needsReviewCount} valueSize={fontSize.stat - 2} />
             <StatCard label="Highest spender" value={team.topSpenderName ?? "—"} valueSize={fontSize.h3} />
           </div>
 
