@@ -52,7 +52,7 @@ export default function DashboardPage() {
           sub={`Across ${stats.ytdCount} receipts`}
         />
         <StatCard
-          label="Reimbursable to employee"
+          label="Owed to you"
           value={formatMoney(stats.reimbursableMinor, currency)}
           sub={`${stats.reimbursablePendingCount} items pending payout`}
         />
