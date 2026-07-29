@@ -126,6 +126,11 @@ export function getReceipt(id: string): Promise<Receipt | undefined> {
   return api.getReceipt(id);
 }
 
+/** Warns before saving what looks like an accidental double-submission — same vendor, date, and total already on record. */
+export function findDuplicateReceipt(vendor: string, receiptDate: string | null, totalMinor: number): Promise<boolean> {
+  return api.findDuplicateReceipt(vendor, receiptDate, totalMinor);
+}
+
 /**
  * Uploads a local photo (e.g. a capture cache URI) to Supabase Storage and
  * returns the storage PATH to store on the receipt — not the local URI, which

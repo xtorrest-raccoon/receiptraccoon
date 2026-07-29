@@ -37,6 +37,11 @@ export function getReceipt(id: string): Promise<Receipt | undefined> {
   return api.getReceipt(id);
 }
 
+/** Warns before saving what looks like an accidental double-submission — same vendor, date, and total already on record. */
+export function findDuplicateReceipt(vendor: string, receiptDate: string | null, totalMinor: number): Promise<boolean> {
+  return api.findDuplicateReceipt(vendor, receiptDate, totalMinor);
+}
+
 /** Exchanges a receipt's stored path for a short-lived URL actually usable in an <img>. */
 export function getReceiptPhotoUrl(imagePath: string | null): Promise<string | null> {
   return api.getReceiptPhotoUrl(imagePath);

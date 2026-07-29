@@ -6,6 +6,7 @@ import { color, fontSize, fontWeight, layout, radius, reimbursementChip } from "
 import {
   blankDraftReceipt,
   extractReceiptFromFile,
+  findDuplicateReceipt,
   RetakePhotoError,
   TODAY,
   type DraftReceipt,
@@ -105,6 +106,15 @@ export function AddReceiptDrawer() {
 
   const onSave = async () => {
     if (!canSave || totalMinor === null) return;
+
+    const isDuplicate = await findDuplicateReceipt(vendor, date.trim() || null, totalMinor);
+    if (isDuplicate) {
+      const proceed = window.confirm(
+        "This looks like a duplicate — a receipt from the same vendor, on the same date, for the same amount is already on record. Save anyway?",
+      );
+      if (!proceed) return;
+    }
+
     const [paymentBrand, paymentLast4] = payment.includes("•")
       ? payment.split("•").map((s) => s.trim())
       : [payment.trim() || null, null];

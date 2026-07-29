@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import { formatMoney, formatShortDate, minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
 import { rn } from "../../lib/colors";
-import type { DraftReceipt } from "../../lib/data";
+import { findDuplicateReceipt, type DraftReceipt } from "../../lib/data";
 import { useAddReceipt, useCategories, useHomeCurrency, useUploadReceiptPhoto } from "../../lib/queries";
 import { getDraftReceipt, resetCapture, setSavedSummary } from "../../lib/captureStore";
 import { Text } from "../../components/Text";
@@ -63,6 +63,25 @@ export default function ConfirmScreen() {
   const canSave = vendor.trim().length > 0 && totalMinor !== null && totalMinor > 0 && !saving;
 
   const onSave = async () => {
+    if (!canSave || totalMinor === null) return;
+
+    const isDuplicate = await findDuplicateReceipt(vendor, date.trim() || null, totalMinor);
+    if (isDuplicate) {
+      Alert.alert(
+        "This looks like a duplicate",
+        "A receipt from the same vendor, on the same date, for the same amount is already on record. Save anyway?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Save anyway", onPress: () => doSave() },
+        ],
+      );
+      return;
+    }
+
+    await doSave();
+  };
+
+  const doSave = async () => {
     if (!canSave || totalMinor === null) return;
     // "Visa •1234" -> brand "Visa", last4 "1234" — the inverse of
     // formatPaymentMethod, which is what produced this shape in the first place.

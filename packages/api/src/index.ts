@@ -797,6 +797,26 @@ export async function getReceipt(id: string): Promise<Receipt | undefined> {
   return data ? mapReceiptRow(data as ReceiptRow) : undefined;
 }
 
+/**
+ * Same vendor, date, and total already on record — a soft warning against
+ * an accidental double-submission (e.g. scanning the same photo twice), not
+ * a hard block. RLS already scopes this to whatever the caller can see, so
+ * a plain member is really only checking their own past receipts.
+ */
+export async function findDuplicateReceipt(vendor: string, receiptDate: string | null, totalMinor: number): Promise<boolean> {
+  const trimmed = vendor.trim();
+  if (!trimmed || totalMinor <= 0) return false;
+  let query = client()
+    .from("receipts")
+    .select("id", { count: "exact", head: true })
+    .ilike("vendor", trimmed)
+    .eq("total_minor", totalMinor);
+  query = receiptDate ? query.eq("receipt_date", receiptDate) : query.is("receipt_date", null);
+  const { count, error } = await query;
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
 export async function addReceipt(input: {
   vendor: string;
   receiptDate: string | null;
