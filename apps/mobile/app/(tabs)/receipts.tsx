@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from "react-nati
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
-import { canDeleteReceipt, type Receipt } from "@rr/shared";
+import { canDeleteReceipt, isRecentOrActionable, type Receipt } from "@rr/shared";
 import { rn } from "../../lib/colors";
 import { useDeleteReceipt, useHomeCurrency, useReceipts } from "../../lib/queries";
 import { Text } from "../../components/Text";
@@ -16,6 +16,11 @@ export default function ReceiptsScreen() {
   const { data: currency } = useHomeCurrency();
   const { data: receipts, isLoading, refetch } = useReceipts();
   const deleteReceipt = useDeleteReceipt();
+
+  // Reimbursed receipts older than 3 months drop off this list -- see
+  // isRecentOrActionable. Everything still pending/approved/rejected stays,
+  // and the full history remains on the web app.
+  const visibleReceipts = (receipts ?? []).filter((r) => isRecentOrActionable(r.reimbursementStatus, r.receiptDate));
 
   // Tab screens stay mounted in expo-router, so a mutation made on another
   // screen already invalidates this query in the background — this refetch
@@ -65,9 +70,13 @@ export default function ReceiptsScreen() {
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>No receipts yet. Tap Capture to add one.</Text>
         </View>
+      ) : visibleReceipts.length === 0 ? (
+        <View style={styles.centerFill}>
+          <Text style={styles.emptyText}>Nothing needs attention — older reimbursed receipts are on the web app.</Text>
+        </View>
       ) : (
         <FlatList
-          data={receipts}
+          data={visibleReceipts}
           keyExtractor={(r) => r.id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 96 + insets.bottom, gap: 8 }}
           renderItem={({ item }) => (

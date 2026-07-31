@@ -167,6 +167,31 @@ export function summarizeCountryVisits(receipts: Receipt[], tripGapDays = TRIP_G
   return result.sort((a, b) => b.totalMinor - a.totalMinor);
 }
 
+/**
+ * Mobile-only display filter (see apps/mobile's Receipts and Mileage tabs) --
+ * once something is reimbursed there is nothing left to act on, so it drops
+ * out of those two lists after a few months to keep them scrollable; the
+ * full history is always available on the web app. Anything still pending,
+ * approved, or rejected never disappears, regardless of age, since those
+ * may still need a look.
+ *
+ * Deliberately NOT applied at the data-fetching layer (lib/data.ts /
+ * lib/queries.ts) -- the Analytics tab's map and the Dashboard's stats read
+ * the same underlying receipts and must keep seeing the complete history.
+ */
+export function isRecentOrActionable(
+  status: ReimbursementStatus,
+  dateIso: string | null,
+  monthsBack = 3,
+  today = new Date(),
+): boolean {
+  if (status !== "reimbursed") return true;
+  if (!dateIso) return true;
+  const cutoff = new Date(today);
+  cutoff.setMonth(cutoff.getMonth() - monthsBack);
+  return new Date(dateIso) >= cutoff;
+}
+
 export interface ReimbursableTotal {
   reimbursableMinor: number;
   reimbursablePendingCount: number;

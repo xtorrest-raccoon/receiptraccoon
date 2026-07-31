@@ -6,6 +6,7 @@ import {
   formatMoney,
   formatShortDate,
   currencySymbol,
+  isRecentOrActionable,
   rateToDecimalString,
   mileageAmountForTrip,
   type DistanceUnit,
@@ -68,6 +69,12 @@ export default function MileageScreen() {
       </View>
     );
   }
+
+  // Reimbursed trips older than 3 months drop off the list below -- see
+  // isRecentOrActionable. Everything still pending/approved/rejected stays,
+  // and the full history remains on the web app. The "this month" stats
+  // above read from the full, unfiltered `trips`, same as ever.
+  const visibleTrips = trips.filter((t) => isRecentOrActionable(t.reimbursementStatus, t.tripDate));
 
   const monthTrips = trips.filter((t) => t.tripDate.startsWith(CURRENT_MONTH));
   const monthReimbMinor = monthTrips.reduce((sum, t) => sum + t.amountMinor, 0);
@@ -340,9 +347,11 @@ export default function MileageScreen() {
 
         {trips.length === 0 ? (
           <Text style={styles.emptyText}>No trips logged yet.</Text>
+        ) : visibleTrips.length === 0 ? (
+          <Text style={styles.emptyText}>Nothing needs attention — older reimbursed trips are on the web app.</Text>
         ) : (
           <View style={{ gap: 8 }}>
-            {trips.map((t) => {
+            {visibleTrips.map((t) => {
               const editable = t.reimbursementStatus === "pending";
               return (
                 <SwipeToDelete key={t.id} enabled={editable} onDelete={() => confirmDelete(t)}>
