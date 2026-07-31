@@ -145,7 +145,7 @@ function HeroVisual() {
       <div
         style={{
           position: "absolute",
-          top: -24,
+          top: -34,
           right: -14,
           background: color.surface,
           borderRadius: radius.lg,
@@ -161,7 +161,7 @@ function HeroVisual() {
       <div
         style={{
           position: "absolute",
-          bottom: -24,
+          bottom: -34,
           left: -14,
           background: color.surface,
           borderRadius: radius.lg,
