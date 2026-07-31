@@ -38,7 +38,7 @@ function PrimaryButton({ href, big, children }: { href: string; big?: boolean; c
         color: "#fff",
         textDecoration: "none",
         fontWeight: fontWeight.bold,
-        fontSize: big ? fontSize.lg : fontSize.body,
+        fontSize: big ? fontSize.xl : fontSize.base,
         padding: big ? "14px 26px" : "9px 18px",
         borderRadius: radius.md,
         whiteSpace: "nowrap",
@@ -54,7 +54,7 @@ function SectionHeading({ eyebrow, title, sub }: { eyebrow: string; title: strin
     <div style={{ textAlign: "center" }}>
       <div
         style={{
-          fontSize: fontSize.tiny + 0.5,
+          fontSize: fontSize.small,
           fontWeight: fontWeight.bold,
           color: color.brand,
           textTransform: "uppercase",
@@ -64,11 +64,11 @@ function SectionHeading({ eyebrow, title, sub }: { eyebrow: string; title: strin
       >
         {eyebrow}
       </div>
-      <div style={{ fontSize: fontSize.h1 + 6, fontWeight: fontWeight.heavy, color: color.textStrong, letterSpacing: "-0.01em" }}>
+      <div style={{ fontSize: fontSize.h1 + 12, fontWeight: fontWeight.heavy, color: color.textStrong, letterSpacing: "-0.01em" }}>
         {title}
       </div>
       {sub ? (
-        <p style={{ fontSize: fontSize.lg, color: color.textMuted, marginTop: 12, maxWidth: 560, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
+        <p style={{ fontSize: fontSize.xl, color: color.textMuted, marginTop: 12, maxWidth: 600, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
           {sub}
         </p>
       ) : null}
@@ -85,16 +85,16 @@ const NAV_LINKS = [
 function LandingNav() {
   return (
     <header style={{ position: "sticky", top: 0, zIndex: 20, background: color.surface, borderBottom: `1px solid ${color.border}` }}>
-      <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px" }}>
+      <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", gap: 12 }}>
         <Link href="/" className="flex items-center" style={{ gap: 10, textDecoration: "none" }}>
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={32} height={32} style={{ borderRadius: radius.sm }} />
-          <span style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: color.textStrong }}>
+          <Image src="/logo.png" alt="ReceiptRaccoon" width={44} height={44} style={{ borderRadius: radius.sm }} />
+          <span style={{ fontSize: fontSize.xl + 3, fontWeight: fontWeight.bold, color: color.textStrong }}>
             receipt<span style={{ color: color.brand }}>raccoon</span>
           </span>
         </Link>
         <nav className="hidden sm:flex" style={{ gap: 28 }}>
           {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: color.textMuted, textDecoration: "none" }}>
+            <a key={l.href} href={l.href} style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.textMuted, textDecoration: "none" }}>
               {l.label}
             </a>
           ))}
@@ -103,7 +103,7 @@ function LandingNav() {
           <Link
             href="/login"
             className="hidden sm:inline"
-            style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: color.text, textDecoration: "none", whiteSpace: "nowrap" }}
+            style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.text, textDecoration: "none", whiteSpace: "nowrap" }}
           >
             Log in
           </Link>
@@ -119,7 +119,9 @@ function HeroVisual() {
     // No overflow:hidden here -- the two chips below deliberately float half
     // off the photo's corners, so clipping has to happen one level in (on
     // the photo's own frame only), not on this outer positioning context.
-    <div style={{ position: "relative", margin: "20px 16px 28px" }}>
+    // Top/bottom margin only (no left/right) -- the photo fills the column's
+    // full width; the vertical margin is just clearance for the chips.
+    <div style={{ position: "relative", margin: "24px 0 28px" }}>
       <div
         style={{
           position: "relative",
@@ -131,7 +133,7 @@ function HeroVisual() {
       >
         {/* Licensed stock photo, supplied directly by the workspace owner --
             already has its own "Receipt scanned" card baked into the bottom. */}
-        <Image src="/hero-photo.png" alt="Reviewing a scanned receipt" fill priority style={{ objectFit: "cover" }} />
+        <Image src="/hero-photo.png" alt="Reviewing a scanned receipt" fill priority sizes="(max-width: 1024px) 100vw, 50vw" style={{ objectFit: "cover" }} />
       </div>
 
       <div
@@ -185,9 +187,9 @@ function BuiltForRow() {
         gap: 24,
       }}
     >
-      <span style={{ fontSize: fontSize.small, fontWeight: fontWeight.bold, color: color.textFaint }}>Built for</span>
+      <span style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: color.textFaint }}>Built for</span>
       {BUILT_FOR.map((b) => (
-        <span key={b} style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: color.textMuted }}>
+        <span key={b} style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.textMuted }}>
           {b}
         </span>
       ))}
@@ -207,7 +209,7 @@ function Hero() {
               gap: 8,
               background: color.brandSoft,
               color: color.brandSoftText,
-              fontSize: fontSize.small,
+              fontSize: fontSize.body,
               fontWeight: fontWeight.bold,
               padding: "6px 14px",
               borderRadius: radius.pill,
@@ -217,10 +219,10 @@ function Hero() {
             <span style={{ width: 6, height: 6, borderRadius: 3, background: color.brand }} />
             Expense tracking, reimagined
           </div>
-          <h1 style={{ fontSize: 40, fontWeight: fontWeight.heavy, lineHeight: 1.15, letterSpacing: "-0.02em", color: color.textStrong, marginBottom: 18 }}>
+          <h1 style={{ fontSize: 48, fontWeight: fontWeight.heavy, lineHeight: 1.15, letterSpacing: "-0.02em", color: color.textStrong, marginBottom: 18 }}>
             Expense tracking that doesn&rsquo;t feel like <span style={{ color: color.brand }}>homework</span>
           </h1>
-          <p style={{ fontSize: fontSize.xl, color: color.textMuted, lineHeight: 1.6, marginBottom: 26, maxWidth: 460 }}>
+          <p style={{ fontSize: fontSize.xl + 2, color: color.textMuted, lineHeight: 1.6, marginBottom: 26, maxWidth: 480 }}>
             Snap a photo, we read the receipt. Log a trip, we calculate the mileage. Your team approves in a click — no
             spreadsheets, no shoebox of paper.
           </p>
@@ -229,7 +231,7 @@ function Hero() {
           </PrimaryButton>
           <div className="flex items-center" style={{ gap: 8, marginTop: 18 }}>
             <CheckCircleIcon color={color.brand} size={16} />
-            <span style={{ fontSize: fontSize.small, color: color.textMuted }}>No charge until your trial ends — cancel anytime</span>
+            <span style={{ fontSize: fontSize.body, color: color.textMuted }}>No charge until your trial ends — cancel anytime</span>
           </div>
         </div>
         <div style={{ flex: 1, width: "100%" }}>
@@ -282,7 +284,10 @@ function StepVisual({ n, icon: Icon, photo }: { n: string; icon: IconComponent; 
         position: "relative",
         borderRadius: radius["2xl"],
         aspectRatio: "16 / 10",
-        background: photo ? undefined : color.surfaceMuted,
+        // Kept even when a photo is set -- a neutral backdrop while the
+        // (lazy-loaded, below-the-fold) image is still fetching, instead of
+        // whatever happens to sit behind the section.
+        background: color.surfaceMuted,
         border: `1px solid ${color.border}`,
         display: "flex",
         alignItems: "center",
@@ -291,7 +296,7 @@ function StepVisual({ n, icon: Icon, photo }: { n: string; icon: IconComponent; 
       }}
     >
       {photo ? (
-        <Image src={photo} alt="" fill style={{ objectFit: "cover" }} />
+        <Image src={photo} alt="" fill sizes="(max-width: 1024px) 100vw, 50vw" style={{ objectFit: "cover" }} />
       ) : (
         <div
           style={{
@@ -339,12 +344,12 @@ function HowItWorks() {
               <div style={{ flex: 1 }}>
                 <div className="flex items-center" style={{ gap: 8, marginBottom: 14 }}>
                   <step.icon color={color.brand} size={18} />
-                  <span style={{ fontSize: fontSize.tiny, fontWeight: fontWeight.bold, color: color.textFaint, letterSpacing: "0.06em" }}>
+                  <span style={{ fontSize: fontSize.small, fontWeight: fontWeight.bold, color: color.textFaint, letterSpacing: "0.06em" }}>
                     STEP {step.n}
                   </span>
                 </div>
-                <div style={{ fontSize: fontSize.h2, fontWeight: fontWeight.heavy, color: color.textStrong, marginBottom: 10 }}>{step.title}</div>
-                <p style={{ fontSize: fontSize.lg, color: color.textMuted, lineHeight: 1.6, maxWidth: 440 }}>{step.body}</p>
+                <div style={{ fontSize: fontSize.h2 + 4, fontWeight: fontWeight.heavy, color: color.textStrong, marginBottom: 10 }}>{step.title}</div>
+                <p style={{ fontSize: fontSize.xl, color: color.textMuted, lineHeight: 1.6, maxWidth: 460 }}>{step.body}</p>
               </div>
               <div style={{ flex: 1, width: "100%" }}>
                 <StepVisual n={step.n} icon={step.icon} photo={step.photo} />
@@ -432,8 +437,8 @@ function Features() {
               >
                 <f.icon color={color.brand} size={20} />
               </div>
-              <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: color.textStrong, marginBottom: 8 }}>{f.title}</div>
-              <p style={{ fontSize: fontSize.body, color: color.textMuted, lineHeight: 1.55 }}>{f.body}</p>
+              <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: color.textStrong, marginBottom: 8 }}>{f.title}</div>
+              <p style={{ fontSize: fontSize.base, color: color.textMuted, lineHeight: 1.55 }}>{f.body}</p>
             </div>
           ))}
         </div>
@@ -465,18 +470,18 @@ function Pricing() {
         <div style={{ marginTop: 48, background: color.inkPanel, borderRadius: radius["3xl"], padding: 32 }}>
           <div className="flex flex-col sm:flex-row" style={{ justifyContent: "space-between", gap: 20, marginBottom: 24 }}>
             <div>
-              <div style={{ fontSize: fontSize.tiny, fontWeight: fontWeight.bold, color: color.brand, letterSpacing: "0.06em", marginBottom: 8 }}>
+              <div style={{ fontSize: fontSize.small, fontWeight: fontWeight.bold, color: color.brand, letterSpacing: "0.06em", marginBottom: 8 }}>
                 FULL ACCESS
               </div>
-              <div style={{ fontSize: fontSize.h1 + 4, fontWeight: fontWeight.heavy, color: "#fff", marginBottom: 4 }}>Everything included</div>
-              <div style={{ fontSize: fontSize.body, color: color.inkPanelText }}>One plan, every feature, every team.</div>
+              <div style={{ fontSize: fontSize.h1 + 8, fontWeight: fontWeight.heavy, color: "#fff", marginBottom: 4 }}>Everything included</div>
+              <div style={{ fontSize: fontSize.base, color: color.inkPanelText }}>One plan, every feature, every team.</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: fontSize.h1 + 10, fontWeight: fontWeight.heavy, color: "#fff" }}>
+              <div style={{ fontSize: fontSize.h1 + 14, fontWeight: fontWeight.heavy, color: "#fff" }}>
                 {SEAT_PRICE}
-                <span style={{ fontSize: fontSize.body, fontWeight: fontWeight.semibold, color: color.inkPanelText }}>/seat/month</span>
+                <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.inkPanelText }}>/seat/month</span>
               </div>
-              <div style={{ fontSize: fontSize.tiny, color: color.inkPanelText, marginTop: 4 }}>Billed monthly · scales with your team</div>
+              <div style={{ fontSize: fontSize.small, color: color.inkPanelText, marginTop: 4 }}>Billed monthly · scales with your team</div>
             </div>
           </div>
 
@@ -484,7 +489,7 @@ function Pricing() {
             {PRICING_FEATURES.map((f) => (
               <div key={f} className="flex items-center" style={{ gap: 10 }}>
                 <CheckCircleIcon color={color.brand} size={18} />
-                <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>{f}</span>
+                <span style={{ fontSize: fontSize.base, color: color.inkPanelText }}>{f}</span>
               </div>
             ))}
           </div>
@@ -516,10 +521,10 @@ function Pricing() {
               <TeamIcon color={color.brand} />
             </div>
             <div>
-              <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, color: "#fff", marginBottom: 2 }}>
+              <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: "#fff", marginBottom: 2 }}>
                 Try it free for {TRIAL_DAYS} days
               </div>
-              <div style={{ fontSize: fontSize.small, color: color.inkPanelText, lineHeight: 1.5 }}>
+              <div style={{ fontSize: fontSize.body, color: color.inkPanelText, lineHeight: 1.5 }}>
                 Every workspace gets a full {TRIAL_DAYS}-day trial, up to {TRIAL_SEAT_CAP} seats. We ask for a card upfront but
                 don&rsquo;t charge you until the trial ends — cancel anytime before that and you pay nothing.
               </div>
@@ -537,14 +542,14 @@ function Pricing() {
               color: "#fff",
               textDecoration: "none",
               fontWeight: fontWeight.bold,
-              fontSize: fontSize.lg,
+              fontSize: fontSize.xl,
               padding: "14px 0",
               borderRadius: radius.md,
             }}
           >
             Start your free trial
           </Link>
-          <div style={{ textAlign: "center", fontSize: fontSize.tiny, color: color.inkPanelText, marginTop: 12 }}>
+          <div style={{ textAlign: "center", fontSize: fontSize.small, color: color.inkPanelText, marginTop: 12 }}>
             No charge until your {TRIAL_DAYS}-day trial ends · Cancel anytime
           </div>
         </div>
@@ -580,10 +585,10 @@ function ClosingCta() {
         >
           <Image src="/logo.png" alt="ReceiptRaccoon" width={88} height={88} />
         </div>
-        <div style={{ fontSize: fontSize.h1 + 12, fontWeight: fontWeight.heavy, color: "#fff", letterSpacing: "-0.01em", marginBottom: 12 }}>
+        <div style={{ fontSize: fontSize.h1 + 16, fontWeight: fontWeight.heavy, color: "#fff", letterSpacing: "-0.01em", marginBottom: 12 }}>
           Stop chasing receipts.
         </div>
-        <div style={{ fontSize: fontSize.lg, color: color.inkPanelText, marginBottom: 32 }}>Get your team set up in a few minutes.</div>
+        <div style={{ fontSize: fontSize.xl, color: color.inkPanelText, marginBottom: 32 }}>Get your team set up in a few minutes.</div>
         <Link
           href="/login"
           style={{
@@ -594,14 +599,14 @@ function ClosingCta() {
             color: "#fff",
             textDecoration: "none",
             fontWeight: fontWeight.bold,
-            fontSize: fontSize.lg,
+            fontSize: fontSize.xl,
             padding: "14px 30px",
             borderRadius: radius.md,
           }}
         >
           Start free trial <ArrowRightIcon color="#fff" />
         </Link>
-        <div style={{ fontSize: fontSize.small, color: color.inkPanelText, marginTop: 16 }}>
+        <div style={{ fontSize: fontSize.body, color: color.inkPanelText, marginTop: 16 }}>
           {TRIAL_DAYS} days free · No charge until it ends · Cancel anytime
         </div>
       </div>
@@ -628,15 +633,15 @@ function Footer() {
           >
             <Image src="/logo.png" alt="" width={32} height={32} />
           </div>
-          <span style={{ fontSize: fontSize.small, color: color.inkPanelText }}>
+          <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>
             © {new Date().getFullYear()} ReceiptRaccoon. All rights reserved.
           </span>
         </div>
         {/* Plain text, not links -- Privacy/Terms/Support pages don't exist yet. */}
         <div className="flex items-center" style={{ gap: 24 }}>
-          <span style={{ fontSize: fontSize.small, color: color.inkPanelText }}>Privacy</span>
-          <span style={{ fontSize: fontSize.small, color: color.inkPanelText }}>Terms</span>
-          <span style={{ fontSize: fontSize.small, color: color.inkPanelText }}>Support</span>
+          <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>Privacy</span>
+          <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>Terms</span>
+          <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>Support</span>
         </div>
       </div>
     </footer>
