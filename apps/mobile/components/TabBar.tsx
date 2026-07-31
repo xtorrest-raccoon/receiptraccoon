@@ -184,12 +184,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   // The focused indicator behind a tab's icon -- a soft green pill behind
-  // the (still-grey) glyph, rather than recoloring the glyph itself.
+  // the (still-grey) glyph, rather than recoloring the glyph itself. A
+  // shade darker than @rr/ui-tokens' own brandSoft (93% lightness), which
+  // read as too faint to notice against the bar's background.
   activeIconCircle: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: rn(color.brandSoft),
+    backgroundColor: rn("oklch(84% 0.09 152)"),
     alignItems: "center",
     justifyContent: "center",
   },
