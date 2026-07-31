@@ -433,7 +433,11 @@ function Features() {
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" style={{ marginTop: 48 }}>
           {FEATURES.map((f) => (
-            <div key={f.title} style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 22 }}>
+            <div
+              key={f.title}
+              className="transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg"
+              style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 22 }}
+            >
               <div
                 style={{
                   width: 40,
