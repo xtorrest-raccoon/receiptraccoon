@@ -137,6 +137,21 @@ export interface CategoryBreakdownRow {
   pct: number;
 }
 
+/**
+ * One country's receipts, for the mobile Analytics tab's map + country list.
+ * `tripCount` splits that country's receipts into visits by date gap (see
+ * summarizeCountryVisits) -- a country visited twice in the year counts as
+ * two trips, not one.
+ */
+export interface CountryVisitSummary {
+  countryCode: string;
+  totalMinor: number;
+  tripCount: number;
+  firstDate: string;
+  lastDate: string;
+  receiptIds: string[];
+}
+
 export interface DashboardStats {
   monthTotalMinor: number;
   /**

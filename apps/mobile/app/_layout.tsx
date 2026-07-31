@@ -76,6 +76,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="receipt/[id]" options={{ animation: "slide_from_right" }} />
+          <Stack.Screen name="country/[code]" options={{ animation: "slide_from_right" }} />
           <Stack.Screen name="capture/processing" options={{ animation: "fade", gestureEnabled: false }} />
           <Stack.Screen name="capture/confirm" options={{ animation: "slide_from_right", gestureEnabled: false }} />
           <Stack.Screen name="capture/saved" options={{ animation: "fade", gestureEnabled: false }} />

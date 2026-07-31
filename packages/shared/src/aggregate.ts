@@ -1,7 +1,7 @@
 import { derivedHue } from "./categories.js";
 import { daysBetween } from "./format.js";
 import { reclaimMinor } from "./money.js";
-import type { CategoryBreakdownRow, MileageTrip, Receipt, ReimbursementStatus, Role, TeamMemberSummary } from "./types.js";
+import type { CategoryBreakdownRow, CountryVisitSummary, MileageTrip, Receipt, ReimbursementStatus, Role, TeamMemberSummary } from "./types.js";
 
 /**
  * Pure aggregation math shared between whichever backend supplies the rows
@@ -124,6 +124,47 @@ export function computeWeeklySpend(
     weeklySpend.push({ weekStart: weekStart.toISOString().slice(0, 10), totalMinor });
   }
   return weeklySpend;
+}
+
+// A gap this long between two receipts in the same country is treated as two
+// separate visits rather than one continuous trip. Picked as a reasonable
+// "you went home and came back" threshold -- not derived from any real
+// travel-pattern data, since there isn't any to derive it from yet.
+const TRIP_GAP_DAYS = 4;
+
+/**
+ * Groups a person's own receipts by country (see Receipt.country) for the
+ * mobile Analytics tab. Receipts with no detected country are excluded --
+ * there is nothing to plot on a map for those.
+ */
+export function summarizeCountryVisits(receipts: Receipt[], tripGapDays = TRIP_GAP_DAYS): CountryVisitSummary[] {
+  const byCountry = new Map<string, Receipt[]>();
+  for (const r of receipts) {
+    if (!r.country || !r.receiptDate) continue;
+    const list = byCountry.get(r.country);
+    if (list) list.push(r);
+    else byCountry.set(r.country, [r]);
+  }
+
+  const result: CountryVisitSummary[] = [];
+  for (const [countryCode, list] of byCountry) {
+    const sorted = [...list].sort((a, b) => (a.receiptDate ?? "").localeCompare(b.receiptDate ?? ""));
+    let tripCount = 0;
+    let prevDate: string | null = null;
+    for (const r of sorted) {
+      if (!prevDate || daysBetween(prevDate, r.receiptDate!) > tripGapDays) tripCount++;
+      prevDate = r.receiptDate!;
+    }
+    result.push({
+      countryCode,
+      totalMinor: sorted.reduce((s, r) => s + reclaimMinor(r), 0),
+      tripCount,
+      firstDate: sorted[0]!.receiptDate!,
+      lastDate: sorted[sorted.length - 1]!.receiptDate!,
+      receiptIds: sorted.map((r) => r.id),
+    });
+  }
+  return result.sort((a, b) => b.totalMinor - a.totalMinor);
 }
 
 export interface ReimbursableTotal {

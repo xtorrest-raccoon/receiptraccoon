@@ -41,6 +41,16 @@ function MileageIcon({ tint }: { tint: string }) {
   );
 }
 
+function AnalyticsIcon({ tint }: { tint: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={13} width={4} height={7} rx={1} fill={tint} />
+      <Rect x={10} y={9} width={4} height={11} rx={1} fill={tint} />
+      <Rect x={16} y={5} width={4} height={15} rx={1} fill={tint} />
+    </Svg>
+  );
+}
+
 function CaptureIcon({ tint }: { tint: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -57,6 +67,7 @@ function CaptureIcon({ tint }: { tint: string }) {
 
 const TAB_META: Record<string, { label: string; icon: (tint: string) => ReactNode }> = {
   index: { label: "Home", icon: (t) => <HomeIcon tint={t} /> },
+  analytics: { label: "Analytics", icon: (t) => <AnalyticsIcon tint={t} /> },
   capture: { label: "Capture", icon: (t) => <CaptureIcon tint={t} /> },
   receipts: { label: "Receipts", icon: (t) => <ReceiptsIcon tint={t} /> },
   mileage: { label: "Mileage", icon: (t) => <MileageIcon tint={t} /> },
