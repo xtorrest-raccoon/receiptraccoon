@@ -119,14 +119,20 @@ function HeroVisual() {
     // No overflow:hidden here -- the two chips below deliberately float half
     // off the photo's corners, so clipping has to happen one level in (on
     // the photo's own frame only), not on this outer positioning context.
-    // Top/bottom margin only (no left/right) -- the photo fills the column's
-    // full width; the vertical margin is just clearance for the chips.
-    <div style={{ position: "relative", margin: "24px 0 28px" }}>
+    // Zero margin -- the photo fills the entire column, top to bottom and
+    // edge to edge; the chips overlap its corners rather than sitting in
+    // dedicated empty space around it.
+    <div style={{ position: "relative" }}>
+      {/* Classic padding-percentage aspect-ratio box (2/3 = 66.667%) instead
+          of the `aspect-ratio` CSS property -- sidesteps any browser-specific
+          interaction between aspect-ratio, overflow:hidden, and an
+          absolutely-positioned `fill` image. */}
+      <div style={{ paddingTop: "66.667%" }} />
       <div
         style={{
-          position: "relative",
+          position: "absolute",
+          inset: 0,
           borderRadius: radius["3xl"],
-          aspectRatio: "3 / 2",
           overflow: "hidden",
           border: `1px solid ${color.border}`,
         }}
@@ -139,8 +145,8 @@ function HeroVisual() {
       <div
         style={{
           position: "absolute",
-          top: -20,
-          right: -16,
+          top: -14,
+          right: -14,
           background: color.surface,
           borderRadius: radius.lg,
           padding: "12px 16px",
@@ -155,8 +161,8 @@ function HeroVisual() {
       <div
         style={{
           position: "absolute",
-          bottom: -20,
-          left: -16,
+          bottom: -14,
+          left: -14,
           background: color.surface,
           borderRadius: radius.lg,
           padding: "12px 16px",
@@ -279,52 +285,57 @@ const STEPS: Step[] = [
 
 function StepVisual({ n, icon: Icon, photo }: { n: string; icon: IconComponent; photo?: string | undefined }) {
   return (
-    <div
-      style={{
-        position: "relative",
-        borderRadius: radius["2xl"],
-        aspectRatio: "16 / 10",
-        // Kept even when a photo is set -- a neutral backdrop while the
-        // (lazy-loaded, below-the-fold) image is still fetching, instead of
-        // whatever happens to sit behind the section.
-        background: color.surfaceMuted,
-        border: `1px solid ${color.border}`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-      }}
-    >
-      {photo ? (
-        <Image src={photo} alt="" fill sizes="(max-width: 1024px) 100vw, 50vw" style={{ objectFit: "cover" }} />
-      ) : (
-        <div
-          style={{
-            width: 84,
-            height: 84,
-            borderRadius: radius["2xl"],
-            background: color.brandTint,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Icon color={color.brand} size={40} />
-        </div>
-      )}
-      <span
+    <div style={{ position: "relative" }}>
+      {/* Classic padding-percentage aspect-ratio box (10/16 = 62.5%) instead
+          of the `aspect-ratio` CSS property -- see HeroVisual for why. */}
+      <div style={{ paddingTop: "62.5%" }} />
+      <div
         style={{
           position: "absolute",
-          top: 14,
-          left: 18,
-          fontSize: 46,
-          fontWeight: fontWeight.heavy,
-          color: photo ? "rgba(255,255,255,0.85)" : color.border,
-          textShadow: photo ? "0 2px 10px rgba(0,0,0,0.35)" : undefined,
+          inset: 0,
+          borderRadius: radius["2xl"],
+          // Kept even when a photo is set -- a neutral backdrop while the
+          // (lazy-loaded, below-the-fold) image is still fetching, instead of
+          // whatever happens to sit behind the section.
+          background: color.surfaceMuted,
+          border: `1px solid ${color.border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
         }}
       >
-        {n}
-      </span>
+        {photo ? (
+          <Image src={photo} alt="" fill sizes="(max-width: 1024px) 100vw, 50vw" style={{ objectFit: "cover" }} />
+        ) : (
+          <div
+            style={{
+              width: 84,
+              height: 84,
+              borderRadius: radius["2xl"],
+              background: color.brandTint,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon color={color.brand} size={40} />
+          </div>
+        )}
+        <span
+          style={{
+            position: "absolute",
+            top: 14,
+            left: 18,
+            fontSize: 46,
+            fontWeight: fontWeight.heavy,
+            color: photo ? "rgba(255,255,255,0.85)" : color.border,
+            textShadow: photo ? "0 2px 10px rgba(0,0,0,0.35)" : undefined,
+          }}
+        >
+          {n}
+        </span>
+      </div>
     </div>
   );
 }
