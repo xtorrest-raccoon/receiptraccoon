@@ -32,24 +32,32 @@ function ReceiptsIcon({ tint }: { tint: string }) {
 
 function MileageIcon({ tint }: { tint: string }) {
   return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={9} stroke={tint} strokeWidth={2} />
-      <Path d="M8 13 L11 10 L13 12 L16 8" stroke={tint} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path
+        fill={tint}
+        d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"
+      />
     </Svg>
   );
 }
 
-function CaptureGlyph() {
+function CaptureIcon() {
   return (
-    <View style={styles.captureGlyphBox}>
-      <View style={styles.captureGlyphBump} />
-    </View>
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M7 6.5l.9-1.7a1.4 1.4 0 0 1 1.24-.75h5.72a1.4 1.4 0 0 1 1.24.75L17 6.5h2a1.6 1.6 0 0 1 1.6 1.6v9.3A1.6 1.6 0 0 1 19 19H5a1.6 1.6 0 0 1-1.6-1.6V8.1A1.6 1.6 0 0 1 5 6.5h2z"
+        stroke="#fff"
+        strokeWidth={1.7}
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={12.5} r={3.4} stroke="#fff" strokeWidth={1.7} />
+    </Svg>
   );
 }
 
 const TAB_META: Record<string, { label: string; icon: (tint: string) => ReactNode }> = {
   index: { label: "Home", icon: (t) => <HomeIcon tint={t} /> },
-  capture: { label: "Capture", icon: () => <CaptureGlyph /> },
+  capture: { label: "Capture", icon: () => <CaptureIcon /> },
   receipts: { label: "Receipts", icon: (t) => <ReceiptsIcon tint={t} /> },
   mileage: { label: "Mileage", icon: (t) => <MileageIcon tint={t} /> },
 };
@@ -185,23 +193,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
-  },
-  // Scaled with CAPTURE_SIZE so the glyph keeps its proportion inside the circle.
-  captureGlyphBox: {
-    width: 18,
-    height: 14,
-    borderWidth: 2,
-    borderColor: "#fff",
-    borderRadius: 3,
-  },
-  captureGlyphBump: {
-    position: "absolute",
-    top: -4,
-    left: 5,
-    width: 7,
-    height: 3,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
   },
 });
