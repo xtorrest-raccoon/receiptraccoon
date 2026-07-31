@@ -76,7 +76,9 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
+      {/* Static above the fold -- only the country list below scrolls, see
+          the ScrollView's own comment. */}
+      <View style={{ paddingTop: insets.top + 14, paddingHorizontal: 16 }}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Analytics</Text>
           <Pressable style={styles.shareButton} onPress={onShare} disabled={sharing} accessibilityRole="button" accessibilityLabel="Share">
@@ -100,8 +102,10 @@ export default function AnalyticsScreen() {
           countryCount={visits.length}
           onSelectCountry={(code) => router.push({ pathname: "/country/[code]", params: { code } })}
         />
+      </View>
 
-        <View style={[styles.card, { marginTop: 16 }]}>
+      <ScrollView contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
+        <View style={styles.card}>
           <View style={styles.yearRow}>
             <Text style={styles.yearLabel}>This year</Text>
             <Text style={styles.yearValue}>{formatMoney(yearTotalMinor, currency)}</Text>
