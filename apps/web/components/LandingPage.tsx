@@ -264,9 +264,7 @@ const STEPS: Step[] = [
     icon: PinIcon,
     title: "Log mileage",
     body: "Type a distance or drop in a start and end address and let us calculate it. Every trip's rate is locked in the moment it's logged, so nothing recalculates behind your back later.",
-    // Filename typo ("milieage") is the asset as supplied -- kept verbatim so
-    // the path matches what's actually in public/.
-    photo: "/milieage-photo.png",
+    photo: "/mileage-photo.png",
   },
   {
     n: "03",
