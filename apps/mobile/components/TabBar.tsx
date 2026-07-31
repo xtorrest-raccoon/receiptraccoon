@@ -41,43 +41,35 @@ function MileageIcon({ tint }: { tint: string }) {
   );
 }
 
-function CaptureIcon() {
+function CaptureIcon({ tint }: { tint: string }) {
   return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Path
         d="M7 6.5l.9-1.7a1.4 1.4 0 0 1 1.24-.75h5.72a1.4 1.4 0 0 1 1.24.75L17 6.5h2a1.6 1.6 0 0 1 1.6 1.6v9.3A1.6 1.6 0 0 1 19 19H5a1.6 1.6 0 0 1-1.6-1.6V8.1A1.6 1.6 0 0 1 5 6.5h2z"
-        stroke="#fff"
+        stroke={tint}
         strokeWidth={1.7}
         strokeLinejoin="round"
       />
-      <Circle cx={12} cy={12.5} r={3.4} stroke="#fff" strokeWidth={1.7} />
+      <Circle cx={12} cy={12.5} r={3.4} stroke={tint} strokeWidth={1.7} />
     </Svg>
   );
 }
 
 const TAB_META: Record<string, { label: string; icon: (tint: string) => ReactNode }> = {
   index: { label: "Home", icon: (t) => <HomeIcon tint={t} /> },
-  capture: { label: "Capture", icon: () => <CaptureIcon /> },
+  capture: { label: "Capture", icon: (t) => <CaptureIcon tint={t} /> },
   receipts: { label: "Receipts", icon: (t) => <ReceiptsIcon tint={t} /> },
   mileage: { label: "Mileage", icon: (t) => <MileageIcon tint={t} /> },
 };
 
 /**
- * Custom bottom tab bar: blurred translucent background, Capture as a green
- * circular button in the centre. Passed as the `tabBar` render prop to
- * expo-router's <Tabs>.
+ * Custom bottom tab bar: blurred translucent background. Passed as the
+ * `tabBar` render prop to expo-router's <Tabs>.
  *
- * Departs from the design in one respect: the mockup raises Capture 22px above
- * the bar. That was drawn against a plain 82px bar in a fixed 390x844 frame; on a
- * real device the bar also carries the home-indicator inset, and the raised button
- * read as escaping the bar rather than sitting proud of it. It now sits flush.
- *
- * ICON_SLOT is what keeps all four labels on one baseline. The Capture circle is
- * 36px while the other glyphs are 22px, so without a fixed-height slot each label
- * would sit at a different vertical position.
+ * ICON_SLOT keeps all four labels on one baseline regardless of whether the
+ * focused pill is showing behind the glyph.
  */
-const CAPTURE_SIZE = 36;
-const ICON_SLOT = CAPTURE_SIZE;
+const ICON_SLOT = 36;
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -102,7 +94,6 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           const meta = TAB_META[route.name];
           if (!meta) return null;
           const focused = state.index === index;
-          const isCapture = route.name === "capture";
           // Icon glyphs stay a single neutral grey always -- focus is shown by
           // the green circle behind them, not by recoloring the glyph itself.
           const labelTint = focused ? ACTIVE : INACTIVE;
@@ -117,17 +108,13 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           return (
             <Pressable key={route.key} onPress={onPress} style={styles.item} accessibilityRole="button">
               <View style={styles.iconSlot}>
-                {isCapture ? (
-                  <View style={styles.captureButton}>{meta.icon(INACTIVE)}</View>
-                ) : focused ? (
+                {focused ? (
                   <View style={styles.activeIconCircle}>{meta.icon(INACTIVE)}</View>
                 ) : (
                   meta.icon(INACTIVE)
                 )}
               </View>
-              <Text style={[styles.tabLabel, { color: isCapture ? rn(color.brandSoftText) : labelTint }]}>
-                {meta.label}
-              </Text>
+              <Text style={[styles.tabLabel, { color: labelTint }]}>{meta.label}</Text>
             </Pressable>
           );
         })}
@@ -174,8 +161,8 @@ const styles = StyleSheet.create({
     gap: 5,
     minWidth: 56,
   },
-  // Fixed-height slot: this is what puts all four labels on the same baseline
-  // despite the Capture circle being larger than the other glyphs.
+  // Fixed-height slot: keeps all four labels on the same baseline regardless
+  // of whether the focused pill is showing behind a given icon.
   iconSlot: {
     height: ICON_SLOT,
     alignItems: "center",
@@ -185,21 +172,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
   },
-  captureButton: {
-    width: CAPTURE_SIZE,
-    height: CAPTURE_SIZE,
-    borderRadius: CAPTURE_SIZE / 2,
-    backgroundColor: ACTIVE,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: ACTIVE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  // The focused indicator for the three plain-glyph tabs -- a soft green
-  // pill behind the (still-grey) icon, rather than recoloring the glyph.
+  // The focused indicator behind a tab's icon -- a soft green pill behind
+  // the (still-grey) glyph, rather than recoloring the glyph itself.
   activeIconCircle: {
     width: 34,
     height: 34,
