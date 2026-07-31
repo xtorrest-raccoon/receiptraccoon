@@ -102,8 +102,10 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           const meta = TAB_META[route.name];
           if (!meta) return null;
           const focused = state.index === index;
-          const tint = focused ? ACTIVE : INACTIVE;
           const isCapture = route.name === "capture";
+          // Icon glyphs stay a single neutral grey always -- focus is shown by
+          // the green circle behind them, not by recoloring the glyph itself.
+          const labelTint = focused ? ACTIVE : INACTIVE;
 
           const onPress = () => {
             const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
@@ -116,12 +118,14 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             <Pressable key={route.key} onPress={onPress} style={styles.item} accessibilityRole="button">
               <View style={styles.iconSlot}>
                 {isCapture ? (
-                  <View style={styles.captureButton}>{meta.icon(tint)}</View>
+                  <View style={styles.captureButton}>{meta.icon(INACTIVE)}</View>
+                ) : focused ? (
+                  <View style={styles.activeIconCircle}>{meta.icon(INACTIVE)}</View>
                 ) : (
-                  meta.icon(tint)
+                  meta.icon(INACTIVE)
                 )}
               </View>
-              <Text style={[styles.tabLabel, { color: isCapture ? rn(color.brandSoftText) : tint }]}>
+              <Text style={[styles.tabLabel, { color: isCapture ? rn(color.brandSoftText) : labelTint }]}>
                 {meta.label}
               </Text>
             </Pressable>
@@ -193,5 +197,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
+  },
+  // The focused indicator for the three plain-glyph tabs -- a soft green
+  // pill behind the (still-grey) icon, rather than recoloring the glyph.
+  activeIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: rn(color.brandSoft),
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
