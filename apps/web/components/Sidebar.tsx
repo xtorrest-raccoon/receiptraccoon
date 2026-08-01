@@ -1,12 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { canManageReimbursementAuthority, canViewTeamPage } from "@rr/shared";
 import { signOut, type CurrentUser } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
-import { useCurrentUser, useWorkspaceName } from "../lib/queries";
+import { useCurrentUser, useSetWorkspaceName, useWorkspaceName } from "../lib/queries";
 import { DashboardIcon, MileageIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
 
 interface NavItem {
@@ -31,10 +32,86 @@ function visibleItems(currentUser: CurrentUser | undefined) {
   return NAV_ITEMS.filter((item) => !item.visible || (currentUser && item.visible(currentUser)));
 }
 
+/**
+ * Everyone signed in sees this box; only whoever can manage reimbursement
+ * authority (same admin/owner-or-super-user audience as the Setup page) can
+ * actually edit it. Mirrors the original pre-Setup sidebar widget's
+ * onBlur-commits-the-rename pattern.
+ */
+function WorkspaceBox({ currentUser }: { currentUser: CurrentUser | undefined }) {
+  const { data: workspaceName } = useWorkspaceName();
+  const setWorkspaceName = useSetWorkspaceName();
+  const [nameDraft, setNameDraft] = useState("");
+  const editable = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
+
+  useEffect(() => {
+    if (workspaceName !== undefined) setNameDraft(workspaceName);
+  }, [workspaceName]);
+
+  if (workspaceName === undefined) return null;
+
+  const commitName = () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === workspaceName) {
+      setNameDraft(workspaceName);
+      return;
+    }
+    setWorkspaceName.mutate(trimmed);
+  };
+
+  return (
+    <div style={{ padding: 12, borderRadius: radius.lg, background: color.surfaceMuted, marginBottom: 10 }}>
+      <div
+        style={{
+          fontSize: fontSize.tiny + 0.5,
+          fontWeight: fontWeight.semibold,
+          color: color.textFaint,
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+          marginBottom: 4,
+        }}
+      >
+        Workspace
+      </div>
+      {editable ? (
+        <input
+          value={nameDraft}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          style={{
+            width: "100%",
+            border: "none",
+            background: "none",
+            padding: 0,
+            fontSize: fontSize.small + 1,
+            fontWeight: fontWeight.bold,
+            color: color.textStrong,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            fontSize: fontSize.small + 1,
+            fontWeight: fontWeight.bold,
+            color: color.textStrong,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {workspaceName}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { data: currentUser } = useCurrentUser();
-  const { data: workspaceName } = useWorkspaceName();
   const items = visibleItems(currentUser);
 
   return (
@@ -56,45 +133,7 @@ export function Sidebar() {
         <Image src="/logo.png" alt="ReceiptRaccoon" width={140} height={140} />
       </div>
 
-      {/* Read-only -- renaming the workspace lives on the admin-only Setup
-          page now, but everyone signed in still sees which workspace they're
-          in, same as before Setup existed. Same labeled-box shape the
-          original sidebar widget used for "Home currency" etc. */}
-      {workspaceName ? (
-        <div
-          style={{
-            padding: 12,
-            borderRadius: radius.lg,
-            background: color.surfaceMuted,
-            marginBottom: 10,
-          }}
-        >
-          <div
-            style={{
-              fontSize: fontSize.tiny + 0.5,
-              fontWeight: fontWeight.semibold,
-              color: color.textFaint,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              marginBottom: 4,
-            }}
-          >
-            Workspace
-          </div>
-          <div
-            style={{
-              fontSize: fontSize.small + 1,
-              fontWeight: fontWeight.bold,
-              color: color.textStrong,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {workspaceName}
-          </div>
-        </div>
-      ) : null}
+      <WorkspaceBox currentUser={currentUser} />
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
         {items.map((item) => {
