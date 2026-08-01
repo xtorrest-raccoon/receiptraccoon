@@ -116,18 +116,18 @@ export default function SetupPage() {
         </div>
       </div>
 
+      <SectionHeading>Account access</SectionHeading>
+      <ProvisionMemberPanel />
+
+      <SectionHeading>Approval hierarchy</SectionHeading>
+      <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
+
       <UserDisplayPrefsTable
         users={users}
         workspaceCurrency={homeCurrency}
         workspaceUnit={distanceUnit}
         workspaceRateMilli={mileageRateMilli}
       />
-
-      <SectionHeading>Account access</SectionHeading>
-      <ProvisionMemberPanel />
-
-      <SectionHeading>Approval hierarchy</SectionHeading>
-      <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
 
       <SectionHeading>Categories</SectionHeading>
       <ManageCategoriesPanel categories={categories} />

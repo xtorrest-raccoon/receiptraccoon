@@ -30,14 +30,14 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", Icon: DashboardIcon },
   { href: "/receipts", label: "Receipts", Icon: ReceiptsIcon },
   { href: "/mileage", label: "Mileage", Icon: MileageIcon },
+  // Deliberately no `visible` gate, unlike Setup below — this is the
+  // signed-in user's OWN personal display preferences, not a workspace-wide
+  // setting, so every role sees it.
+  { href: "/profile", label: "Profile", Icon: ProfileIcon },
   { href: "/team", label: "Team", Icon: TeamIcon, visible: (u) => canViewTeamPage(u.role, u) },
   // Only whoever can grant reimbursement authority in the first place —
   // same audience the Setup page itself gates on.
   { href: "/setup", label: "Setup", Icon: SetupIcon, visible: (u) => canManageReimbursementAuthority(u.role, u) },
-  // Deliberately no `visible` gate, unlike Setup above — this is the
-  // signed-in user's OWN personal display preferences, not a workspace-wide
-  // setting, so every role sees it.
-  { href: "/profile", label: "Profile", Icon: ProfileIcon },
 ];
 
 function visibleItems(currentUser: CurrentUser | undefined) {
