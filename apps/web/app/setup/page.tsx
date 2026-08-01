@@ -18,8 +18,6 @@ import { ReimbursementAuthorityTable } from "../../components/ReimbursementAutho
 import { UserDisplayPrefsTable } from "../../components/UserDisplayPrefsTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
 import { NotificationsPanel } from "../../components/NotificationsPanel";
-import { PaymentSetupPanel } from "../../components/PaymentSetupPanel";
-import { InvoiceList } from "../../components/InvoiceList";
 
 function SectionHeading({ children }: { children: string }) {
   return (
@@ -63,8 +61,6 @@ export default function SetupPage() {
   }
 
   if (!users || !categories || !homeCurrency || !distanceUnit || mileageRateMilli === undefined) return null;
-
-  const canManageBilling = currentUser.role === "owner" || currentUser.role === "admin";
 
   return (
     <div>
@@ -134,16 +130,6 @@ export default function SetupPage() {
 
       <SectionHeading>Notifications</SectionHeading>
       <NotificationsPanel />
-
-      {canManageBilling ? (
-        <>
-          <SectionHeading>Payment setup</SectionHeading>
-          <PaymentSetupPanel currentUser={currentUser} />
-
-          <SectionHeading>Invoices</SectionHeading>
-          <InvoiceList />
-        </>
-      ) : null}
     </div>
   );
 }

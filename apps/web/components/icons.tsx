@@ -37,6 +37,16 @@ export function TeamIcon({ color }: { color: string }) {
   );
 }
 
+export function BillingIcon({ color }: { color: string }) {
+  return (
+    <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true">
+      <rect x={2} y={4.5} width={16} height={11} rx={2} fill="none" stroke={color} strokeWidth={1.6} />
+      <line x1={2} y1={8} x2={18} y2={8} stroke={color} strokeWidth={1.6} />
+      <line x1={5} y1={12} x2={9} y2={12} stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ProfileIcon({ color }: { color: string }) {
   return (
     <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true">

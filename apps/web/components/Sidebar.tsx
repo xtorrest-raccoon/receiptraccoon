@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { canManageReimbursementAuthority, canViewTeamPage } from "@rr/shared";
+import { canManageReimbursementAuthority, canViewTeamPage, isAdmin } from "@rr/shared";
 import { signOut, type CurrentUser } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
 import {
@@ -16,7 +16,7 @@ import {
   useSwitchWorkspace,
   useWorkspaceName,
 } from "../lib/queries";
-import { DashboardIcon, MileageIcon, ProfileIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
+import { BillingIcon, DashboardIcon, MileageIcon, ProfileIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
 
 interface NavItem {
   href: string;
@@ -38,6 +38,10 @@ const NAV_ITEMS: NavItem[] = [
   // Only whoever can grant reimbursement authority in the first place —
   // same audience the Setup page itself gates on.
   { href: "/setup", label: "Setup", Icon: SetupIcon, visible: (u) => canManageReimbursementAuthority(u.role, u) },
+  // Stricter than Setup above -- owner/admin only, same gate the Billing
+  // page itself enforces (a super user with granted reimbursement
+  // authority does NOT get billing access just from that).
+  { href: "/billing", label: "Invoice & Payment", Icon: BillingIcon, visible: (u) => isAdmin(u.role) },
 ];
 
 function visibleItems(currentUser: CurrentUser | undefined) {
