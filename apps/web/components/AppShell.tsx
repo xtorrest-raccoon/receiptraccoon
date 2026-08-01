@@ -20,6 +20,12 @@ import { BillingGate } from "./BillingGate";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
+import { initActiveWorkspace } from "../lib/activeWorkspace";
+
+// Restores whichever workspace was last picked (see the workspace switcher
+// in Sidebar.tsx) before any @rr/api call that resolves "the current
+// workspace" runs.
+initActiveWorkspace();
 
 const LOGIN_PATH = "/login";
 // Reached via the emailed recovery link, which briefly has no session at all

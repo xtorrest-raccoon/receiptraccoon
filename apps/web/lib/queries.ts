@@ -43,6 +43,14 @@ export function useWorkspaceName() {
   return useQuery({ queryKey: ["workspaceName"], queryFn: data.getWorkspaceName });
 }
 
+export function useMyWorkspaces() {
+  return useQuery({ queryKey: ["myWorkspaces"], queryFn: data.listMyWorkspaces });
+}
+
+export function useActiveWorkspaceId() {
+  return useQuery({ queryKey: ["activeWorkspaceId"], queryFn: data.getActiveWorkspaceId });
+}
+
 export function useCategories() {
   return useQuery({ queryKey: ["categories"], queryFn: data.listCategories });
 }
@@ -104,6 +112,8 @@ const ALL_QUERY_KEYS = [
   "dailyApprovalRemindersEnabled",
   "workspaceInvites",
   "workspaceName",
+  "myWorkspaces",
+  "activeWorkspaceId",
   "users",
   "currentUser",
 ];
@@ -195,6 +205,25 @@ export function useSetWorkspaceName() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
     mutationFn: (name: string) => data.setWorkspaceName(name),
+    onSuccess: invalidateAll,
+  });
+}
+
+/** Every other query resolves "the current workspace" through @rr/api's
+ * pinned active-workspace id, so switching just needs to update that pin
+ * and let the coarse invalidateAll sweep refetch everything against it. */
+export function useSwitchWorkspace() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: async (id: string) => data.switchWorkspace(id),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useCreateWorkspace() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (name: string) => data.createWorkspace(name),
     onSuccess: invalidateAll,
   });
 }

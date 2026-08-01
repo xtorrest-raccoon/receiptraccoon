@@ -11,6 +11,7 @@
 
 import * as api from "@rr/api";
 import type { DashboardResponse, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
+import { persistActiveWorkspace } from "./activeWorkspace";
 
 export type { CurrentUser, WorkspaceUser } from "@rr/api";
 
@@ -128,6 +129,28 @@ export function getWorkspaceName(): Promise<string> {
 
 export function setWorkspaceName(name: string): Promise<void> {
   return api.setWorkspaceName(name);
+}
+
+export type { WorkspaceSummary } from "@rr/api";
+
+export function listMyWorkspaces(): Promise<api.WorkspaceSummary[]> {
+  return api.listMyWorkspaces();
+}
+
+/** Which workspace the switcher should show as selected — see lib/activeWorkspace.ts. */
+export function getActiveWorkspaceId(): Promise<string> {
+  return api.getCurrentWorkspaceId();
+}
+
+/** Just pins which workspace subsequent calls act on -- see lib/activeWorkspace.ts. */
+export function switchWorkspace(id: string): void {
+  persistActiveWorkspace(id);
+}
+
+export async function createWorkspace(name: string): Promise<string> {
+  const id = await api.createWorkspace(name);
+  persistActiveWorkspace(id);
+  return id;
 }
 
 export function userName(id: string): Promise<string> {

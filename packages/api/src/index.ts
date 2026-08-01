@@ -137,9 +137,35 @@ async function getCurrentUserId(): Promise<string> {
   return session.user.id;
 }
 
-/** Single-workspace-per-user for now — matches handle_new_user()'s bootstrap trigger. */
-async function getCurrentWorkspaceId(): Promise<string> {
+// A caller can now belong to more than one workspace (see 0017_organizations.sql),
+// so something has to say which one every other call in this module acts on.
+// The host app pins it via setActiveWorkspaceId() -- web persists the choice
+// across reloads (see apps/web/lib/data.ts); mobile never calls this, so it
+// keeps the pre-multi-workspace fallback below (whichever membership sorts
+// first) unchanged.
+let activeWorkspaceId: string | null = null;
+
+export function setActiveWorkspaceId(id: string | null): void {
+  activeWorkspaceId = id;
+}
+
+export async function getCurrentWorkspaceId(): Promise<string> {
   const userId = await getCurrentUserId();
+
+  if (activeWorkspaceId) {
+    // Re-verify membership rather than trusting the pinned id blindly --
+    // it can go stale (e.g. removed from that workspace since the browser
+    // last stored it), and a removed member's requests should fall back to
+    // one they still belong to, not silently 403 on every call.
+    const { data } = await client()
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", userId)
+      .eq("workspace_id", activeWorkspaceId)
+      .maybeSingle();
+    if (data) return activeWorkspaceId;
+  }
+
   const { data, error } = await client()
     .from("workspace_members")
     .select("workspace_id")
@@ -148,6 +174,57 @@ async function getCurrentWorkspaceId(): Promise<string> {
     .single();
   if (error) throw error;
   return (data as { workspace_id: string }).workspace_id;
+}
+
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  role: Role;
+}
+
+/** Every workspace the caller belongs to, for the workspace switcher. */
+export async function listMyWorkspaces(): Promise<WorkspaceSummary[]> {
+  const userId = await getCurrentUserId();
+  const { data, error } = await client()
+    .from("workspace_members")
+    .select("role, workspaces(id, name)")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data as unknown as { role: Role; workspaces: { id: string; name: string } }[]).map((row) => ({
+    id: row.workspaces.id,
+    name: row.workspaces.name,
+    role: row.role,
+  }));
+}
+
+/**
+ * Adds a new workspace under the SAME organization as the caller's
+ * currently-active one (not a new organization) -- see create_workspace()'s
+ * own comment for why this has to be a security-definer RPC rather than a
+ * plain insert. Makes the new workspace active and returns its id so the
+ * caller can navigate straight into it.
+ */
+export async function createWorkspace(name: string): Promise<string> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Workspace name can't be empty");
+
+  const currentWsId = await getCurrentWorkspaceId();
+  const { data: currentWs, error: wsErr } = await client()
+    .from("workspaces")
+    .select("organization_id")
+    .eq("id", currentWsId)
+    .single();
+  if (wsErr) throw wsErr;
+  const organizationId = (currentWs as { organization_id: string }).organization_id;
+
+  const { data: newWsId, error } = await client().rpc("create_workspace", {
+    p_name: trimmed,
+    p_organization_id: organizationId,
+  });
+  if (error) throw error;
+
+  setActiveWorkspaceId(newWsId as string);
+  return newWsId as string;
 }
 
 export type BillingStatus = "inactive" | "active" | "past_due" | "canceled";
@@ -786,7 +863,8 @@ function monthRange(yyyyMm: string): [string, string] {
 export async function listReceipts(
   opts: { month?: string; categoryName?: string; userId?: string; q?: string } = {},
 ): Promise<Receipt[]> {
-  let query = client().from("receipts").select(RECEIPT_SELECT).order("receipt_date", { ascending: false });
+  const wsId = await getCurrentWorkspaceId();
+  let query = client().from("receipts").select(RECEIPT_SELECT).eq("workspace_id", wsId).order("receipt_date", { ascending: false });
   if (opts.month) {
     const [start, end] = monthRange(opts.month);
     query = query.gte("receipt_date", start).lt("receipt_date", end);
@@ -806,7 +884,8 @@ export async function listReceipts(
 }
 
 export async function getReceipt(id: string): Promise<Receipt | undefined> {
-  const { data, error } = await client().from("receipts").select(RECEIPT_SELECT).eq("id", id).maybeSingle();
+  const wsId = await getCurrentWorkspaceId();
+  const { data, error } = await client().from("receipts").select(RECEIPT_SELECT).eq("id", id).eq("workspace_id", wsId).maybeSingle();
   if (error) throw error;
   return data ? mapReceiptRow(data as ReceiptRow) : undefined;
 }
@@ -814,15 +893,18 @@ export async function getReceipt(id: string): Promise<Receipt | undefined> {
 /**
  * Same vendor, date, and total already on record — a soft warning against
  * an accidental double-submission (e.g. scanning the same photo twice), not
- * a hard block. RLS already scopes this to whatever the caller can see, so
- * a plain member is really only checking their own past receipts.
+ * a hard block. Scoped to the active workspace (not just whatever RLS lets
+ * the caller see overall) — otherwise a coincidental match in a *different*
+ * workspace the same person belongs to would trigger a false "duplicate".
  */
 export async function findDuplicateReceipt(vendor: string, receiptDate: string | null, totalMinor: number): Promise<boolean> {
   const trimmed = vendor.trim();
   if (!trimmed || totalMinor <= 0) return false;
+  const wsId = await getCurrentWorkspaceId();
   let query = client()
     .from("receipts")
     .select("id", { count: "exact", head: true })
+    .eq("workspace_id", wsId)
     .ilike("vendor", trimmed)
     .eq("total_minor", totalMinor);
   query = receiptDate ? query.eq("receipt_date", receiptDate) : query.is("receipt_date", null);
@@ -990,7 +1072,8 @@ function mapTripRow(row: TripRow): MileageTrip {
 }
 
 export async function listMileage(userId?: string): Promise<MileageTrip[]> {
-  let query = client().from("mileage_trips").select("*").order("trip_date", { ascending: false });
+  const wsId = await getCurrentWorkspaceId();
+  let query = client().from("mileage_trips").select("*").eq("workspace_id", wsId).order("trip_date", { ascending: false });
   if (userId && userId !== "All") query = query.eq("user_id", userId);
   const { data, error } = await query;
   if (error) throw error;
@@ -1097,7 +1180,8 @@ export async function deleteMileageTrip(id: string): Promise<boolean> {
  * just their own by passing their own id.
  */
 async function fetchAllReceipts(userId?: string): Promise<Receipt[]> {
-  let query = client().from("receipts").select(RECEIPT_SELECT);
+  const wsId = await getCurrentWorkspaceId();
+  let query = client().from("receipts").select(RECEIPT_SELECT).eq("workspace_id", wsId);
   if (userId) query = query.eq("created_by", userId);
   const { data, error } = await query;
   if (error) throw error;
@@ -1105,7 +1189,8 @@ async function fetchAllReceipts(userId?: string): Promise<Receipt[]> {
 }
 
 async function fetchAllTrips(userId?: string): Promise<MileageTrip[]> {
-  let query = client().from("mileage_trips").select("*");
+  const wsId = await getCurrentWorkspaceId();
+  let query = client().from("mileage_trips").select("*").eq("workspace_id", wsId);
   if (userId) query = query.eq("user_id", userId);
   const { data, error } = await query;
   if (error) throw error;

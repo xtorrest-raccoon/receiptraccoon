@@ -7,7 +7,15 @@ import { usePathname } from "next/navigation";
 import { canManageReimbursementAuthority, canViewTeamPage } from "@rr/shared";
 import { signOut, type CurrentUser } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
-import { useCurrentUser, useSetWorkspaceName, useWorkspaceName } from "../lib/queries";
+import {
+  useActiveWorkspaceId,
+  useCreateWorkspace,
+  useCurrentUser,
+  useMyWorkspaces,
+  useSetWorkspaceName,
+  useSwitchWorkspace,
+  useWorkspaceName,
+} from "../lib/queries";
 import { DashboardIcon, MileageIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
 
 interface NavItem {
@@ -33,16 +41,29 @@ function visibleItems(currentUser: CurrentUser | undefined) {
 }
 
 /**
- * Everyone signed in sees this box; only whoever can manage reimbursement
- * authority (same admin/owner-or-super-user audience as the Setup page) can
- * actually edit it. Mirrors the original pre-Setup sidebar widget's
- * onBlur-commits-the-rename pattern.
+ * Everyone signed in sees the current workspace's name; only whoever can
+ * manage reimbursement authority (same admin/owner-or-super-user audience
+ * as the Setup page) gets the dropdown to switch, rename, or add another
+ * workspace. Renaming mirrors the original pre-Setup sidebar widget's
+ * onBlur-commits pattern; switching just pins a different id (see
+ * lib/activeWorkspace.ts) and lets the coarse invalidateAll refetch
+ * everything against it.
  */
-function WorkspaceBox({ currentUser }: { currentUser: CurrentUser | undefined }) {
+function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefined }) {
   const { data: workspaceName } = useWorkspaceName();
+  const { data: workspaces } = useMyWorkspaces();
+  const { data: activeId } = useActiveWorkspaceId();
   const setWorkspaceName = useSetWorkspaceName();
+  const switchWorkspace = useSwitchWorkspace();
+  const createWorkspace = useCreateWorkspace();
+
+  const [open, setOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const editable = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  const canManage = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
 
   useEffect(() => {
     if (workspaceName !== undefined) setNameDraft(workspaceName);
@@ -51,6 +72,7 @@ function WorkspaceBox({ currentUser }: { currentUser: CurrentUser | undefined })
   if (workspaceName === undefined) return null;
 
   const commitName = () => {
+    setRenaming(false);
     const trimmed = nameDraft.trim();
     if (!trimmed || trimmed === workspaceName) {
       setNameDraft(workspaceName);
@@ -59,50 +81,227 @@ function WorkspaceBox({ currentUser }: { currentUser: CurrentUser | undefined })
     setWorkspaceName.mutate(trimmed);
   };
 
+  const commitCreate = () => {
+    const trimmed = newName.trim();
+    if (!trimmed || createWorkspace.isPending) return;
+    createWorkspace.mutate(trimmed, {
+      onSuccess: () => {
+        setCreating(false);
+        setNewName("");
+        setOpen(false);
+      },
+    });
+  };
+
   return (
-    <div style={{ padding: 12, borderRadius: radius.lg, background: color.surfaceMuted, marginBottom: 10 }}>
-      <div
+    <div style={{ position: "relative", marginBottom: 10 }}>
+      <button
+        type="button"
+        onClick={() => canManage && setOpen((o) => !o)}
         style={{
-          fontSize: fontSize.tiny + 0.5,
-          fontWeight: fontWeight.semibold,
-          color: color.textFaint,
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-          marginBottom: 4,
+          width: "100%",
+          textAlign: "left",
+          padding: 12,
+          borderRadius: radius.lg,
+          background: color.surfaceMuted,
+          border: "none",
+          cursor: canManage ? "pointer" : "default",
         }}
       >
-        Workspace
-      </div>
-      {editable ? (
-        <input
-          value={nameDraft}
-          onChange={(e) => setNameDraft(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
-          style={{
-            width: "100%",
-            border: "none",
-            background: "none",
-            padding: 0,
-            fontSize: fontSize.small + 1,
-            fontWeight: fontWeight.bold,
-            color: color.textStrong,
-          }}
-        />
-      ) : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div
+            style={{
+              fontSize: fontSize.tiny + 0.5,
+              fontWeight: fontWeight.semibold,
+              color: color.textFaint,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Workspace
+          </div>
+          {canManage && <span style={{ fontSize: fontSize.tiny, color: color.textFaint }}>{open ? "▲" : "▼"}</span>}
+        </div>
+        {renaming ? (
+          <input
+            autoFocus
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={commitName}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            style={{
+              width: "100%",
+              border: "none",
+              background: "none",
+              padding: 0,
+              marginTop: 4,
+              fontSize: fontSize.small + 1,
+              fontWeight: fontWeight.bold,
+              color: color.textStrong,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              fontSize: fontSize.small + 1,
+              fontWeight: fontWeight.bold,
+              color: color.textStrong,
+              marginTop: 4,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {workspaceName}
+          </div>
+        )}
+      </button>
+
+      {open && canManage && (
         <div
           style={{
-            fontSize: fontSize.small + 1,
-            fontWeight: fontWeight.bold,
-            color: color.textStrong,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            marginTop: 4,
+            background: color.surface,
+            border: `1px solid ${color.border}`,
+            borderRadius: radius.lg,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+            zIndex: 20,
+            padding: 6,
           }}
         >
-          {workspaceName}
+          {(workspaces ?? []).map((ws) => (
+            <button
+              key={ws.id}
+              type="button"
+              onClick={() => {
+                if (ws.id !== activeId) switchWorkspace.mutate(ws.id);
+                setOpen(false);
+              }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 10px",
+                borderRadius: radius.sm,
+                border: "none",
+                background: ws.id === activeId ? color.brandTint : "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: fontSize.small + 1,
+                  fontWeight: ws.id === activeId ? fontWeight.bold : fontWeight.medium,
+                  color: color.text,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {ws.name}
+              </span>
+              {ws.id === activeId && <span style={{ color: color.brand, fontSize: fontSize.small, flexShrink: 0, marginLeft: 6 }}>✓</span>}
+            </button>
+          ))}
+
+          <div style={{ borderTop: `1px solid ${color.border}`, margin: "4px 0" }} />
+
+          <button
+            type="button"
+            onClick={() => {
+              setRenaming(true);
+              setOpen(false);
+            }}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: "8px 10px",
+              borderRadius: radius.sm,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: fontSize.small,
+              color: color.textMuted,
+              fontWeight: fontWeight.semibold,
+            }}
+          >
+            Rename this workspace
+          </button>
+
+          {creating ? (
+            <div style={{ padding: "6px 10px" }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitCreate();
+                  }}
+                  placeholder="New workspace name"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    border: `1px solid ${color.borderStrong}`,
+                    borderRadius: radius.sm,
+                    padding: "4px 6px",
+                    fontSize: fontSize.small,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={commitCreate}
+                  disabled={createWorkspace.isPending}
+                  style={{
+                    border: "none",
+                    background: color.brand,
+                    color: "#fff",
+                    borderRadius: radius.sm,
+                    padding: "4px 10px",
+                    fontSize: fontSize.small,
+                    fontWeight: fontWeight.bold,
+                    cursor: "pointer",
+                    opacity: createWorkspace.isPending ? 0.6 : 1,
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {createWorkspace.isError ? (
+                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.up, marginTop: 4 }}>
+                  {createWorkspace.error instanceof Error ? createWorkspace.error.message : "Couldn't create that workspace."}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 10px",
+                borderRadius: radius.sm,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: fontSize.small,
+                color: color.brand,
+                fontWeight: fontWeight.bold,
+              }}
+            >
+              + New workspace
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -133,7 +332,7 @@ export function Sidebar() {
         <Image src="/logo.png" alt="ReceiptRaccoon" width={140} height={140} />
       </div>
 
-      <WorkspaceBox currentUser={currentUser} />
+      <WorkspaceSwitcher currentUser={currentUser} />
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
         {items.map((item) => {
