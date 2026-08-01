@@ -20,6 +20,10 @@ import Constants from "expo-constants";
 import { File } from "expo-file-system";
 import * as api from "@rr/api";
 import {
+  convertDashboardCurrency,
+  convertMileageTripCurrency,
+  convertOwedToUserCurrency,
+  convertReceiptCurrency,
   formatMonthLabel,
   type DashboardResponse,
   type DistanceUnit,
@@ -34,7 +38,6 @@ export type { CurrentUser, WorkspaceUser } from "@rr/api";
 /** Anchored once at load — "today" doesn't change meaningfully within a session. */
 export const TODAY = new Date().toISOString().slice(0, 10);
 export const CURRENT_MONTH = TODAY.slice(0, 7);
-export const CURRENCIES = api.SUPPORTED_CURRENCIES;
 
 export function getCurrentUser(): Promise<api.CurrentUser> {
   return api.getCurrentUser();
@@ -74,7 +77,22 @@ async function currentUserId(): Promise<string> {
  * this relies on.
  */
 export async function getDashboard(month?: string): Promise<DashboardResponse> {
-  return api.getDashboard(month, await currentUserId());
+  const dashboard = await api.getDashboard(month, await currentUserId());
+  const displayCurrency = await getDisplayCurrency();
+  if (displayCurrency === dashboard.currency) return dashboard;
+  const rate = await fetchDisplayRate(dashboard.currency, displayCurrency);
+  if (rate === null) return dashboard;
+  return convertDashboardCurrency(dashboard, displayCurrency, rate);
+}
+
+/**
+ * Read-only here — renaming or switching workspaces only happens on the web
+ * app (see Sidebar's WorkspaceSwitcher). Whichever workspace was last made
+ * active there is what shows here, via @rr/api's server-side pin
+ * (profiles.active_workspace_id) rather than anything stored locally.
+ */
+export function getWorkspaceName(): Promise<string> {
+  return api.getWorkspaceName();
 }
 
 /**
@@ -85,31 +103,78 @@ export function getHomeCurrency(): Promise<string> {
   return api.getHomeCurrency();
 }
 
-export function setHomeCurrency(code: string): Promise<void> {
-  return api.setHomeCurrency(code);
-}
-
-/** Distance unit for mileage. A workspace setting, shared across screens. */
+/** Distance unit for mileage. A workspace setting, edited only from the web app's Setup page — see SettingsSheet. */
 export function getDistanceUnit(): Promise<DistanceUnit> {
   return api.getDistanceUnit();
 }
 
-export function setDistanceUnit(unit: DistanceUnit): Promise<void> {
-  return api.setDistanceUnit(unit);
-}
-
-/** Workspace mileage rate, per the current distance unit. Edited from Settings. */
+/** Workspace mileage rate, per the current distance unit. Edited only from the web app's Setup page. */
 export function getMileageRateMilli(): Promise<number> {
   return api.getMileageRateMilli();
-}
-
-export function setMileageRateMilli(value: number): Promise<void> {
-  return api.setMileageRateMilli(value);
 }
 
 /** The rate MY trips actually use — my own per-user override if an owner/admin set one, else the workspace default. */
 export function getMyMileageRateMilli(): Promise<number> {
   return api.getMyMileageRateMilli();
+}
+
+/**
+ * Personal, display-only overrides — null means "use the workspace
+ * default." Read-only here, same reasoning as getWorkspaceName above:
+ * edited only from the web app's Profile page (see 0019_personal_display_prefs.sql).
+ */
+export function getMyDisplayPrefs(): Promise<{ currency: string | null; distanceUnit: DistanceUnit | null }> {
+  return api.getMyDisplayPrefs();
+}
+
+/** The currency every read function below actually displays amounts in — my own override, or the workspace default. */
+export async function getDisplayCurrency(): Promise<string> {
+  const prefs = await getMyDisplayPrefs();
+  return prefs.currency ?? (await getHomeCurrency());
+}
+
+/** The distance unit screens should display trips in — my own override, or the workspace default. */
+export async function getDisplayDistanceUnit(): Promise<DistanceUnit> {
+  const prefs = await getMyDisplayPrefs();
+  return prefs.distanceUnit ?? (await getDistanceUnit());
+}
+
+/**
+ * Live rate for re-expressing an already-fetched, workspace-currency amount
+ * in the caller's display currency — never the frozen scan-time rate stored
+ * on a receipt. Fails open (returns null, meaning "show unconverted") on any
+ * error, same as calculateMileageDistance's error handling below: a display
+ * nicety must never block or crash a screen.
+ */
+async function fetchDisplayRate(fromCurrency: string, toCurrency: string): Promise<number | null> {
+  if (fromCurrency === toCurrency) return null;
+  try {
+    const session = await api.getSession();
+    if (!session) return null;
+    const res = await fetch(`${getApiBaseUrl()}/api/fx-rate`, {
+      method: "POST",
+      body: JSON.stringify({ from: fromCurrency, to: toCurrency }),
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.rate ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * For screens that need to convert a standalone figure (a rate, not a
+ * fetched Receipt/MileageTrip/DashboardResponse) into the caller's display
+ * currency themselves — e.g. the Mileage tab's rate card, or the Settings
+ * sheet. `rate` is null both when the display currency matches
+ * `fromCurrency` (nothing to convert) and when the lookup fails (fail open).
+ */
+export async function getDisplayRate(fromCurrency: string): Promise<{ displayCurrency: string; rate: number | null }> {
+  const displayCurrency = await getDisplayCurrency();
+  if (displayCurrency === fromCurrency) return { displayCurrency, rate: null };
+  return { displayCurrency, rate: await fetchDisplayRate(fromCurrency, displayCurrency) };
 }
 
 /** What a trip would be worth if saved now — same rate the save itself will use. */
@@ -119,11 +184,23 @@ export function estimateMileageAmountMinor(distance: number, unit: DistanceUnit)
 
 /** Personal-only, same reasoning as getDashboard above. */
 export async function listReceipts(opts: { month?: string; categoryName?: string; q?: string } = {}): Promise<Receipt[]> {
-  return api.listReceipts({ ...opts, userId: await currentUserId() });
+  const receipts = await api.listReceipts({ ...opts, userId: await currentUserId() });
+  const displayCurrency = await getDisplayCurrency();
+  const workspaceCurrency = receipts[0]?.currency;
+  if (!workspaceCurrency || displayCurrency === workspaceCurrency) return receipts;
+  const rate = await fetchDisplayRate(workspaceCurrency, displayCurrency);
+  if (rate === null) return receipts;
+  return receipts.map((r) => convertReceiptCurrency(r, displayCurrency, rate));
 }
 
-export function getReceipt(id: string): Promise<Receipt | undefined> {
-  return api.getReceipt(id);
+export async function getReceipt(id: string): Promise<Receipt | undefined> {
+  const receipt = await api.getReceipt(id);
+  if (!receipt) return receipt;
+  const displayCurrency = await getDisplayCurrency();
+  if (displayCurrency === receipt.currency) return receipt;
+  const rate = await fetchDisplayRate(receipt.currency, displayCurrency);
+  if (rate === null) return receipt;
+  return convertReceiptCurrency(receipt, displayCurrency, rate);
 }
 
 /** Warns before saving what looks like an accidental double-submission — same vendor, date, and total already on record. */
@@ -206,9 +283,14 @@ export function deleteReceipt(id: string): Promise<boolean> {
   return api.deleteReceipt(id);
 }
 
-/** Personal-only, same reasoning as getDashboard above. */
+/** Personal-only, same reasoning as getDashboard above. MileageTrip carries no currency field of its own — amountMinor is always in the workspace's. */
 export async function listMileage(): Promise<MileageTrip[]> {
-  return api.listMileage(await currentUserId());
+  const trips = await api.listMileage(await currentUserId());
+  const [workspaceCurrency, displayCurrency] = await Promise.all([getHomeCurrency(), getDisplayCurrency()]);
+  if (displayCurrency === workspaceCurrency) return trips;
+  const rate = await fetchDisplayRate(workspaceCurrency, displayCurrency);
+  if (rate === null) return trips;
+  return trips.map((t) => convertMileageTripCurrency(t, workspaceCurrency, displayCurrency, rate));
 }
 
 export function addMileageTrip(input: {
@@ -256,7 +338,12 @@ export async function getAvailableMonths(): Promise<{ value: string; label: stri
  * amountMinor and receiptCount are paired deliberately — see OwedToUserSummary.
  */
 export async function getOwedToUserSummary(): Promise<OwedToUserSummary> {
-  return api.getOwedToUserSummary(await currentUserId());
+  const owed = await api.getOwedToUserSummary(await currentUserId());
+  const [workspaceCurrency, displayCurrency] = await Promise.all([getHomeCurrency(), getDisplayCurrency()]);
+  if (displayCurrency === workspaceCurrency) return owed;
+  const rate = await fetchDisplayRate(workspaceCurrency, displayCurrency);
+  if (rate === null) return owed;
+  return convertOwedToUserCurrency(owed, workspaceCurrency, displayCurrency, rate);
 }
 
 // ── Capture flow: real OCR extraction (packages/extraction via apps/web) ───

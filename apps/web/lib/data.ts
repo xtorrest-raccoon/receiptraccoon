@@ -10,7 +10,7 @@
  */
 
 import * as api from "@rr/api";
-import type { DashboardResponse, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
+import type { DashboardResponse, DistanceUnit, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
 import { persistActiveWorkspace } from "./activeWorkspace";
 
 export type { CurrentUser, WorkspaceUser } from "@rr/api";
@@ -111,8 +111,65 @@ export function getHomeCurrency(): Promise<string> {
   return api.getHomeCurrency();
 }
 
+/** Workspace-wide -- see the Setup page's Mileage section. Mobile now only displays these, read-only. */
+export function getDistanceUnit(): Promise<DistanceUnit> {
+  return api.getDistanceUnit();
+}
+
+export function setDistanceUnit(unit: DistanceUnit): Promise<void> {
+  return api.setDistanceUnit(unit);
+}
+
+export function getMileageRateMilli(): Promise<number> {
+  return api.getMileageRateMilli();
+}
+
+export function setMileageRateMilli(value: number): Promise<void> {
+  return api.setMileageRateMilli(value);
+}
+
+/** The caller's own effective rate -- their own per-user override if an admin set one, else the workspace default. See Profile page. */
+export function getMyMileageRateMilli(): Promise<number> {
+  return api.getMyMileageRateMilli();
+}
+
 export function getDailyApprovalRemindersEnabled(): Promise<boolean> {
   return api.getDailyApprovalRemindersEnabled();
+}
+
+/**
+ * Personal, display-only overrides -- null means "use the workspace
+ * default." Set only by an admin (see the Setup page's "User currency &
+ * mileage" table / setUserDisplayCurrency below); this app's own Profile
+ * page shows the effective value read-only -- see 0019_personal_display_prefs.sql.
+ */
+export function getMyDisplayPrefs(): Promise<{ currency: string | null; distanceUnit: DistanceUnit | null }> {
+  return api.getMyDisplayPrefs();
+}
+
+/**
+ * Live rate for re-expressing an already-fetched, workspace-currency amount
+ * in the caller's personal display currency (see MyMileagePanel) -- never
+ * the frozen scan-time rate stored on a receipt. Returns null on same-
+ * currency or any failure -- fails open, a display nicety must never block
+ * or crash a screen.
+ */
+export async function fetchDisplayRate(fromCurrency: string, toCurrency: string): Promise<number | null> {
+  if (fromCurrency === toCurrency) return null;
+  const session = await api.getSession();
+  if (!session) return null;
+  try {
+    const res = await fetch("/api/fx-rate", {
+      method: "POST",
+      body: JSON.stringify({ from: fromCurrency, to: toCurrency }),
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.rate ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function setDailyApprovalRemindersEnabled(enabled: boolean): Promise<void> {
@@ -142,13 +199,21 @@ export function getActiveWorkspaceId(): Promise<string> {
   return api.getCurrentWorkspaceId();
 }
 
-/** Just pins which workspace subsequent calls act on -- see lib/activeWorkspace.ts. */
-export function switchWorkspace(id: string): void {
+/**
+ * Pins which workspace subsequent calls act on. Written to both localStorage
+ * (see lib/activeWorkspace.ts -- an instant restore on this browser without
+ * a network round trip) and profiles.active_workspace_id server-side, so
+ * mobile's read-only workspace display (it has no localStorage of its own)
+ * agrees with whatever was last picked here.
+ */
+export async function switchWorkspace(id: string): Promise<void> {
+  await api.persistActiveWorkspaceId(id);
   persistActiveWorkspace(id);
 }
 
 export async function createWorkspace(name: string): Promise<string> {
   const id = await api.createWorkspace(name);
+  await api.persistActiveWorkspaceId(id);
   persistActiveWorkspace(id);
   return id;
 }
@@ -171,6 +236,21 @@ export function setReimbursementAuthority(userId: string, canApprove: boolean, c
 
 export function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {
   return api.setReimbursementAssignments(approverUserId, employeeIds);
+}
+
+/** Owner/admin setting a co-member's mileage rate override -- null falls back to the workspace default. */
+export function setUserMileageRate(userId: string, rateMilli: number | null): Promise<void> {
+  return api.setUserMileageRate(userId, rateMilli);
+}
+
+/** Owner/admin setting a co-member's personal display currency -- see the Setup page's user-currency table. */
+export function setUserDisplayCurrency(userId: string, code: string | null): Promise<void> {
+  return api.setUserDisplayCurrency(userId, code);
+}
+
+/** Owner/admin setting a co-member's personal display distance unit. */
+export function setUserDisplayDistanceUnit(userId: string, unit: DistanceUnit | null): Promise<void> {
+  return api.setUserDisplayDistanceUnit(userId, unit);
 }
 
 export function removeMember(userId: string): Promise<void> {

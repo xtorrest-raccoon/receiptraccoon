@@ -1,4 +1,5 @@
 import { Decimal } from "decimal.js";
+import type { DashboardResponse, MileageTrip, OwedToUserSummary, Receipt } from "./types";
 
 /**
  * All money in this system is an integer count of minor units (cents, pence, yen).
@@ -221,6 +222,95 @@ export function reclaimedNetMinor(receipt: {
   const tax = reclaimedTaxMinor(receipt);
   if (tax === null) return null;
   return reclaimMinor(receipt) - tax;
+}
+
+/**
+ * Personal display-currency conversion — NOT the scan-time conversion above
+ * (that one is frozen forever on the row). This re-expresses an already-
+ * fetched, workspace-currency object for one viewer's screen, using a live
+ * rate fetched at read time. `originalCurrency`/`originalTotalMinor`/
+ * `fxRate` describe the receipt's own foreign currency at scan time and are
+ * deliberately left untouched — converting those would misrepresent what
+ * the receipt itself said.
+ */
+export function convertReceiptCurrency(receipt: Receipt, toCurrency: string, rate: number): Receipt {
+  if (receipt.currency === toCurrency) return receipt;
+  const convert = (m: number | null) => (m === null ? null : convertMinor(m, receipt.currency, toCurrency, rate));
+  return {
+    ...receipt,
+    currency: toCurrency,
+    subtotalMinor: convert(receipt.subtotalMinor),
+    taxMinor: convert(receipt.taxMinor),
+    totalMinor: convertMinor(receipt.totalMinor, receipt.currency, toCurrency, rate),
+    reclaimMinor: convert(receipt.reclaimMinor),
+    lineItems: receipt.lineItems.map((li) => ({
+      ...li,
+      unitPriceMinor: convertMinor(li.unitPriceMinor, receipt.currency, toCurrency, rate),
+      amountMinor: convertMinor(li.amountMinor, receipt.currency, toCurrency, rate),
+    })),
+  };
+}
+
+/** Same personal-display conversion, applied to every amount a dashboard carries — see convertReceiptCurrency above. */
+export function convertDashboardCurrency(dashboard: DashboardResponse, toCurrency: string, rate: number): DashboardResponse {
+  if (dashboard.currency === toCurrency) return dashboard;
+  const convert = (m: number) => convertMinor(m, dashboard.currency, toCurrency, rate);
+  return {
+    ...dashboard,
+    currency: toCurrency,
+    stats: {
+      ...dashboard.stats,
+      monthTotalMinor: convert(dashboard.stats.monthTotalMinor),
+      ytdTotalMinor: convert(dashboard.stats.ytdTotalMinor),
+      taxMinor: convert(dashboard.stats.taxMinor),
+      reimbursableMinor: convert(dashboard.stats.reimbursableMinor),
+    },
+    pacing: {
+      ...dashboard.pacing,
+      prevMonthTotalMinor: convert(dashboard.pacing.prevMonthTotalMinor),
+      prevMonthToDateMinor: convert(dashboard.pacing.prevMonthToDateMinor),
+    },
+    weeklySpend: dashboard.weeklySpend.map((w) => ({ ...w, totalMinor: convert(w.totalMinor) })),
+    categoryBreakdown: dashboard.categoryBreakdown.map((row) => ({ ...row, amountMinor: convert(row.amountMinor) })),
+    recentReceipts: dashboard.recentReceipts.map((r) => convertReceiptCurrency(r, toCurrency, rate)),
+  };
+}
+
+/**
+ * `OwedToUserSummary`/`MileageTrip` carry no `currency` field of their own
+ * (unlike Receipt/DashboardResponse) — the caller must supply what currency
+ * the amount is actually in (the workspace's, always, today).
+ */
+export function convertOwedToUserCurrency(
+  owed: OwedToUserSummary,
+  fromCurrency: string,
+  toCurrency: string,
+  rate: number,
+): OwedToUserSummary {
+  if (fromCurrency === toCurrency) return owed;
+  return { ...owed, amountMinor: convertMinor(owed.amountMinor, fromCurrency, toCurrency, rate) };
+}
+
+/** Converts amountMinor only — distance/rateMilli/units are frozen reimbursement facts, not currency fields. */
+export function convertMileageTripCurrency(
+  trip: MileageTrip,
+  fromCurrency: string,
+  toCurrency: string,
+  rate: number,
+): MileageTrip {
+  if (fromCurrency === toCurrency) return trip;
+  return { ...trip, amountMinor: convertMinor(trip.amountMinor, fromCurrency, toCurrency, rate) };
+}
+
+/**
+ * For displaying a reimbursement rate (e.g. "€0.700/mi") in a viewer's
+ * personal currency. Milli is currency-agnostic thousandths, not minor
+ * units, so this is a plain multiply — convertMinor's per-currency decimal
+ * scaling does not apply here.
+ */
+export function convertRateMilliCurrency(rateMilli: number, fromCurrency: string, toCurrency: string, rate: number): number {
+  if (fromCurrency === toCurrency) return rateMilli;
+  return Math.round(rateMilli * rate);
 }
 
 /** subtotal + tax === total, within a one-minor-unit tolerance for rounding. */

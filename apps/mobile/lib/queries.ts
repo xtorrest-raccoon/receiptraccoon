@@ -9,11 +9,14 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { DistanceUnit } from "@rr/shared";
 import * as data from "./data";
 
 export function useCurrentUser() {
   return useQuery({ queryKey: ["currentUser"], queryFn: data.getCurrentUser });
+}
+
+export function useWorkspaceName() {
+  return useQuery({ queryKey: ["workspaceName"], queryFn: data.getWorkspaceName });
 }
 
 export function useHomeCurrency() {
@@ -30,6 +33,27 @@ export function useMileageRateMilli() {
 
 export function useMyMileageRateMilli() {
   return useQuery({ queryKey: ["myMileageRateMilli"], queryFn: data.getMyMileageRateMilli });
+}
+
+export function useMyDisplayPrefs() {
+  return useQuery({ queryKey: ["myDisplayPrefs"], queryFn: data.getMyDisplayPrefs });
+}
+
+export function useDisplayCurrency() {
+  return useQuery({ queryKey: ["displayCurrency"], queryFn: data.getDisplayCurrency });
+}
+
+export function useDisplayDistanceUnit() {
+  return useQuery({ queryKey: ["displayDistanceUnit"], queryFn: data.getDisplayDistanceUnit });
+}
+
+/** For converting a standalone figure (a rate) that isn't part of an already-converted fetched object — see getDisplayRate. */
+export function useDisplayRate(fromCurrency: string | undefined) {
+  return useQuery({
+    queryKey: ["displayRate", fromCurrency],
+    queryFn: () => data.getDisplayRate(fromCurrency!),
+    enabled: fromCurrency !== undefined,
+  });
 }
 
 export function useCategories() {
@@ -91,6 +115,10 @@ const ALL_QUERY_KEYS = [
   "distanceUnit",
   "mileageRateMilli",
   "myMileageRateMilli",
+  "myDisplayPrefs",
+  "displayCurrency",
+  "displayDistanceUnit",
+  "displayRate",
   "owedToUser",
 ];
 
@@ -138,21 +166,6 @@ export function useSetReceiptReclaim() {
 export function useDeleteReceipt() {
   const invalidateAll = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => data.deleteReceipt(id), onSuccess: invalidateAll });
-}
-
-export function useSetHomeCurrency() {
-  const invalidateAll = useInvalidateAll();
-  return useMutation({ mutationFn: (code: string) => data.setHomeCurrency(code), onSuccess: invalidateAll });
-}
-
-export function useSetDistanceUnit() {
-  const invalidateAll = useInvalidateAll();
-  return useMutation({ mutationFn: (unit: DistanceUnit) => data.setDistanceUnit(unit), onSuccess: invalidateAll });
-}
-
-export function useSetMileageRateMilli() {
-  const invalidateAll = useInvalidateAll();
-  return useMutation({ mutationFn: (value: number) => data.setMileageRateMilli(value), onSuccess: invalidateAll });
 }
 
 export function useAddMileageTrip() {

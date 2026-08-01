@@ -9,6 +9,7 @@ import {
   isRecentOrActionable,
   rateToDecimalString,
   mileageAmountForTrip,
+  convertRateMilliCurrency,
   type DistanceUnit,
   type MileageTrip,
 } from "@rr/shared";
@@ -18,6 +19,9 @@ import { CURRENT_MONTH, TODAY, calculateMileageDistance, type CalculatedDistance
 import {
   useAddMileageTrip,
   useDeleteMileageTrip,
+  useDisplayCurrency,
+  useDisplayDistanceUnit,
+  useDisplayRate,
   useDistanceUnit,
   useHomeCurrency,
   useMileage,
@@ -33,11 +37,24 @@ import { SwipeToDelete } from "../../components/SwipeToDelete";
 export default function MileageScreen() {
   const insets = useSafeAreaInsets();
 
-  const { data: currency } = useHomeCurrency();
-  const { data: unit } = useDistanceUnit();
+  // "workspace*" is the functional truth new trips are logged/estimated in
+  // (must never change — see plan's scope cut). "display*" is what already-
+  // logged trips/rates are shown in, personal-override-or-workspace-default
+  // — falls back to workspace while the personal preference is still loading.
+  const { data: workspaceCurrency } = useHomeCurrency();
+  const { data: workspaceUnit } = useDistanceUnit();
+  const { data: displayCurrency } = useDisplayCurrency();
+  const { data: displayUnit } = useDisplayDistanceUnit();
+  const currency = displayCurrency ?? workspaceCurrency;
+  const unit = displayUnit ?? workspaceUnit;
   // My own effective rate — my per-user override if an owner/admin set one,
   // else the workspace default. Same rate addMileageTrip itself will use.
   const { data: rateMilli } = useMyMileageRateMilli();
+  const { data: rateConv } = useDisplayRate(workspaceCurrency);
+  const displayRateMilli =
+    rateMilli !== undefined && rateConv?.rate != null && workspaceCurrency && currency
+      ? convertRateMilliCurrency(rateMilli, workspaceCurrency, currency, rateConv.rate)
+      : rateMilli;
   const { data: trips, isLoading } = useMileage();
   const addMileageTrip = useAddMileageTrip();
   const updateMileageTrip = useUpdateMileageTrip();
@@ -62,7 +79,7 @@ export default function MileageScreen() {
   /** Non-null when a non-editable trip's read-only details are open — see TripDetailModal. */
   const [viewingTrip, setViewingTrip] = useState<MileageTrip | null>(null);
 
-  if (!currency || !unit || rateMilli === undefined || isLoading || !trips) {
+  if (!workspaceCurrency || !workspaceUnit || !currency || !unit || rateMilli === undefined || isLoading || !trips) {
     return (
       <View style={{ flex: 1, backgroundColor: rn(color.bgMobile), alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={rn(color.brand)} />
@@ -90,10 +107,12 @@ export default function MileageScreen() {
   // Computed locally from the same rate/currency already loaded for this
   // screen, rather than a round-trip per keystroke — mathematically identical
   // to what addMileageTrip will save, since both resolve the caller's own
-  // effective rate the same way (see getEffectiveMileageRateMilli).
+  // effective rate the same way (see getEffectiveMileageRateMilli). Stays in
+  // the workspace's own unit/currency, not the personal display preference —
+  // this is a preview of what will actually be recorded (see plan's scope cut).
   const estimateMinor =
     !isNaN(distanceValue) && distanceValue > 0
-      ? mileageAmountForTrip(distanceValue, unit, rateMilli, unit, currency)
+      ? mileageAmountForTrip(distanceValue, workspaceUnit, rateMilli, workspaceUnit, workspaceCurrency)
       : null;
 
   const closeForm = () => {
@@ -131,7 +150,7 @@ export default function MileageScreen() {
     setCalcError(null);
     setCalculated(null);
     try {
-      const result = await calculateMileageDistance(newStartAddress.trim(), newEndAddress.trim(), unit);
+      const result = await calculateMileageDistance(newStartAddress.trim(), newEndAddress.trim(), workspaceUnit);
       setCalculated(result);
     } catch (err) {
       setCalcError(err instanceof Error ? err.message : "Couldn't calculate that distance.");
@@ -157,7 +176,7 @@ export default function MileageScreen() {
         tripDate: newDate,
         purpose: newPurpose.trim(),
         distance: distanceValue,
-        distanceUnit: unit,
+        distanceUnit: workspaceUnit,
         ...(entryMode === "automatic" && calculated
           ? { startAddress: calculated.originAddress, endAddress: calculated.destinationAddress }
           : {}),
@@ -194,8 +213,10 @@ export default function MileageScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
-        {/* The mi/km toggle lives in Settings (gear on Home) — it is a workspace
-            setting the Team page also reads, not a per-screen display preference. */}
+        {/* New trips are always logged in workspaceUnit/workspaceCurrency (see
+            estimateMinor, saveTrip, runCalculateDistance above) — already-logged
+            trips below display in the personal unit/currency preference instead,
+            editable only from the web app's Profile page. */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Mileage</Text>
         </View>
@@ -221,7 +242,7 @@ export default function MileageScreen() {
                 0.675 rate as 0.68, understating what a long trip is worth. */}
             <Text style={styles.statValue}>
               {currencySymbol(currency)}
-              {rateToDecimalString(rateMilli)}
+              {rateToDecimalString(displayRateMilli ?? rateMilli)}
             </Text>
             <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               per {unit}
@@ -318,7 +339,7 @@ export default function MileageScreen() {
               <TextInput
                 value={newDistance}
                 onChangeText={setNewDistance}
-                placeholder={`Distance (${unit})`}
+                placeholder={`Distance (${workspaceUnit})`}
                 placeholderTextColor={rn(color.textFaint)}
                 keyboardType="decimal-pad"
                 style={styles.addTripInput}
@@ -326,7 +347,7 @@ export default function MileageScreen() {
             )}
 
             {estimateMinor !== null && (
-              <Text style={styles.estimateText}>Estimated reimbursement: {formatMoney(estimateMinor, currency)}</Text>
+              <Text style={styles.estimateText}>Estimated reimbursement: {formatMoney(estimateMinor, workspaceCurrency)}</Text>
             )}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
               <Pressable style={styles.cancelButton} onPress={closeForm}>

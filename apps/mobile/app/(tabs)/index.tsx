@@ -4,20 +4,20 @@ import { useFocusEffect } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
-import { categoryAccent, formatMoney } from "@rr/shared";
+import { categoryAccent, convertRateMilliCurrency, formatMoney } from "@rr/shared";
 import { signOut } from "@rr/api";
 import { rn } from "../../lib/colors";
-import { CURRENT_MONTH, CURRENCIES } from "../../lib/data";
+import { CURRENT_MONTH } from "../../lib/data";
 import {
   useAvailableMonths,
   useCurrentUser,
   useDashboard,
-  useDistanceUnit,
-  useMileageRateMilli,
+  useDisplayDistanceUnit,
+  useDisplayRate,
+  useHomeCurrency,
+  useMyMileageRateMilli,
   useOwedToUser,
-  useSetDistanceUnit,
-  useSetHomeCurrency,
-  useSetMileageRateMilli,
+  useWorkspaceName,
 } from "../../lib/queries";
 import { Text } from "../../components/Text";
 import { SpendBarChart } from "../../components/SpendBarChart";
@@ -55,11 +55,14 @@ export default function HomeScreen() {
   // reimbursed and rejected both excluded) so the two boxes below can never
   // describe different sets of receipts.
   const { data: owedToUser, refetch: refetchOwed } = useOwedToUser();
-  const { data: distanceUnit } = useDistanceUnit();
-  const { data: rateMilli } = useMileageRateMilli();
-  const setHomeCurrency = useSetHomeCurrency();
-  const setDistanceUnit = useSetDistanceUnit();
-  const setMileageRateMilli = useSetMileageRateMilli();
+  const { data: distanceUnit } = useDisplayDistanceUnit();
+  const { data: workspaceName } = useWorkspaceName();
+  // Settings sheet shows MY effective rate (a per-user override if one was
+  // set, else the workspace default), converted to my display currency —
+  // same reasoning as the Mileage tab's rate card.
+  const { data: workspaceCurrency } = useHomeCurrency();
+  const { data: rateMilli } = useMyMileageRateMilli();
+  const { data: rateConv } = useDisplayRate(workspaceCurrency);
 
   // Tab screens stay mounted, so a mutation made on the receipt detail screen
   // or Mileage already invalidates these queries in the background — this
@@ -81,7 +84,11 @@ export default function HomeScreen() {
   }
 
   const breakdownDashboard = breakdownMonth === CURRENT_MONTH ? dashboard : breakdownDashboardOther;
+  // Already the personal display currency, not necessarily the workspace's —
+  // see lib/data.ts's getDashboard, which converts before this ever reaches here.
   const currency = dashboard.currency;
+  const settingsRateMilli =
+    rateConv?.rate != null && workspaceCurrency ? convertRateMilliCurrency(rateMilli, workspaceCurrency, currency, rateConv.rate) : rateMilli;
 
   const greeting = getGreeting();
   const breakdown = breakdownDashboard?.categoryBreakdown.filter((c) => c.pct > 0) ?? [];
@@ -211,16 +218,10 @@ export default function HomeScreen() {
 
       <SettingsSheet
         visible={settingsOpen}
-        currencies={CURRENCIES}
-        initial={{ distanceUnit, rateMilli, homeCurrency: currency }}
-        onSave={(draft) => {
-          setHomeCurrency.mutate(draft.homeCurrency);
-          // Unit first: setDistanceUnit converts the stored rate, and the explicit
-          // rate below must win over that conversion.
-          setDistanceUnit.mutate(draft.distanceUnit, {
-            onSuccess: () => setMileageRateMilli.mutate(draft.rateMilli),
-          });
-        }}
+        workspaceName={workspaceName}
+        distanceUnit={distanceUnit}
+        rateMilli={settingsRateMilli}
+        homeCurrency={currency}
         onClose={() => setSettingsOpen(false)}
         onSignOut={() => {
           setSettingsOpen(false);

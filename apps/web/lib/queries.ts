@@ -12,7 +12,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ReimbursementStatus, Role } from "@rr/shared";
+import type { DistanceUnit, ReimbursementStatus, Role } from "@rr/shared";
 import * as data from "./data";
 
 export function useCurrentUser() {
@@ -25,6 +25,48 @@ export function useUsers() {
 
 export function useHomeCurrency() {
   return useQuery({ queryKey: ["homeCurrency"], queryFn: data.getHomeCurrency });
+}
+
+export function useDistanceUnit() {
+  return useQuery({ queryKey: ["distanceUnit"], queryFn: data.getDistanceUnit });
+}
+
+export function useSetDistanceUnit() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (unit: DistanceUnit) => data.setDistanceUnit(unit),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useMileageRateMilli() {
+  return useQuery({ queryKey: ["mileageRateMilli"], queryFn: data.getMileageRateMilli });
+}
+
+export function useSetMileageRateMilli() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (value: number) => data.setMileageRateMilli(value),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useMyMileageRateMilli() {
+  return useQuery({ queryKey: ["myMileageRateMilli"], queryFn: data.getMyMileageRateMilli });
+}
+
+export function useMyDisplayPrefs() {
+  return useQuery({ queryKey: ["myDisplayPrefs"], queryFn: data.getMyDisplayPrefs });
+}
+
+/** For MyMileagePanel to re-express already-fetched trip amounts in the caller's personal display currency. */
+export function useFxRate(fromCurrency: string | undefined, toCurrency: string | undefined) {
+  return useQuery({
+    queryKey: ["fxRate", fromCurrency, toCurrency],
+    queryFn: () => data.fetchDisplayRate(fromCurrency!, toCurrency!),
+    enabled: fromCurrency !== undefined && toCurrency !== undefined && fromCurrency !== toCurrency,
+    staleTime: 60 * 60 * 1000,
+  });
 }
 
 export function useDailyApprovalRemindersEnabled() {
@@ -109,6 +151,10 @@ const ALL_QUERY_KEYS = [
   "mileage",
   "categories",
   "homeCurrency",
+  "distanceUnit",
+  "mileageRateMilli",
+  "myMileageRateMilli",
+  "myDisplayPrefs",
   "dailyApprovalRemindersEnabled",
   "workspaceInvites",
   "workspaceName",
@@ -189,6 +235,30 @@ export function useRemoveMember() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
     mutationFn: (userId: string) => data.removeMember(userId),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useSetUserMileageRate() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ userId, rateMilli }: { userId: string; rateMilli: number | null }) => data.setUserMileageRate(userId, rateMilli),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useSetUserDisplayCurrency() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ userId, code }: { userId: string; code: string | null }) => data.setUserDisplayCurrency(userId, code),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useSetUserDisplayDistanceUnit() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ userId, unit }: { userId: string; unit: DistanceUnit | null }) => data.setUserDisplayDistanceUnit(userId, unit),
     onSuccess: invalidateAll,
   });
 }

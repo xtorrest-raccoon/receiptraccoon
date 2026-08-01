@@ -5,7 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
-import { getSession, onAuthStateChange } from "@rr/api";
+import { getSession, loadActiveWorkspaceId, onAuthStateChange } from "@rr/api";
 import { AcceptInviteModal } from "../components/AcceptInviteModal";
 import { FinishSetupScreen } from "../components/FinishSetupScreen";
 import { useCurrentUser } from "../lib/queries";
@@ -30,6 +30,15 @@ function AuthGate({ children }: { children: ReactNode }) {
     getSession().then(setSession);
     return onAuthStateChange(setSession);
   }, []);
+
+  // Restores whichever workspace was last made active on web (see @rr/api's
+  // loadActiveWorkspaceId) -- mobile has no switcher of its own, so this is
+  // the only thing that keeps its read-only Workspace display (Settings
+  // sheet) in agreement with web instead of always falling back to whichever
+  // membership happens to sort first.
+  useEffect(() => {
+    if (session && session !== "loading") loadActiveWorkspaceId();
+  }, [session]);
 
   useEffect(() => {
     if (session === "loading") return;

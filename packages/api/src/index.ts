@@ -176,6 +176,48 @@ export async function getCurrentWorkspaceId(): Promise<string> {
   return (data as { workspace_id: string }).workspace_id;
 }
 
+/**
+ * Writes the choice to profiles.active_workspace_id so every client reading
+ * this caller's profile agrees on it (mobile has no localStorage of its
+ * own -- see loadActiveWorkspaceId below). Also updates the in-memory pin
+ * immediately, same as setActiveWorkspaceId, so the caller doesn't need a
+ * round trip before subsequent calls in this session act on the new one.
+ */
+export async function persistActiveWorkspaceId(id: string): Promise<void> {
+  const userId = await getCurrentUserId();
+  const { error } = await client().from("profiles").update({ active_workspace_id: id }).eq("id", userId);
+  if (error) throw error;
+  setActiveWorkspaceId(id);
+}
+
+/**
+ * Restores the in-memory pin from profiles.active_workspace_id at session
+ * start. Mobile has no other source for this -- it never had a local pin of
+ * its own -- so this is what lets it show the same active workspace an admin
+ * last switched to on web (read-only there; see mobile's Settings sheet).
+ * Membership is re-verified the same way getCurrentWorkspaceId does, since
+ * the stored id can go stale (removed from that workspace since it was set).
+ */
+export async function loadActiveWorkspaceId(): Promise<void> {
+  const userId = await getCurrentUserId();
+  const { data: profile, error } = await client()
+    .from("profiles")
+    .select("active_workspace_id")
+    .eq("id", userId)
+    .single();
+  if (error) throw error;
+  const stored = (profile as { active_workspace_id: string | null }).active_workspace_id;
+  if (!stored) return;
+
+  const { data: membership } = await client()
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .eq("workspace_id", stored)
+    .maybeSingle();
+  if (membership) setActiveWorkspaceId(stored);
+}
+
 export interface WorkspaceSummary {
   id: string;
   name: string;
@@ -265,7 +307,12 @@ interface MemberWithProfileRow {
   // opposite. Trust the runtime shape here, not the loose inferred type.
   // must_change_password is only ever selected by getCurrentUser, not
   // listUsers — optional here rather than a second near-duplicate type.
-  profiles: { display_name: string; must_change_password?: boolean } | null;
+  profiles: {
+    display_name: string;
+    must_change_password?: boolean;
+    display_currency?: string | null;
+    display_distance_unit?: DistanceUnit | null;
+  } | null;
   workspaces: {
     billing_status: BillingStatus;
     trial_ends_at: string | null;
@@ -330,6 +377,9 @@ export interface WorkspaceUser {
   assignedEmployeeIds: string[];
   /** Null means "inherit the workspace's default rate" — see 0013_per_user_mileage_rate.sql. */
   mileageRateMilli: number | null;
+  /** Null means "inherit the workspace default" — see 0019_personal_display_prefs.sql. Settable by an admin from Setup, or by the user themselves from Profile. */
+  displayCurrency: string | null;
+  displayDistanceUnit: DistanceUnit | null;
 }
 
 /**
@@ -344,13 +394,27 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
   const [membersRes, assignmentsRes] = await Promise.all([
     client()
       .from("workspace_members")
-      .select("user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, mileage_rate_milli, profiles(display_name)")
+      .select(
+        "user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, mileage_rate_milli, profiles(display_name, display_currency, display_distance_unit)",
+      )
       .eq("workspace_id", wsId),
     client().from("reimbursement_assignments").select("approver_id, employee_id").eq("workspace_id", wsId),
   ]);
-  if (membersRes.error) throw membersRes.error;
   if (assignmentsRes.error) throw assignmentsRes.error;
-  const rows = membersRes.data as unknown as (MemberWithProfileRow & { user_id: string })[];
+
+  let membersData = membersRes.data;
+  if (membersRes.error) {
+    // display_currency/display_distance_unit may not exist yet on this
+    // environment (0019_personal_display_prefs.sql not applied) -- fall
+    // back rather than breaking Team/Setup entirely over an optional field.
+    const fallback = await client()
+      .from("workspace_members")
+      .select("user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, mileage_rate_milli, profiles(display_name)")
+      .eq("workspace_id", wsId);
+    if (fallback.error) throw fallback.error;
+    membersData = fallback.data;
+  }
+  const rows = membersData as unknown as (MemberWithProfileRow & { user_id: string })[];
   const assignments = (assignmentsRes.data ?? []) as { approver_id: string; employee_id: string }[];
   return rows.map((m) => ({
     id: m.user_id,
@@ -360,6 +424,8 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
     canApproveReimbursements: m.can_approve_reimbursements,
     canProcessReimbursements: m.can_process_reimbursements,
     mileageRateMilli: m.mileage_rate_milli ?? null,
+    displayCurrency: m.profiles?.display_currency ?? null,
+    displayDistanceUnit: m.profiles?.display_distance_unit ?? null,
     assignedEmployeeIds: assignments.filter((a) => a.approver_id === m.user_id).map((a) => a.employee_id),
   }));
 }
@@ -452,6 +518,27 @@ export async function setUserMileageRate(userId: string, rateMilli: number | nul
     .update({ mileage_rate_milli: rateMilli })
     .eq("workspace_id", wsId)
     .eq("user_id", userId);
+  if (error) throw error;
+}
+
+/**
+ * Admin setting a CO-MEMBER's personal display currency/unit -- the only
+ * way these get set (no self-service; see the Setup page's "User currency
+ * & mileage" table). Goes through the set_user_display_currency/
+ * set_user_display_distance_unit security-definer RPCs (see
+ * 0020_admin_set_display_prefs.sql) rather than a broadened profiles RLS
+ * policy, since profiles has no admin-write policy and broadening it would
+ * let an admin write ANY column on a co-member's profile, not just this one
+ * preference.
+ */
+export async function setUserDisplayCurrency(userId: string, code: string | null): Promise<void> {
+  if (code !== null && !SUPPORTED_CURRENCIES.includes(code)) return;
+  const { error } = await client().rpc("set_user_display_currency", { target_user_id: userId, new_currency: code });
+  if (error) throw error;
+}
+
+export async function setUserDisplayDistanceUnit(userId: string, unit: DistanceUnit | null): Promise<void> {
+  const { error } = await client().rpc("set_user_display_distance_unit", { target_user_id: userId, new_unit: unit });
   if (error) throw error;
 }
 
@@ -597,6 +684,39 @@ export async function setHomeCurrency(code: string): Promise<void> {
   const wsId = await getCurrentWorkspaceId();
   const { error } = await client().from("workspaces").update({ home_currency: code }).eq("id", wsId);
   if (error) throw error;
+}
+
+/**
+ * Personal, display-only overrides -- null means "use the workspace
+ * default" (see 0019_personal_display_prefs.sql). These never change what's
+ * stored or reimbursed, only how amounts/distances render for the one
+ * person who has them set. Set only by an admin, from the web app's Setup
+ * page (see setUserDisplayCurrency/setUserDisplayDistanceUnit below) --
+ * mobile and the caller's own web views just read the effective value
+ * (their own app's lib/data.ts combines this with
+ * getHomeCurrency()/getDistanceUnit()); the web Profile page shows it
+ * read-only.
+ *
+ * Fails open to "no override" rather than throwing -- getDashboard(),
+ * listReceipts(), listMileage() etc. all call this on the way to returning
+ * their own result, so a hiccup here (the migration not applied yet on a
+ * given environment, a transient network error) must never take down the
+ * core app over what is ultimately a nicety.
+ */
+export async function getMyDisplayPrefs(): Promise<{ currency: string | null; distanceUnit: DistanceUnit | null }> {
+  try {
+    const userId = await getCurrentUserId();
+    const { data, error } = await client()
+      .from("profiles")
+      .select("display_currency, display_distance_unit")
+      .eq("id", userId)
+      .single();
+    if (error) throw error;
+    const row = data as { display_currency: string | null; display_distance_unit: DistanceUnit | null };
+    return { currency: row.display_currency, distanceUnit: row.display_distance_unit };
+  } catch {
+    return { currency: null, distanceUnit: null };
+  }
 }
 
 /** Opt-in — a daily digest email listing each approver's own pending decisions. See 0016_daily_approval_reminders.sql. */

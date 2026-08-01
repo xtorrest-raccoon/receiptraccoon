@@ -16,7 +16,7 @@ import {
   useSwitchWorkspace,
   useWorkspaceName,
 } from "../lib/queries";
-import { DashboardIcon, MileageIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
+import { DashboardIcon, MileageIcon, ProfileIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
 
 interface NavItem {
   href: string;
@@ -34,6 +34,10 @@ const NAV_ITEMS: NavItem[] = [
   // Only whoever can grant reimbursement authority in the first place —
   // same audience the Setup page itself gates on.
   { href: "/setup", label: "Setup", Icon: SetupIcon, visible: (u) => canManageReimbursementAuthority(u.role, u) },
+  // Deliberately no `visible` gate, unlike Setup above — this is the
+  // signed-in user's OWN personal display preferences, not a workspace-wide
+  // setting, so every role sees it.
+  { href: "/profile", label: "Profile", Icon: ProfileIcon },
 ];
 
 function visibleItems(currentUser: CurrentUser | undefined) {

@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import type { ReimbursementStatus } from "@rr/shared";
+import { convertMileageTripCurrency, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { TODAY } from "../lib/data";
-import { useAddMileageTrip, useCurrentUser, useHomeCurrency, useMileage, useUsers } from "../lib/queries";
+import {
+  useAddMileageTrip,
+  useCurrentUser,
+  useFxRate,
+  useHomeCurrency,
+  useMileage,
+  useMyDisplayPrefs,
+  useUsers,
+} from "../lib/queries";
 import { MileageTable } from "./MileageTable";
 import { MultiSelectDropdown, multiSelectControlStyle } from "./MultiSelectDropdown";
 
@@ -27,6 +35,18 @@ export function MyMileagePanel() {
   const { data: trips } = useMileage(currentUser?.id);
   const addTrip = useAddMileageTrip();
 
+  // Personal, display-only re-expression of already-fetched trips (see
+  // apps/web/app/profile/page.tsx) -- this is the one "my own data" view on
+  // web that honors it. Team's mileage table and everywhere else keeps
+  // showing the workspace currency for everyone.
+  const { data: prefs } = useMyDisplayPrefs();
+  const displayCurrency = prefs?.currency ?? homeCurrency;
+  const { data: fxRate } = useFxRate(homeCurrency, displayCurrency);
+  const displayTrips =
+    trips && homeCurrency && displayCurrency && fxRate != null
+      ? trips.map((t) => convertMileageTripCurrency(t, homeCurrency, displayCurrency, fxRate))
+      : trips;
+
   const [purpose, setPurpose] = useState("");
   const [tripDate, setTripDate] = useState(TODAY);
   const [distance, setDistance] = useState("");
@@ -48,9 +68,9 @@ export function MyMileagePanel() {
     );
   };
 
-  if (!users || !homeCurrency) return null;
+  if (!users || !homeCurrency || !displayCurrency) return null;
 
-  const filteredTrips = (trips ?? []).filter((t) => statusFilter.includes(t.reimbursementStatus));
+  const filteredTrips = (displayTrips ?? []).filter((t) => statusFilter.includes(t.reimbursementStatus));
 
   return (
     <div>
@@ -125,7 +145,7 @@ export function MyMileagePanel() {
         />
       </div>
 
-      <MileageTable trips={filteredTrips} currency={homeCurrency} users={users} />
+      <MileageTable trips={filteredTrips} currency={displayCurrency} users={users} />
     </div>
   );
 }

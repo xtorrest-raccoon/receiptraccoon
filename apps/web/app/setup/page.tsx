@@ -1,16 +1,135 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { canManageReimbursementAuthority } from "@rr/shared";
+import {
+  canManageReimbursementAuthority,
+  currencySymbol,
+  rateToDecimalString,
+  parseRateToMilli,
+  MI_TO_KM,
+  type DistanceUnit,
+} from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../../lib/data";
-import { useCategories, useCurrentUser, useHomeCurrency, useSetHomeCurrency, useUsers } from "../../lib/queries";
+import {
+  useCategories,
+  useCurrentUser,
+  useDistanceUnit,
+  useHomeCurrency,
+  useMileageRateMilli,
+  useSetDistanceUnit,
+  useSetHomeCurrency,
+  useSetMileageRateMilli,
+  useUsers,
+} from "../../lib/queries";
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
+import { UserDisplayPrefsTable } from "../../components/UserDisplayPrefsTable";
 import { ManageCategoriesPanel } from "../../components/ManageCategoriesPanel";
 import { NotificationsPanel } from "../../components/NotificationsPanel";
 import { PaymentSetupPanel } from "../../components/PaymentSetupPanel";
 import { InvoiceList } from "../../components/InvoiceList";
+
+/**
+ * Distance unit + reimbursement rate, workspace-wide -- editing lives only
+ * here now (see mobile's Settings sheet, which shows these read-only). Rate
+ * is held as a local draft so typing doesn't fire a mutation per keystroke;
+ * it commits on blur. Switching unit converts the current draft immediately
+ * (same reasoning as mobile's SettingsSheet) so the figure stays worth
+ * roughly the same rather than reading 1.6x wrong until someone notices.
+ */
+function MileageSettingsCard({ unit, rateMilli }: { unit: DistanceUnit; rateMilli: number }) {
+  const setDistanceUnit = useSetDistanceUnit();
+  const setMileageRateMilli = useSetMileageRateMilli();
+  const { data: homeCurrency } = useHomeCurrency();
+  const [rateText, setRateText] = useState(rateToDecimalString(rateMilli));
+
+  useEffect(() => {
+    setRateText(rateToDecimalString(rateMilli));
+  }, [rateMilli]);
+
+  const changeUnit = (next: DistanceUnit) => {
+    if (next === unit) return;
+    const current = parseRateToMilli(rateText);
+    setDistanceUnit.mutate(next);
+    if (current !== null) {
+      const converted = Math.round(next === "km" ? current / MI_TO_KM : current * MI_TO_KM);
+      setRateText(rateToDecimalString(converted));
+    }
+  };
+
+  const parsedRate = parseRateToMilli(rateText);
+  const rateValid = parsedRate !== null && parsedRate > 0;
+
+  const commitRate = () => {
+    if (rateValid && parsedRate !== rateMilli) setMileageRateMilli.mutate(parsedRate);
+    else setRateText(rateToDecimalString(rateMilli));
+  };
+
+  return (
+    <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 240, flex: "0 0 auto" }}>
+      <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
+        Distance unit
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        {(["mi", "km"] as const).map((u) => {
+          const on = u === unit;
+          return (
+            <button
+              key={u}
+              type="button"
+              onClick={() => changeUnit(u)}
+              style={{
+                padding: "6px 14px",
+                borderRadius: radius.pill,
+                border: `1px solid ${on ? color.brand : color.borderStrong}`,
+                background: on ? color.brand : color.surface,
+                color: on ? "#fff" : color.textMuted,
+                fontSize: fontSize.small,
+                fontWeight: fontWeight.bold,
+                cursor: "pointer",
+              }}
+            >
+              {u}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
+        Reimbursement rate per {unit}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: fontSize.small + 0.5, fontWeight: fontWeight.bold, color: color.textMuted }}>
+          {currencySymbol(homeCurrency ?? "EUR")}
+        </span>
+        <input
+          value={rateText}
+          onChange={(e) => setRateText(e.target.value)}
+          onBlur={commitRate}
+          placeholder="0.700"
+          style={{
+            flex: 1,
+            border: `1px solid ${rateValid ? color.borderStrong : color.up}`,
+            borderRadius: radius.sm,
+            padding: "7px 10px",
+            fontSize: fontSize.small + 0.5,
+            fontWeight: fontWeight.semibold,
+            background: color.surface,
+            color: color.text,
+          }}
+        />
+      </div>
+      {!rateValid && (
+        <div style={{ fontSize: fontSize.micro + 0.5, color: color.up, marginTop: 6 }}>Enter a rate above zero.</div>
+      )}
+      <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
+        Applies to new trips. Trips already logged keep the rate they were recorded at.
+      </div>
+    </div>
+  );
+}
 
 function SectionHeading({ children }: { children: string }) {
   return (
@@ -33,6 +152,8 @@ export default function SetupPage() {
   const { data: categories } = useCategories();
   const { data: homeCurrency } = useHomeCurrency();
   const setHomeCurrency = useSetHomeCurrency();
+  const { data: distanceUnit } = useDistanceUnit();
+  const { data: mileageRateMilli } = useMileageRateMilli();
 
   const allowed = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
 
@@ -51,7 +172,7 @@ export default function SetupPage() {
     );
   }
 
-  if (!users || !categories || !homeCurrency) return null;
+  if (!users || !categories || !homeCurrency || !distanceUnit || mileageRateMilli === undefined) return null;
 
   const canManageBilling = currentUser.role === "owner" || currentUser.role === "admin";
 
@@ -62,10 +183,24 @@ export default function SetupPage() {
         How this workspace is configured — accounts, invites, and who can approve or refund what.
       </div>
 
+      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 180, maxWidth: 220 }}>
+        <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
+          Active seats
+        </div>
+        <div style={{ fontSize: fontSize.stat - 4, fontWeight: fontWeight.heavy }}>{users.length}</div>
+        <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
+          Everyone currently in this workspace.
+        </div>
+      </div>
+
+      <SectionHeading>Currency &amp; mileage</SectionHeading>
+      <div style={{ fontSize: fontSize.small, color: color.textFaint, marginTop: -6, marginBottom: 10 }}>
+        Workspace-wide — the mobile app shows these read-only; edits only happen here.
+      </div>
       <div className="flex flex-wrap" style={{ gap: 16 }}>
         <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 220, flex: "0 0 auto" }}>
           <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
-            Home currency
+            Workspace currency
           </div>
           <select
             value={homeCurrency ?? "EUR"}
@@ -92,16 +227,15 @@ export default function SetupPage() {
           </div>
         </div>
 
-        <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 180, flex: "0 0 auto" }}>
-          <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
-            Active seats
-          </div>
-          <div style={{ fontSize: fontSize.stat - 4, fontWeight: fontWeight.heavy }}>{users.length}</div>
-          <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
-            Everyone currently in this workspace.
-          </div>
-        </div>
+        <MileageSettingsCard unit={distanceUnit} rateMilli={mileageRateMilli} />
       </div>
+
+      <UserDisplayPrefsTable
+        users={users}
+        workspaceCurrency={homeCurrency}
+        workspaceUnit={distanceUnit}
+        workspaceRateMilli={mileageRateMilli}
+      />
 
       <SectionHeading>Account access</SectionHeading>
       <ProvisionMemberPanel />
