@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { canManageReimbursementAuthority, canViewTeamPage } from "@rr/shared";
 import { signOut, type CurrentUser } from "@rr/api";
 import { color, fontSize, fontWeight, layout, radius } from "@rr/ui-tokens";
-import { useCurrentUser } from "../lib/queries";
+import { useCurrentUser, useWorkspaceName } from "../lib/queries";
 import { DashboardIcon, MileageIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
 
 interface NavItem {
@@ -34,6 +34,7 @@ function visibleItems(currentUser: CurrentUser | undefined) {
 export function Sidebar() {
   const pathname = usePathname();
   const { data: currentUser } = useCurrentUser();
+  const { data: workspaceName } = useWorkspaceName();
   const items = visibleItems(currentUser);
 
   return (
@@ -54,6 +55,26 @@ export function Sidebar() {
       <div style={{ display: "flex", justifyContent: "center", padding: "0 8px 10px 8px" }}>
         <Image src="/logo.png" alt="ReceiptRaccoon" width={140} height={140} />
       </div>
+
+      {/* Read-only -- renaming the workspace lives on the admin-only Setup
+          page now, but everyone signed in still sees which workspace they're
+          in, same as before Setup existed. */}
+      {workspaceName ? (
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: fontSize.small,
+            fontWeight: fontWeight.bold,
+            color: color.textStrong,
+            padding: "0 8px 12px 8px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {workspaceName}
+        </div>
+      ) : null}
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
         {items.map((item) => {
