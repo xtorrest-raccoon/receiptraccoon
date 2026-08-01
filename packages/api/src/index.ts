@@ -402,7 +402,11 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
   ]);
   if (assignmentsRes.error) throw assignmentsRes.error;
 
-  let membersData = membersRes.data;
+  // Typed as unknown at the declaration site (not left to infer from
+  // membersRes.data's shape) -- the fallback query below intentionally
+  // selects a narrower set of columns, and both are cast through unknown
+  // to MemberWithProfileRow[] below regardless.
+  let membersData: unknown = membersRes.data;
   if (membersRes.error) {
     // display_currency/display_distance_unit may not exist yet on this
     // environment (0019_personal_display_prefs.sql not applied) -- fall
