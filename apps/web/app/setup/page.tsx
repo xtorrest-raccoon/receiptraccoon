@@ -69,16 +69,6 @@ export default function SetupPage() {
         How this workspace is configured — accounts, invites, and who can approve or refund what.
       </div>
 
-      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 180, maxWidth: 220 }}>
-        <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
-          Active seats
-        </div>
-        <div style={{ fontSize: fontSize.stat - 4, fontWeight: fontWeight.heavy }}>{users.length}</div>
-        <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
-          Everyone currently in this workspace.
-        </div>
-      </div>
-
       <SectionHeading>Currency</SectionHeading>
       <div style={{ fontSize: fontSize.small, color: color.textFaint, marginTop: -6, marginBottom: 10 }}>
         Workspace-wide — the mobile app shows this read-only. Distance unit and mileage rate are set per-person below.

@@ -69,6 +69,10 @@ export function useWorkspaceName() {
   return useQuery({ queryKey: ["workspaceName"], queryFn: data.getWorkspaceName });
 }
 
+export function useConsolidatedSeatCount() {
+  return useQuery({ queryKey: ["consolidatedSeatCount"], queryFn: data.getConsolidatedSeatCount });
+}
+
 export function useMyWorkspaces() {
   return useQuery({ queryKey: ["myWorkspaces"], queryFn: data.listMyWorkspaces });
 }
@@ -143,6 +147,7 @@ const ALL_QUERY_KEYS = [
   "workspaceInvites",
   "workspaceName",
   "myWorkspaces",
+  "consolidatedSeatCount",
   "activeWorkspaceId",
   "users",
   "currentUser",

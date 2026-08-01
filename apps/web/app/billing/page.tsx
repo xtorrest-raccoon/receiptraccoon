@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { isAdmin } from "@rr/shared";
-import { color, fontSize, fontWeight } from "@rr/ui-tokens";
-import { useCurrentUser } from "../../lib/queries";
+import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
+import { useConsolidatedSeatCount, useCurrentUser } from "../../lib/queries";
 import { PaymentSetupPanel } from "../../components/PaymentSetupPanel";
 import { InvoiceList } from "../../components/InvoiceList";
 
@@ -23,6 +23,7 @@ function SectionHeading({ children }: { children: string }) {
  */
 export default function BillingPage() {
   const { data: currentUser } = useCurrentUser();
+  const { data: seatCount } = useConsolidatedSeatCount();
 
   if (!currentUser) return null;
 
@@ -46,6 +47,16 @@ export default function BillingPage() {
       <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em", marginBottom: 4 }}>Invoice &amp; Payment</div>
       <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 20 }}>
         Your subscription, payment method, and billing history.
+      </div>
+
+      <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, minWidth: 180, maxWidth: 240, marginBottom: 8 }}>
+        <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, marginBottom: 6 }}>
+          Active seats
+        </div>
+        <div style={{ fontSize: fontSize.stat - 4, fontWeight: fontWeight.heavy }}>{seatCount ?? "…"}</div>
+        <div style={{ fontSize: fontSize.micro + 0.5, color: color.textFaint, marginTop: 6, lineHeight: 1.4 }}>
+          Distinct people across every workspace in your organization.
+        </div>
       </div>
 
       <SectionHeading>Payment setup</SectionHeading>

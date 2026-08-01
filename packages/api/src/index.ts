@@ -668,6 +668,19 @@ export async function getWorkspaceName(): Promise<string> {
   return (await getWorkspaceRow()).name;
 }
 
+/**
+ * Distinct PEOPLE across every workspace in the current workspace's
+ * organization, not memberships -- see 0021_consolidated_seat_count.sql.
+ * For display on the Invoice & Payment page; billing itself is still
+ * charged per-workspace today.
+ */
+export async function getConsolidatedSeatCount(): Promise<number> {
+  const wsId = await getCurrentWorkspaceId();
+  const { data, error } = await client().rpc("get_consolidated_seat_count", { p_workspace_id: wsId });
+  if (error) throw error;
+  return data as number;
+}
+
 export async function setWorkspaceName(name: string): Promise<void> {
   const trimmed = name.trim();
   if (!trimmed) return;
