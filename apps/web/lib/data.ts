@@ -111,21 +111,19 @@ export function getHomeCurrency(): Promise<string> {
   return api.getHomeCurrency();
 }
 
-/** Workspace-wide -- see the Setup page's Mileage section. Mobile now only displays these, read-only. */
+/**
+ * Workspace-wide default -- no editing UI for this anymore (removed from
+ * Setup's Currency section per the user's request; every person gets their
+ * own override from the per-user table instead, see setUserDisplayDistanceUnit/
+ * setUserMileageRate). Still read here as the "Default (...)" fallback
+ * shown in that table and by mobile.
+ */
 export function getDistanceUnit(): Promise<DistanceUnit> {
   return api.getDistanceUnit();
 }
 
-export function setDistanceUnit(unit: DistanceUnit): Promise<void> {
-  return api.setDistanceUnit(unit);
-}
-
 export function getMileageRateMilli(): Promise<number> {
   return api.getMileageRateMilli();
-}
-
-export function setMileageRateMilli(value: number): Promise<void> {
-  return api.setMileageRateMilli(value);
 }
 
 /** The caller's own effective rate -- their own per-user override if an admin set one, else the workspace default. See Profile page. */

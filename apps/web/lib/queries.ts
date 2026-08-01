@@ -31,24 +31,8 @@ export function useDistanceUnit() {
   return useQuery({ queryKey: ["distanceUnit"], queryFn: data.getDistanceUnit });
 }
 
-export function useSetDistanceUnit() {
-  const invalidateAll = useInvalidateAll();
-  return useMutation({
-    mutationFn: (unit: DistanceUnit) => data.setDistanceUnit(unit),
-    onSuccess: invalidateAll,
-  });
-}
-
 export function useMileageRateMilli() {
   return useQuery({ queryKey: ["mileageRateMilli"], queryFn: data.getMileageRateMilli });
-}
-
-export function useSetMileageRateMilli() {
-  const invalidateAll = useInvalidateAll();
-  return useMutation({
-    mutationFn: (value: number) => data.setMileageRateMilli(value),
-    onSuccess: invalidateAll,
-  });
 }
 
 export function useMyMileageRateMilli() {
