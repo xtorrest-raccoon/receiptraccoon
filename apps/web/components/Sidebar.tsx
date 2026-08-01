@@ -58,21 +58,41 @@ export function Sidebar() {
 
       {/* Read-only -- renaming the workspace lives on the admin-only Setup
           page now, but everyone signed in still sees which workspace they're
-          in, same as before Setup existed. */}
+          in, same as before Setup existed. Same labeled-box shape the
+          original sidebar widget used for "Home currency" etc. */}
       {workspaceName ? (
         <div
           style={{
-            textAlign: "center",
-            fontSize: fontSize.small,
-            fontWeight: fontWeight.bold,
-            color: color.textStrong,
-            padding: "0 8px 12px 8px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            padding: 12,
+            borderRadius: radius.lg,
+            background: color.surfaceMuted,
+            marginBottom: 10,
           }}
         >
-          {workspaceName}
+          <div
+            style={{
+              fontSize: fontSize.tiny + 0.5,
+              fontWeight: fontWeight.semibold,
+              color: color.textFaint,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              marginBottom: 4,
+            }}
+          >
+            Workspace
+          </div>
+          <div
+            style={{
+              fontSize: fontSize.small + 1,
+              fontWeight: fontWeight.bold,
+              color: color.textStrong,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {workspaceName}
+          </div>
         </div>
       ) : null}
 
