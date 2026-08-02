@@ -263,6 +263,24 @@ export function usePromoteToOwner() {
   });
 }
 
+export function useIsPlatformAdmin() {
+  return useQuery({ queryKey: ["isPlatformAdmin"], queryFn: data.isPlatformAdmin });
+}
+
+/** On-demand lookup (a platform admin types in a workspace id), not a background query -- same reasoning as useCreateCheckoutSession. */
+export function usePlatformListWorkspaceMembers() {
+  return useMutation({
+    mutationFn: (workspaceId: string) => data.platformListWorkspaceMembers(workspaceId),
+  });
+}
+
+export function usePlatformPromoteToOwner() {
+  return useMutation({
+    mutationFn: ({ workspaceId, targetUserId }: { workspaceId: string; targetUserId: string }) =>
+      data.platformPromoteToOwner(workspaceId, targetUserId),
+  });
+}
+
 export function useSetReimbursementGroupAssignments() {
   const invalidateAll = useInvalidateAll();
   return useMutation({

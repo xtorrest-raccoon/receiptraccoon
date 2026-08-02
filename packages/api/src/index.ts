@@ -661,6 +661,48 @@ export async function promoteToOwner(userId: string): Promise<void> {
 }
 
 /**
+ * Whether the caller is on the short, hand-maintained platform-support
+ * allowlist -- see 0032_platform_support.sql. Safe to expose directly:
+ * this only ever reveals the caller's own status, never anyone else's.
+ * Gates apps/web's hidden /platform-admin recovery page.
+ */
+export async function isPlatformAdmin(): Promise<boolean> {
+  const { data, error } = await client().rpc("is_platform_admin");
+  if (error) throw error;
+  return data as boolean;
+}
+
+export interface PlatformWorkspaceMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+}
+
+/** Platform-admin-only: looks up an arbitrary workspace's members to pick a recovery target from. */
+export async function platformListWorkspaceMembers(workspaceId: string): Promise<PlatformWorkspaceMember[]> {
+  const { data, error } = await client().rpc("platform_list_workspace_members", { p_workspace_id: workspaceId });
+  if (error) throw error;
+  return (data as { user_id: string; display_name: string; email: string; role: Role }[]).map((row) => ({
+    userId: row.user_id,
+    name: row.display_name,
+    email: row.email,
+    role: row.role,
+  }));
+}
+
+/**
+ * Platform-admin-only: promotes an existing member of the target workspace
+ * to System Admin -- the recovery path for when every System Admin there
+ * is unreachable. Every use is permanently logged server-side (see
+ * platform_recovery_events).
+ */
+export async function platformPromoteToOwner(workspaceId: string, userId: string): Promise<void> {
+  const { error } = await client().rpc("platform_promote_to_owner", { p_workspace_id: workspaceId, p_target_user_id: userId });
+  if (error) throw error;
+}
+
+/**
  * Owner/admin-only, enforced by workspace_members' existing members_write
  * RLS policy (no RPC/super-user carve-out needed here, unlike
  * setReimbursementAuthority — a mileage rate is a payroll decision, not

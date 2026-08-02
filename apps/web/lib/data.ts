@@ -290,6 +290,36 @@ export function promoteToOwner(userId: string): Promise<void> {
   return api.promoteToOwner(userId);
 }
 
+export function isPlatformAdmin(): Promise<boolean> {
+  return api.isPlatformAdmin();
+}
+
+export function platformListWorkspaceMembers(workspaceId: string): Promise<api.PlatformWorkspaceMember[]> {
+  return api.platformListWorkspaceMembers(workspaceId);
+}
+
+/**
+ * Routed through /api/platform-admin/promote-to-owner rather than calling
+ * api.platformPromoteToOwner()'s RPC directly -- the RPC alone does the
+ * actual promotion and audit logging, but the best-effort notification
+ * email to every other member needs the service role (reading each
+ * person's address via the admin API), which only a server route can hold.
+ */
+export async function platformPromoteToOwner(workspaceId: string, targetUserId: string): Promise<void> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/platform-admin/promote-to-owner", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ workspaceId, targetUserId }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not promote that person (HTTP ${res.status})`);
+  }
+}
+
 export function setReimbursementGroupAssignments(approverUserId: string, groupIds: string[]): Promise<void> {
   return api.setReimbursementGroupAssignments(approverUserId, groupIds);
 }
