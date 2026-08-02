@@ -661,6 +661,18 @@ export async function promoteToOwner(userId: string): Promise<void> {
 }
 
 /**
+ * Counterpart to promoteToOwner -- owner-only (enforced by the RPC itself),
+ * and the floor of two System Admins is enforced by the same Postgres
+ * trigger that guards every other write to role, see
+ * 0031_second_system_admin.sql / 0033_demote_system_admin.sql.
+ */
+export async function demoteToAdmin(userId: string): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error } = await client().rpc("demote_to_admin", { p_workspace_id: wsId, p_user_id: userId });
+  if (error) throw error;
+}
+
+/**
  * Whether the caller is on the short, hand-maintained platform-support
  * allowlist -- see 0032_platform_support.sql. Safe to expose directly:
  * this only ever reveals the caller's own status, never anyone else's.

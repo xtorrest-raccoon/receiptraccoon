@@ -5,7 +5,14 @@ import type { CurrentUser, Group, SecurityGroup, WorkspaceUser } from "@rr/api";
 import { canManageReimbursementAuthority, isAdmin } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { syncSeats } from "../lib/data";
-import { useGroups, usePromoteToOwner, useRemoveMember, useSetMemberSecurityGroup, useSetReimbursementGroupAssignments } from "../lib/queries";
+import {
+  useDemoteToAdmin,
+  useGroups,
+  usePromoteToOwner,
+  useRemoveMember,
+  useSetMemberSecurityGroup,
+  useSetReimbursementGroupAssignments,
+} from "../lib/queries";
 import { Avatar } from "./Avatar";
 import { MultiSelectDropdown, multiSelectControlStyle } from "./MultiSelectDropdown";
 import { PasswordConfirmModal } from "./PasswordConfirmModal";
@@ -63,9 +70,11 @@ export function ReimbursementAuthorityTable({
   const setAssignments = useSetReimbursementGroupAssignments();
   const removeMember = useRemoveMember();
   const promoteToOwner = usePromoteToOwner();
+  const demoteToAdmin = useDemoteToAdmin();
   const { data: groups } = useGroups();
   const [removing, setRemoving] = useState<WorkspaceUser | null>(null);
   const [promoting, setPromoting] = useState<WorkspaceUser | null>(null);
+  const [demoting, setDemoting] = useState<WorkspaceUser | null>(null);
   const canGrant = canManageReimbursementAuthority(currentUser.role, currentUser);
   // Stricter than canGrant on purpose — removing someone's access is more
   // severe than granting/revoking a capability, so it stays admin/owner-only
@@ -83,6 +92,11 @@ export function ReimbursementAuthorityTable({
   // pair is protected in Postgres from ever dropping back to one.
   const currentUserIsOwner = currentUser.role === "owner";
   const ownerCount = users.filter((u) => u.role === "owner").length;
+  // Demoting is only ever possible once a workspace has three or more --
+  // dropping from exactly two is blocked in Postgres (see
+  // enforce_two_system_admins() in 0031_second_system_admin.sql), so the
+  // option is hidden rather than offered and guaranteed to fail.
+  const canDemoteOwner = currentUserIsOwner && ownerCount > 2;
 
   return (
     // No overflow: hidden here (unlike other tables in this app) — the
@@ -163,6 +177,15 @@ export function ReimbursementAuthorityTable({
                       Promote to System Admin
                     </button>
                   ) : null}
+                  {canDemoteOwner && owner ? (
+                    <button
+                      type="button"
+                      onClick={() => setDemoting(u)}
+                      style={{ fontSize: fontSize.tiny + 0.5, color: color.up, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                    >
+                      Demote to Admin
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -236,6 +259,20 @@ export function ReimbursementAuthorityTable({
           onConfirmed={() => {
             promoteToOwner.mutate(promoting.id);
             setPromoting(null);
+          }}
+        />
+      ) : null}
+
+      {demoting ? (
+        <PasswordConfirmModal
+          title={`Demote ${demoting.name} to Admin?`}
+          description="They'll keep full authority over this workspace, but can be removed or further demoted by another System Admin going forward. Enter your own password to confirm."
+          confirmLabel="Demote"
+          danger
+          onCancel={() => setDemoting(null)}
+          onConfirmed={() => {
+            demoteToAdmin.mutate(demoting.id);
+            setDemoting(null);
           }}
         />
       ) : null}

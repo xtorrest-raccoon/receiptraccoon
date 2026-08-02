@@ -290,6 +290,10 @@ export function promoteToOwner(userId: string): Promise<void> {
   return api.promoteToOwner(userId);
 }
 
+export function demoteToAdmin(userId: string): Promise<void> {
+  return api.demoteToAdmin(userId);
+}
+
 export function isPlatformAdmin(): Promise<boolean> {
   return api.isPlatformAdmin();
 }

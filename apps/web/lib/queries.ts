@@ -263,6 +263,14 @@ export function usePromoteToOwner() {
   });
 }
 
+export function useDemoteToAdmin() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (userId: string) => data.demoteToAdmin(userId),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useIsPlatformAdmin() {
   return useQuery({ queryKey: ["isPlatformAdmin"], queryFn: data.isPlatformAdmin });
 }
