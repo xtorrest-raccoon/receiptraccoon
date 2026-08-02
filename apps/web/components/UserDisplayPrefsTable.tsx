@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { WorkspaceUser } from "@rr/api";
-import { rateToDecimalString, parseRateToMilli, type DistanceUnit } from "@rr/shared";
+import { currencySymbol, rateToDecimalString, parseRateToMilli, type DistanceUnit } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../lib/data";
 import { useSetUserDisplayCurrency, useSetUserDisplayDistanceUnit, useSetUserMileageRate } from "../lib/queries";
@@ -99,7 +99,12 @@ function UserPrefsRow({
         value={rateText}
         onChange={(e) => setRateText(e.target.value)}
         onBlur={commitRate}
-        placeholder={`Default (${rateToDecimalString(workspaceRateMilli)})`}
+        // Always workspace currency/unit -- reimbursement math never uses the
+        // Currency/Distance unit columns to its left, those are display-only
+        // (see the table's own subtitle below). Spelled out here since it
+        // sits right next to that Currency dropdown and is easy to misread
+        // as denominated in it.
+        placeholder={`Default (${currencySymbol(workspaceCurrency)}${rateToDecimalString(workspaceRateMilli)}/${workspaceUnit})`}
         style={{ ...controlStyle, width: "100%" }}
       />
     </div>
@@ -151,7 +156,7 @@ export function UserDisplayPrefsTable({
         <div>User</div>
         <div>Currency</div>
         <div>Distance unit</div>
-        <div>Mileage rate</div>
+        <div>Mileage rate ({currencySymbol(workspaceCurrency)}/{workspaceUnit}, always)</div>
       </div>
 
       {users.map((u) => (

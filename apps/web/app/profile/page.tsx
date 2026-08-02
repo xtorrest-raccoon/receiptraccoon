@@ -54,7 +54,7 @@ export default function ProfilePage() {
         <InfoCard
           label="Your mileage rate"
           value={`${currencySymbol(workspaceCurrency)}${rateToDecimalString(rateMilli)} per ${workspaceUnit}`}
-          hint="What your trips are actually reimbursed at — either your own rate, or the workspace default."
+          hint="What your trips are actually reimbursed at — either your own rate, or the workspace default. Always in the workspace's own currency and unit, not your display currency above."
         />
       </div>
     </div>
