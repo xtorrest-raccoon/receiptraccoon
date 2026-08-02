@@ -79,12 +79,13 @@ function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefin
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const canManage = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
-  // Stricter than canManage -- deleting destroys every receipt and mileage
-  // trip in the workspace for everyone in it, not just a setting, so this
-  // stays owner-only regardless of granted reimbursement authority. Also
-  // hidden entirely when it's the only workspace -- the RPC would refuse
-  // anyway (every account keeps at least one), so there's nothing to offer.
-  const canDelete = currentUser?.role === "owner" && (workspaces?.length ?? 0) > 1;
+  // Owner/admin only (see 0030_admin_can_delete_workspace.sql) -- deleting
+  // destroys every receipt and mileage trip in the workspace for everyone in
+  // it, so this stays stricter than canManage regardless of granted
+  // reimbursement authority alone. Also hidden entirely when it's the only
+  // workspace -- the RPC would refuse anyway (every account keeps at least
+  // one), so there's nothing to offer.
+  const canDelete = currentUser ? isAdmin(currentUser.role) && (workspaces?.length ?? 0) > 1 : false;
 
   useEffect(() => {
     if (workspaceName !== undefined) setNameDraft(workspaceName);

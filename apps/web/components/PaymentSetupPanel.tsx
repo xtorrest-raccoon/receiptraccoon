@@ -4,6 +4,7 @@ import { useState } from "react";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import type { CurrentUser } from "../lib/data";
 import { useCancelSubscription, useCreatePortalSession, useResumeSubscription } from "../lib/queries";
+import { PasswordConfirmModal } from "./PasswordConfirmModal";
 
 /**
  * The initial card entry happens on BillingGate's blocking screen (a
@@ -86,7 +87,7 @@ export function PaymentSetupPanel({ currentUser }: { currentUser: CurrentUser })
           >
             {resumeSubscription.isPending ? "…" : "Resume subscription"}
           </button>
-        ) : !confirming ? (
+        ) : (
           <button
             type="button"
             onClick={() => setConfirming(true)}
@@ -103,48 +104,24 @@ export function PaymentSetupPanel({ currentUser }: { currentUser: CurrentUser })
           >
             Cancel subscription
           </button>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: fontSize.small, color: color.textMuted }}>
-              {inTrial ? "Cancel now and lose access immediately?" : "Cancel and stop at the end of the current billing period?"}
-            </span>
-            <button
-              type="button"
-              onClick={() => cancelSubscription.mutate(undefined, { onSuccess: () => setConfirming(false) })}
-              disabled={cancelSubscription.isPending}
-              style={{
-                padding: "7px 14px",
-                borderRadius: radius.md,
-                background: color.up,
-                color: "#fff",
-                fontWeight: fontWeight.bold,
-                fontSize: fontSize.small,
-                border: "none",
-                cursor: "pointer",
-                opacity: cancelSubscription.isPending ? 0.6 : 1,
-              }}
-            >
-              {cancelSubscription.isPending ? "…" : "Yes, cancel"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirming(false)}
-              style={{
-                padding: "7px 14px",
-                borderRadius: radius.md,
-                background: "transparent",
-                color: color.textMuted,
-                fontWeight: fontWeight.semibold,
-                fontSize: fontSize.small,
-                border: `1px solid ${color.borderStrong}`,
-                cursor: "pointer",
-              }}
-            >
-              Never mind
-            </button>
-          </div>
         )}
       </div>
+
+      {confirming ? (
+        <PasswordConfirmModal
+          title="Cancel your subscription?"
+          description={
+            (inTrial
+              ? "You'll lose access immediately — nothing has been charged yet."
+              : "Access continues until the end of the current billing period, then stops. This can be undone up until then.") +
+            " Enter your own password to confirm."
+          }
+          confirmLabel="Cancel subscription"
+          danger
+          onCancel={() => setConfirming(false)}
+          onConfirmed={() => cancelSubscription.mutate(undefined, { onSuccess: () => setConfirming(false) })}
+        />
+      ) : null}
 
       {createPortalSession.isError ? (
         <div style={{ fontSize: fontSize.small, color: color.up, marginTop: 10 }}>
