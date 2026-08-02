@@ -38,3 +38,38 @@ export async function requireUser(
 
   return { supabase, userId: userData.user.id };
 }
+
+/**
+ * The workspace + role an API route should act on for this caller. Someone
+ * can belong to more than one workspace (see 0017_organizations.sql), so
+ * this reads profiles.active_workspace_id -- the same column the web app
+ * writes on every workspace switch (see persistActiveWorkspaceId in
+ * packages/api) -- rather than grabbing whichever workspace_members row
+ * happens to sort first, which silently ignores which workspace is open in
+ * the UI. Falls back to an arbitrary membership when active_workspace_id is
+ * unset (mobile never writes it) or stale (removed from that workspace
+ * since it was last set).
+ */
+export async function getActiveMembership(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ workspaceId: string; role: string } | null> {
+  const toResult = (row: { workspace_id: string; role: string } | null) =>
+    row ? { workspaceId: row.workspace_id, role: row.role } : null;
+
+  const { data: profile } = await supabase.from("profiles").select("active_workspace_id").eq("id", userId).single();
+  const activeId = (profile as { active_workspace_id: string | null } | null)?.active_workspace_id;
+
+  if (activeId) {
+    const { data } = await supabase
+      .from("workspace_members")
+      .select("workspace_id, role")
+      .eq("user_id", userId)
+      .eq("workspace_id", activeId)
+      .maybeSingle();
+    if (data) return toResult(data as { workspace_id: string; role: string });
+  }
+
+  const { data } = await supabase.from("workspace_members").select("workspace_id, role").eq("user_id", userId).limit(1).single();
+  return toResult(data as { workspace_id: string; role: string } | null);
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { requireUser } from "../../../../lib/auth";
+import { getActiveMembership, requireUser } from "../../../../lib/auth";
 
 /**
  * Owner/admin: lists past invoices straight from Stripe (no local copy —
@@ -15,16 +15,11 @@ export async function GET(request: NextRequest) {
   if ("error" in auth) return auth.error;
   const { supabase, userId } = auth;
 
-  const { data: membership, error: membershipErr } = await supabase
-    .from("workspace_members")
-    .select("workspace_id, role")
-    .eq("user_id", userId)
-    .limit(1)
-    .single();
-  if (membershipErr || !membership) {
+  const membership = await getActiveMembership(supabase, userId);
+  if (!membership) {
     return NextResponse.json({ error: "No workspace found for this account" }, { status: 403 });
   }
-  const { workspace_id: workspaceId, role } = membership as { workspace_id: string; role: string };
+  const { workspaceId, role } = membership;
   if (role !== "owner" && role !== "admin") {
     return NextResponse.json({ error: "Only the workspace owner or an admin can view invoices" }, { status: 403 });
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
-import { requireUser } from "../../../../lib/auth";
+import { getActiveMembership, requireUser } from "../../../../lib/auth";
 
 /**
  * Recomputes the caller's workspace's member count and pushes it to Stripe
@@ -67,16 +67,11 @@ export async function POST(request: NextRequest) {
   if ("error" in auth) return auth.error;
   const { supabase, userId } = auth;
 
-  const { data: membership, error: membershipErr } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", userId)
-    .limit(1)
-    .single();
-  if (membershipErr || !membership) {
+  const membership = await getActiveMembership(supabase, userId);
+  if (!membership) {
     return NextResponse.json({ error: "No workspace found for this account" }, { status: 403 });
   }
-  const workspaceId = (membership as { workspace_id: string }).workspace_id;
+  const { workspaceId } = membership;
 
   const { data: workspace } = await supabase
     .from("workspaces")

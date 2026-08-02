@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireUser } from "../../../../lib/auth";
+import { getActiveMembership, requireUser } from "../../../../lib/auth";
 
 /**
  * Admin/owner-only: creates a brand-new account for someone who will never
@@ -70,16 +70,11 @@ export async function POST(request: NextRequest) {
   if ("error" in auth) return auth.error;
   const { supabase, userId } = auth;
 
-  const { data: membership, error: membershipErr } = await supabase
-    .from("workspace_members")
-    .select("workspace_id, role")
-    .eq("user_id", userId)
-    .limit(1)
-    .single();
-  if (membershipErr || !membership) {
+  const membership = await getActiveMembership(supabase, userId);
+  if (!membership) {
     return NextResponse.json({ error: "No workspace found for this account" }, { status: 403 });
   }
-  const { workspace_id: workspaceId, role: callerRole } = membership as { workspace_id: string; role: string };
+  const { workspaceId, role: callerRole } = membership;
   if (callerRole !== "owner" && callerRole !== "admin") {
     return NextResponse.json({ error: "Only an owner or admin can create accounts" }, { status: 403 });
   }
