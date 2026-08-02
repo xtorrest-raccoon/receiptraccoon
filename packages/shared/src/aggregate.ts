@@ -106,7 +106,7 @@ export function computeMonthPacing(allReceipts: Receipt[], month: string, today:
 export function computeWeeklySpend(
   allReceipts: Receipt[],
   today: string,
-  weeks = 6,
+  weeks = 10,
 ): { weekStart: string; totalMinor: number }[] {
   const weeklySpend: { weekStart: string; totalMinor: number }[] = [];
   const end = new Date(`${today}T00:00:00`);

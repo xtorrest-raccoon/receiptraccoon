@@ -15,7 +15,7 @@ export function SpendBarChart({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
           <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Spend over time</div>
-          <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>Last 6 weeks</div>
+          <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>Last {weeklySpend.length} weeks</div>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 170, padding: "0 4px" }}>
