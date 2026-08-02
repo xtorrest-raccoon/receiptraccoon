@@ -163,7 +163,7 @@ export function ReimbursementAuthorityTable({
     // clip instead of just rounding the corners.
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], marginTop: 16 }}>
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
-        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Security group</div>
+        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Profile Definition</div>
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
           Who can manage platform setup, refund a claim, approve or reject one, and specifically whose claims they cover.
         </div>

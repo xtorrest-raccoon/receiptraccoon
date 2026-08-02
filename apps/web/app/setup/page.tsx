@@ -113,7 +113,7 @@ export default function SetupPage() {
       <SectionHeading>Account access</SectionHeading>
       <ProvisionMemberPanel />
 
-      <SectionHeading>Approval hierarchy</SectionHeading>
+      <SectionHeading>Security group</SectionHeading>
       <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
 
       <UserDisplayPrefsTable
