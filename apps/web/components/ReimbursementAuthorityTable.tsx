@@ -203,9 +203,10 @@ export function ReimbursementAuthorityTable({
             </div>
 
             {owner ? (
-              <div style={{ fontSize: fontSize.small, color: color.textFaint, gridColumn: "2 / span 2" }}>
-                Full authority over everyone (system admin, cannot be removed)
-              </div>
+              <>
+                <span style={{ fontSize: fontSize.small, color: color.textFaint }}>System Admin</span>
+                <span style={{ fontSize: fontSize.small, color: color.textFaint }}>Full authority over everyone — cannot be removed</span>
+              </>
             ) : (
               <>
                 <select
