@@ -118,6 +118,18 @@ export function ReimbursementAuthorityTable({
         </div>
       ) : null}
 
+      {promoteToOwner.isError ? (
+        <div style={{ padding: "10px 20px", fontSize: fontSize.small, color: color.up }}>
+          {promoteToOwner.error instanceof Error ? promoteToOwner.error.message : "Couldn't promote that person."}
+        </div>
+      ) : null}
+
+      {demoteToAdmin.isError ? (
+        <div style={{ padding: "10px 20px", fontSize: fontSize.small, color: color.up }}>
+          {demoteToAdmin.error instanceof Error ? demoteToAdmin.error.message : "Couldn't demote that person."}
+        </div>
+      ) : null}
+
       <div
         className="hidden sm:grid"
         style={{
