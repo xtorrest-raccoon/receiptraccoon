@@ -648,6 +648,19 @@ export async function setMemberSecurityGroup(userId: string, currentRole: Role, 
 }
 
 /**
+ * Promotes a co-member to a second (or further) System Admin (owner) --
+ * see 0031_second_system_admin.sql. Owner-only to grant, enforced by the
+ * RPC itself (a plain admin minting a peer with authority over them would
+ * defeat the "only an owner can create another owner" chain of trust) --
+ * this is a thin wrapper, all the real logic lives in the database.
+ */
+export async function promoteToOwner(userId: string): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  const { error } = await client().rpc("promote_to_owner", { p_workspace_id: wsId, p_user_id: userId });
+  if (error) throw error;
+}
+
+/**
  * Owner/admin-only, enforced by workspace_members' existing members_write
  * RLS policy (no RPC/super-user carve-out needed here, unlike
  * setReimbursementAuthority — a mileage rate is a payroll decision, not

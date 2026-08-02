@@ -255,6 +255,14 @@ export function useSetMemberSecurityGroup() {
   });
 }
 
+export function usePromoteToOwner() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (userId: string) => data.promoteToOwner(userId),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useSetReimbursementGroupAssignments() {
   const invalidateAll = useInvalidateAll();
   return useMutation({

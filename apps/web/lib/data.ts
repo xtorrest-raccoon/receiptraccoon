@@ -286,6 +286,10 @@ export function setMemberSecurityGroup(userId: string, currentRole: Role, group:
   return api.setMemberSecurityGroup(userId, currentRole, group);
 }
 
+export function promoteToOwner(userId: string): Promise<void> {
+  return api.promoteToOwner(userId);
+}
+
 export function setReimbursementGroupAssignments(approverUserId: string, groupIds: string[]): Promise<void> {
   return api.setReimbursementGroupAssignments(approverUserId, groupIds);
 }
