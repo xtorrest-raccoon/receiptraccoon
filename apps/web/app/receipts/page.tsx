@@ -8,6 +8,7 @@ import { useDataStore } from "../../lib/store";
 import { exportReceiptsCsv } from "../../lib/receiptsCsv";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
 import { MultiSelectDropdown, multiSelectControlStyle } from "../../components/MultiSelectDropdown";
+import { ExportCsvDateRangeModal } from "../../components/ExportCsvDateRangeModal";
 import { DownloadIcon, UploadIcon } from "../../components/icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
@@ -33,9 +34,13 @@ export default function ReceiptsPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
+  const [exporting, setExporting] = useState(false);
 
   const { data: receipts } = useReceipts({ q: search || undefined, categoryName: categoryFilter, userId: currentUser?.id });
-  const { data: allForExport } = useReceipts({ categoryName: categoryFilter, userId: currentUser?.id });
+  // Deliberately no category/status filter here -- exporting asks for a
+  // date range instead (see ExportCsvDateRangeModal) and always includes
+  // every status within it, independent of whatever's shown on screen.
+  const { data: allForExport } = useReceipts({ userId: currentUser?.id });
 
   // Own-data personal view -- honors the caller's display currency
   // preference (see apps/web/app/profile/page.tsx), independent of whatever
@@ -54,7 +59,12 @@ export default function ReceiptsPage() {
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts —
   // the row count per workspace doesn't justify a server-side filter here.
   const filteredReceipts = toDisplay(receipts).filter((r) => statusFilter.includes(r.reimbursementStatus));
-  const filteredForExport = toDisplay(allForExport).filter((r) => statusFilter.includes(r.reimbursementStatus));
+
+  const exportInRange = (startDate: string, endDate: string) => {
+    const inRange = toDisplay(allForExport).filter((r) => r.receiptDate && r.receiptDate >= startDate && r.receiptDate <= endDate);
+    exportReceiptsCsv(inRange, users ?? [], "receiptraccoon-my-receipts.csv");
+    setExporting(false);
+  };
 
   return (
     <div>
@@ -83,7 +93,7 @@ export default function ReceiptsPage() {
           </button>
           <button
             type="button"
-            onClick={() => exportReceiptsCsv(filteredForExport, users, "receiptraccoon-my-receipts.csv")}
+            onClick={() => setExporting(true)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -150,6 +160,8 @@ export default function ReceiptsPage() {
       </div>
 
       <ReceiptsTable receipts={filteredReceipts} categories={categories} users={users} />
+
+      {exporting ? <ExportCsvDateRangeModal onCancel={() => setExporting(false)} onConfirm={exportInRange} /> : null}
     </div>
   );
 }

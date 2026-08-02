@@ -11,6 +11,7 @@ import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
 import { MultiSelectDropdown, multiSelectControlStyle } from "../../components/MultiSelectDropdown";
+import { ExportCsvDateRangeModal } from "../../components/ExportCsvDateRangeModal";
 import { DownloadIcon } from "../../components/icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
@@ -36,6 +37,7 @@ export default function TeamPage() {
   const [receiptCategoryFilter, setReceiptCategoryFilter] = useState("All");
   const [receiptStatusFilter, setReceiptStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
   const [receiptUserFilter, setReceiptUserFilter] = useState("All");
+  const [exporting, setExporting] = useState(false);
 
   const { data: team } = useTeam();
   const { data: users } = useUsers();
@@ -46,6 +48,11 @@ export default function TeamPage() {
     categoryName: receiptCategoryFilter,
     userId: receiptUserFilter === "All" ? undefined : receiptUserFilter,
   });
+  // Deliberately unfiltered (no search/category/user) -- exporting asks for
+  // a date range instead (see ExportCsvDateRangeModal) and always includes
+  // every status and every person within it, independent of whatever's
+  // shown on screen.
+  const { data: allForExport } = useReceipts({});
 
   const mileageOutstandingMinor = useMemo(() => {
     return (mileage ?? []).filter((t) => isOutstanding(t.reimbursementStatus)).reduce((sum, t) => sum + t.amountMinor, 0);
@@ -81,6 +88,20 @@ export default function TeamPage() {
 
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts.
   const filteredReceipts = receiptsInWorkspaceCurrency.filter((r) => receiptStatusFilter.includes(r.reimbursementStatus));
+
+  // Same workspace-currency conversion as receiptsInWorkspaceCurrency above,
+  // just against the unfiltered export set rather than the on-screen one.
+  const exportFxRates = useFxRatesTo((allForExport ?? []).map((r) => r.currency), team?.currency);
+  const exportInRange = (startDate: string, endDate: string) => {
+    const inWorkspaceCurrency = (allForExport ?? []).map((r) => {
+      if (!team || r.currency === team.currency) return r;
+      const rate = exportFxRates[r.currency];
+      return rate != null ? convertReceiptCurrency(r, team.currency, rate) : r;
+    });
+    const inRange = inWorkspaceCurrency.filter((r) => r.receiptDate && r.receiptDate >= startDate && r.receiptDate <= endDate);
+    exportReceiptsCsv(inRange, users ?? [], "receiptraccoon-team-receipts.csv");
+    setExporting(false);
+  };
 
   if (!currentUser || !allowed) {
     return (
@@ -240,7 +261,7 @@ export default function TeamPage() {
             </select>
             <button
               type="button"
-              onClick={() => exportReceiptsCsv(filteredReceipts, users, "receiptraccoon-team-receipts.csv")}
+              onClick={() => setExporting(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -324,6 +345,7 @@ export default function TeamPage() {
         />
       </div>
 
+      {exporting ? <ExportCsvDateRangeModal onCancel={() => setExporting(false)} onConfirm={exportInRange} /> : null}
     </div>
   );
 }
