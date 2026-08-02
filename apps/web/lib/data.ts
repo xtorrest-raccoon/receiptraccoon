@@ -186,7 +186,7 @@ export function setWorkspaceName(name: string): Promise<void> {
   return api.setWorkspaceName(name);
 }
 
-/** Distinct people across every workspace in the organization -- see the Invoice & Payment page. */
+/** Distinct people across every workspace in the organization -- see the Payment page. */
 export function getConsolidatedSeatCount(): Promise<number> {
   return api.getConsolidatedSeatCount();
 }

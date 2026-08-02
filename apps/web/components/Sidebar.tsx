@@ -41,7 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   // Stricter than Setup above -- owner/admin only, same gate the Billing
   // page itself enforces (a super user with granted reimbursement
   // authority does NOT get billing access just from that).
-  { href: "/billing", label: "Invoice & Payment", Icon: BillingIcon, visible: (u) => isAdmin(u.role) },
+  { href: "/billing", label: "Payment", Icon: BillingIcon, visible: (u) => isAdmin(u.role) },
 ];
 
 function visibleItems(currentUser: CurrentUser | undefined) {

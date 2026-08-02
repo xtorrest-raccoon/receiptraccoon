@@ -33,7 +33,7 @@ export default function BillingPage() {
       <div style={{ maxWidth: 480, margin: "60px auto", textAlign: "center" }}>
         <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, marginBottom: 8 }}>403 — Not authorized</div>
         <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 20, lineHeight: 1.6 }}>
-          Invoice &amp; Payment is only visible to workspace owners/admins.
+          Payment is only visible to workspace owners/admins.
           {` Signed in as ${currentUser.name} (${currentUser.role}).`}
         </div>
         <Link href="/dashboard" style={{ color: color.brand, fontWeight: fontWeight.bold, fontSize: fontSize.body }}>
@@ -45,7 +45,7 @@ export default function BillingPage() {
 
   return (
     <div>
-      <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em", marginBottom: 4 }}>Invoice &amp; Payment</div>
+      <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em", marginBottom: 4 }}>Payment</div>
       <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 20 }}>
         Your subscription, payment method, and billing history.
       </div>
