@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   }
   const { error: flagErr } = await serviceClient
     .from("profiles")
-    .update({ must_change_password: true })
+    .update({ must_change_password: true, home_workspace_id: workspaceId })
     .eq("id", newUserId);
   if (flagErr) {
     return NextResponse.json({ error: flagErr.message }, { status: 500 });
