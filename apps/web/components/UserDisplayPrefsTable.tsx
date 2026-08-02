@@ -128,7 +128,7 @@ export function UserDisplayPrefsTable({
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], marginTop: 16 }}>
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
-        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>User currency &amp; mileage</div>
+        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>User currency &amp; mileage setup</div>
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
           Per-person overrides. Currency and distance unit only change how amounts show up for that person (mobile and
           their own web views) — mileage rate is the actual reimbursement rate their trips are paid at.
