@@ -11,7 +11,7 @@ import {
   TODAY,
   type DraftReceipt,
 } from "../lib/data";
-import { useAddReceipt, useCategories, useHomeCurrency, useUploadReceiptPhoto } from "../lib/queries";
+import { useAddReceipt, useCategories, useHomeCurrency, useIsHomeWorkspace, useUploadReceiptPhoto } from "../lib/queries";
 import { useDataStore } from "../lib/store";
 
 type Step = "pick" | "loading" | "retake" | "error" | "confirm";
@@ -28,6 +28,10 @@ export function AddReceiptDrawer() {
   const { data: categories } = useCategories();
   const addReceipt = useAddReceipt();
   const uploadPhoto = useUploadReceiptPhoto();
+  // You can toggle into a workspace you administer, but can only submit
+  // receipts into the one you were originally added to -- see
+  // 0024_home_workspace.sql.
+  const { data: isHome } = useIsHomeWorkspace();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>("pick");
@@ -190,7 +194,17 @@ export function AddReceiptDrawer() {
           }}
         />
 
-        {step === "pick" ? (
+        {isHome === false ? (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            <div style={{ fontSize: fontSize.body, fontWeight: fontWeight.bold, marginBottom: 6 }}>Not your home workspace</div>
+            <div style={{ fontSize: fontSize.small + 0.5, color: color.textMuted, lineHeight: 1.5 }}>
+              You can only submit receipts into the workspace you were originally added to. Switch back to it to add
+              a new one.
+            </div>
+          </div>
+        ) : null}
+
+        {isHome !== false && step === "pick" ? (
           <div>
             <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 16, lineHeight: 1.5 }}>
               Choose a photo or scan of a receipt — vendor, date, total, tax, and category get read off it automatically.

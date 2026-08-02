@@ -131,6 +131,11 @@ export function getMyMileageRateMilli(): Promise<number> {
   return api.getMyMileageRateMilli();
 }
 
+/** Whether the currently active workspace is the one the caller may actually submit receipts/mileage into -- see 0024_home_workspace.sql. */
+export function isCurrentWorkspaceHome(): Promise<boolean> {
+  return api.isCurrentWorkspaceHome();
+}
+
 export function getDailyApprovalRemindersEnabled(): Promise<boolean> {
   return api.getDailyApprovalRemindersEnabled();
 }

@@ -8,11 +8,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import { rn, rnAlpha } from "../../lib/colors";
 import { setCapturedPhoto } from "../../lib/captureStore";
+import { useIsHomeWorkspace } from "../../lib/queries";
 import { Text } from "../../components/Text";
 
 export default function CaptureScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { data: isHome } = useIsHomeWorkspace();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [busy, setBusy] = useState(false);
@@ -77,6 +79,26 @@ export default function CaptureScreen() {
         </Text>
         <Pressable style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonLabel}>Grant access</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // You can toggle into a workspace you administer, but you can only ever
+  // submit receipts into the one you were originally created in -- see
+  // 0024_home_workspace.sql. Checked before the camera opens rather than
+  // after scanning/extraction, so nothing is wasted on a receipt that
+  // could never actually be saved.
+  if (isHome === false) {
+    return (
+      <View style={[styles.container, styles.permissionContainer]}>
+        <Text style={styles.permissionTitle}>Not your home workspace</Text>
+        <Text style={styles.permissionBody}>
+          You can only submit receipts into the workspace you were originally added to. Switch back to it from the
+          web app to log a new receipt.
+        </Text>
+        <Pressable style={styles.permissionButton} onPress={onCancel}>
+          <Text style={styles.permissionButtonLabel}>Back</Text>
         </Pressable>
       </View>
     );

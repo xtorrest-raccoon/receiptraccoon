@@ -177,6 +177,28 @@ export async function getCurrentWorkspaceId(): Promise<string> {
 }
 
 /**
+ * The one workspace the caller may actually submit receipts/mileage into --
+ * see 0024_home_workspace.sql. Someone administering a second workspace
+ * (an owner who created it via createWorkspace) can toggle into it and
+ * manage settings there, but this stays pointing at their original one;
+ * the RLS policies on receipts/mileage_trips enforce the same rule
+ * server-side, this is just for the UI to proactively hide/disable
+ * "Add receipt"/"Log a trip" rather than let someone hit a raw RLS error.
+ */
+export async function getHomeWorkspaceId(): Promise<string | null> {
+  const userId = await getCurrentUserId();
+  const { data, error } = await client().from("profiles").select("home_workspace_id").eq("id", userId).single();
+  if (error) throw error;
+  return (data as { home_workspace_id: string | null }).home_workspace_id;
+}
+
+/** Whether the CURRENTLY ACTIVE workspace is the caller's home one -- see getHomeWorkspaceId. */
+export async function isCurrentWorkspaceHome(): Promise<boolean> {
+  const [currentId, homeId] = await Promise.all([getCurrentWorkspaceId(), getHomeWorkspaceId()]);
+  return homeId === null || homeId === currentId;
+}
+
+/**
  * Writes the choice to profiles.active_workspace_id so every client reading
  * this caller's profile agrees on it (mobile has no localStorage of its
  * own -- see loadActiveWorkspaceId below). Also updates the in-memory pin

@@ -9,6 +9,7 @@ import {
   useCurrentUser,
   useFxRate,
   useHomeCurrency,
+  useIsHomeWorkspace,
   useMileage,
   useMyDisplayPrefs,
   useUsers,
@@ -34,6 +35,10 @@ export function MyMileagePanel() {
   const { data: homeCurrency } = useHomeCurrency();
   const { data: trips } = useMileage(currentUser?.id);
   const addTrip = useAddMileageTrip();
+  // You can toggle into a workspace you administer, but can only submit
+  // trips into the one you were originally added to -- see
+  // 0024_home_workspace.sql.
+  const { data: isHome } = useIsHomeWorkspace();
 
   // Personal, display-only re-expression of already-fetched trips (see
   // apps/web/app/profile/page.tsx) -- this is the one "my own data" view on
@@ -53,7 +58,7 @@ export function MyMileagePanel() {
   const [distanceUnit, setDistanceUnit] = useState<"mi" | "km">("mi");
   const [statusFilter, setStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
 
-  const canSubmit = purpose.trim() !== "" && tripDate !== "" && Number(distance) > 0;
+  const canSubmit = isHome !== false && purpose.trim() !== "" && tripDate !== "" && Number(distance) > 0;
 
   const submit = () => {
     if (!canSubmit) return;
@@ -76,6 +81,12 @@ export function MyMileagePanel() {
     <div>
       <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 20, marginBottom: 16 }}>
         <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, marginBottom: 12 }}>Log a trip</div>
+        {isHome === false ? (
+          <div style={{ fontSize: fontSize.small, color: color.textMuted, lineHeight: 1.5 }}>
+            You can only log trips into the workspace you were originally added to. Switch back to it to add a new
+            one.
+          </div>
+        ) : (
         <div className="flex flex-wrap" style={{ gap: 8, marginBottom: 10 }}>
           <input
             placeholder="Purpose (e.g. Client visit)"
@@ -128,6 +139,7 @@ export function MyMileagePanel() {
             {addTrip.isPending ? "…" : "Add trip"}
           </button>
         </div>
+        )}
         {addTrip.isError ? (
           <div style={{ fontSize: fontSize.small, color: color.up }}>
             {addTrip.error instanceof Error ? addTrip.error.message : "Couldn't log that trip."}

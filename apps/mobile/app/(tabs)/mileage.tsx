@@ -24,6 +24,7 @@ import {
   useDisplayRate,
   useDistanceUnit,
   useHomeCurrency,
+  useIsHomeWorkspace,
   useMileage,
   useMyMileageRateMilli,
   useUpdateMileageTrip,
@@ -45,6 +46,11 @@ export default function MileageScreen() {
   const { data: workspaceUnit } = useDistanceUnit();
   const { data: displayCurrency } = useDisplayCurrency();
   const { data: displayUnit } = useDisplayDistanceUnit();
+  // You can toggle into a workspace you administer, but can only submit
+  // trips into the one you were originally added to -- see
+  // 0024_home_workspace.sql. Already-logged trips (from your home
+  // workspace) still show/edit normally regardless of which is active.
+  const { data: isHome } = useIsHomeWorkspace();
   const currency = displayCurrency ?? workspaceCurrency;
   const unit = displayUnit ?? workspaceUnit;
   // My own effective rate — my per-user override if an owner/admin set one,
@@ -252,13 +258,22 @@ export default function MileageScreen() {
 
         <View style={styles.tripsHeaderRow}>
           <Text style={styles.tripsHeaderTitle}>Recent trips</Text>
-          <Pressable
-            style={styles.addTripButton}
-            onPress={() => (addTripOpen ? closeForm() : setAddTripOpen(true))}
-          >
-            <Text style={styles.addTripLabel}>{addTripOpen ? "Close" : "+ Add trip"}</Text>
-          </Pressable>
+          {isHome !== false && (
+            <Pressable
+              style={styles.addTripButton}
+              onPress={() => (addTripOpen ? closeForm() : setAddTripOpen(true))}
+            >
+              <Text style={styles.addTripLabel}>{addTripOpen ? "Close" : "+ Add trip"}</Text>
+            </Pressable>
+          )}
         </View>
+
+        {isHome === false && (
+          <Text style={styles.emptyText}>
+            You can only log trips into the workspace you were originally added to. Switch back to it from the web
+            app to add a new one.
+          </Text>
+        )}
 
         {addTripOpen && (
           <View style={styles.addTripCard}>
