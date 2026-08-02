@@ -11,7 +11,7 @@
  * affected query keys instead of bumping a version counter.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DistanceUnit, ReimbursementStatus, Role } from "@rr/shared";
 import * as data from "./data";
 
@@ -55,6 +55,31 @@ export function useFxRate(fromCurrency: string | undefined, toCurrency: string |
     enabled: fromCurrency !== undefined && toCurrency !== undefined && fromCurrency !== toCurrency,
     staleTime: 60 * 60 * 1000,
   });
+}
+
+/**
+ * Same as useFxRate, but for a whole list of distinct source currencies at
+ * once — for Team's Receipts table, where receipts captured before the
+ * workspace's currency was last changed can carry more than one original
+ * currency (see convertDashboardCurrency's doc comment in @rr/shared).
+ * Returns a map from source currency -> rate (null while loading/failed —
+ * callers fail open and leave that receipt unconverted, same as useFxRate).
+ */
+export function useFxRatesTo(fromCurrencies: string[], toCurrency: string | undefined): Record<string, number | null> {
+  const distinct = [...new Set(fromCurrencies)].filter((c) => c !== toCurrency);
+  const results = useQueries({
+    queries: distinct.map((from) => ({
+      queryKey: ["fxRate", from, toCurrency],
+      queryFn: () => data.fetchDisplayRate(from, toCurrency!),
+      enabled: toCurrency !== undefined,
+      staleTime: 60 * 60 * 1000,
+    })),
+  });
+  const map: Record<string, number | null> = {};
+  distinct.forEach((from, i) => {
+    map[from] = results[i]?.data ?? null;
+  });
+  return map;
 }
 
 export function useDailyApprovalRemindersEnabled() {

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { canViewTeamPage, formatMoney, isAdmin, isOutstanding, reclaimMinor, type ReimbursementStatus } from "@rr/shared";
+import { canViewTeamPage, convertReceiptCurrency, formatMoney, isAdmin, isOutstanding, reclaimMinor, type Receipt, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
-import { useCategories, useCurrentUser, useMileage, useReceipts, useTeam, useUsers } from "../../lib/queries";
+import { useCategories, useCurrentUser, useFxRatesTo, useMileage, useReceipts, useTeam, useUsers } from "../../lib/queries";
 import { exportReceiptsCsv } from "../../lib/receiptsCsv";
 import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
@@ -51,12 +51,28 @@ export default function TeamPage() {
     return (mileage ?? []).filter((t) => isOutstanding(t.reimbursementStatus)).reduce((sum, t) => sum + t.amountMinor, 0);
   }, [mileage]);
 
+  // Team is the one company-wide comparison view -- every receipt shows in
+  // the workspace's OWN currency here, never a personal preference. A
+  // receipt captured before the workspace's currency was last changed still
+  // carries its original currency (never retroactively reconverted -- see
+  // Setup's Currency card), so this resolves whatever distinct currencies
+  // are actually present against the current workspace currency.
+  const fxRates = useFxRatesTo((receipts ?? []).map((r) => r.currency), team?.currency);
+  const receiptsInWorkspaceCurrency: Receipt[] = useMemo(() => {
+    if (!team) return receipts ?? [];
+    return (receipts ?? []).map((r) => {
+      if (r.currency === team.currency) return r;
+      const rate = fxRates[r.currency];
+      return rate != null ? convertReceiptCurrency(r, team.currency, rate) : r;
+    });
+  }, [receipts, team, fxRates]);
+
   // Same "pending refund" figure, for receipts — independent of the status
   // filter below (same reasoning as mileageOutstandingMinor), so toggling
   // which rows show doesn't change what's actually still owed.
   const receiptsOutstandingMinor = useMemo(() => {
-    return (receipts ?? []).filter((r) => isOutstanding(r.reimbursementStatus)).reduce((sum, r) => sum + reclaimMinor(r), 0);
-  }, [receipts]);
+    return receiptsInWorkspaceCurrency.filter((r) => isOutstanding(r.reimbursementStatus)).reduce((sum, r) => sum + reclaimMinor(r), 0);
+  }, [receiptsInWorkspaceCurrency]);
 
   // Status filter narrows the table only — the outstanding total above stays
   // computed from the full unfiltered list, same "filter is display-only"
@@ -64,7 +80,7 @@ export default function TeamPage() {
   const filteredMileage = (mileage ?? []).filter((t) => mileageStatusFilter.includes(t.reimbursementStatus));
 
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts.
-  const filteredReceipts = (receipts ?? []).filter((r) => receiptStatusFilter.includes(r.reimbursementStatus));
+  const filteredReceipts = receiptsInWorkspaceCurrency.filter((r) => receiptStatusFilter.includes(r.reimbursementStatus));
 
   if (!currentUser || !allowed) {
     return (
