@@ -5,6 +5,7 @@ import { canManageReimbursementAuthority } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { CURRENCIES } from "../../lib/data";
 import {
+  useActiveWorkspaceId,
   useCategories,
   useCurrentUser,
   useDistanceUnit,
@@ -37,6 +38,7 @@ function SectionHeading({ children }: { children: string }) {
 export default function SetupPage() {
   const { data: currentUser } = useCurrentUser();
   const { data: users } = useUsers();
+  const { data: activeWorkspaceId } = useActiveWorkspaceId();
   const { data: categories } = useCategories();
   const { data: homeCurrency } = useHomeCurrency();
   const setHomeCurrency = useSetHomeCurrency();
@@ -61,6 +63,12 @@ export default function SetupPage() {
   }
 
   if (!users || !categories || !homeCurrency || !distanceUnit || mileageRateMilli === undefined) return null;
+
+  // Currency/distance-unit/mileage-rate only matter for people who can
+  // actually claim expenses here -- co-members administering this workspace
+  // from a different home (see 0024_home_workspace.sql) shouldn't show up.
+  // null (pre-migration/unknown) fails open rather than hiding anyone.
+  const homeUsers = users.filter((u) => u.homeWorkspaceId === activeWorkspaceId || u.homeWorkspaceId === null);
 
   return (
     <div>
@@ -109,7 +117,7 @@ export default function SetupPage() {
       <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
 
       <UserDisplayPrefsTable
-        users={users}
+        users={homeUsers}
         workspaceCurrency={homeCurrency}
         workspaceUnit={distanceUnit}
         workspaceRateMilli={mileageRateMilli}

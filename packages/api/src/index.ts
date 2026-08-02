@@ -345,6 +345,7 @@ interface MemberWithProfileRow {
     must_change_password?: boolean;
     display_currency?: string | null;
     display_distance_unit?: DistanceUnit | null;
+    home_workspace_id?: string | null;
   } | null;
   workspaces: {
     billing_status: BillingStatus;
@@ -413,6 +414,15 @@ export interface WorkspaceUser {
   /** Null means "inherit the workspace default" — see 0019_personal_display_prefs.sql. Settable by an admin from Setup, or by the user themselves from Profile. */
   displayCurrency: string | null;
   displayDistanceUnit: DistanceUnit | null;
+  /**
+   * The one workspace this person may actually submit receipts/mileage
+   * into — see 0024_home_workspace.sql. A co-member of the CURRENT
+   * workspace can still have a different home (an owner administering
+   * this one without claiming expenses here) -- callers that mean
+   * "who can actually claim expenses here" should filter on this rather
+   * than assuming every row returned by listUsers() qualifies.
+   */
+  homeWorkspaceId: string | null;
 }
 
 /**
@@ -428,7 +438,7 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
     client()
       .from("workspace_members")
       .select(
-        "user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, mileage_rate_milli, profiles(display_name, display_currency, display_distance_unit)",
+        "user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, mileage_rate_milli, profiles(display_name, display_currency, display_distance_unit, home_workspace_id)",
       )
       .eq("workspace_id", wsId),
     client().from("reimbursement_assignments").select("approver_id, employee_id").eq("workspace_id", wsId),
@@ -463,6 +473,7 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
     mileageRateMilli: m.mileage_rate_milli ?? null,
     displayCurrency: m.profiles?.display_currency ?? null,
     displayDistanceUnit: m.profiles?.display_distance_unit ?? null,
+    homeWorkspaceId: m.profiles?.home_workspace_id ?? null,
     assignedEmployeeIds: assignments.filter((a) => a.approver_id === m.user_id).map((a) => a.employee_id),
   }));
 }
