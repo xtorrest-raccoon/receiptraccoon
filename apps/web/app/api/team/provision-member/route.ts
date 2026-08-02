@@ -111,9 +111,18 @@ export async function POST(request: NextRequest) {
   if (deleteErr) {
     return NextResponse.json({ error: deleteErr.message }, { status: 500 });
   }
-  const { error: insertErr } = await serviceClient
-    .from("workspace_members")
-    .insert({ workspace_id: workspaceId, user_id: newUserId, role });
+  // Provisioning as admin also grants both reimbursement-authority booleans
+  // -- acting on one's OWN claim never gets the role-based blanket-authority
+  // bypass (see enforce_reimbursement_authority() in
+  // 0009_reimbursement_assignments.sql), so without these a new admin's own
+  // Approve/Refund buttons would render enabled (canTransitionReimbursement
+  // assumes every admin has both) yet fail with a raw 403 on click.
+  const { error: insertErr } = await serviceClient.from("workspace_members").insert({
+    workspace_id: workspaceId,
+    user_id: newUserId,
+    role,
+    ...(role === "admin" ? { can_approve_reimbursements: true, can_process_reimbursements: true } : {}),
+  });
   if (insertErr) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 });
   }

@@ -626,7 +626,17 @@ export type SecurityGroup = "admin" | "finance" | "approve" | "member";
 export async function setMemberSecurityGroup(userId: string, currentRole: Role, group: SecurityGroup): Promise<void> {
   const wsId = await getCurrentWorkspaceId();
   if (group === "admin") {
-    const { error } = await client().from("workspace_members").update({ role: "admin" }).eq("workspace_id", wsId).eq("user_id", userId);
+    // Also grants both reimbursement-authority booleans -- acting on one's
+    // OWN claim never gets the role-based blanket-authority bypass (see
+    // enforce_reimbursement_authority() in 0009_reimbursement_assignments.sql),
+    // so without these an admin's own Approve/Refund buttons would render
+    // enabled (canTransitionReimbursement assumes every admin has both) yet
+    // fail with a raw 403 the moment they click one for their own expense.
+    const { error } = await client()
+      .from("workspace_members")
+      .update({ role: "admin", can_approve_reimbursements: true, can_process_reimbursements: true })
+      .eq("workspace_id", wsId)
+      .eq("user_id", userId);
     if (error) throw error;
     return;
   }
