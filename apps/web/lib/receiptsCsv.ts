@@ -1,8 +1,30 @@
 import { countryForCurrency, countryName, formatMoney, formatShortDate, reclaimedNetMinor, reclaimedTaxMinor, type Receipt } from "@rr/shared";
 import type { WorkspaceUser } from "@rr/api";
 
-/** Shared by the personal Receipts page and Team's company-wide Receipts section — same columns either way. */
-export function exportReceiptsCsv(rows: Receipt[], users: WorkspaceUser[], filename: string) {
+/**
+ * Prefers the country actually detected on the receipt (real, not a
+ * currency-based guess — the only way to tell French from German EUR
+ * receipts). Falls back to a currency-based guess for receipts captured
+ * before country detection existed, or a genuinely unclear photo.
+ *
+ * Must be called on the receipt as originally fetched, before any display
+ * currency conversion (see convertReceiptCurrency) — conversion overwrites
+ * `currency` with the viewer's chosen display currency, which would make
+ * this guess wrong for a receipt with no detected country and no foreign
+ * originalCurrency of its own.
+ */
+export function guessReceiptCountry(r: Receipt): string {
+  return r.country ? countryName(r.country) : countryForCurrency(r.originalCurrency ?? r.currency);
+}
+
+/**
+ * Shared by the personal Receipts page and Team's company-wide Receipts
+ * section — same columns either way. `countryById`, when given, overrides
+ * the Country column per receipt id — pass a map built from guessReceiptCountry
+ * on the pre-conversion rows when `rows` itself has been currency-converted
+ * for display (see the callers).
+ */
+export function exportReceiptsCsv(rows: Receipt[], users: WorkspaceUser[], filename: string, countryById?: Map<string, string>) {
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
   const header = [
     "Date", "Vendor", "User", "Category", "Country", "Currency", "Net amount", "Tax", "Total",
@@ -13,11 +35,7 @@ export function exportReceiptsCsv(rows: Receipt[], users: WorkspaceUser[], filen
     r.vendor ?? "",
     nameOf(r.createdBy),
     r.categoryName ?? "Other",
-    // Prefer the country actually detected on the receipt (real, not a
-    // currency-based guess — the only way to tell French from German EUR
-    // receipts). Falls back to the currency-based guess for receipts
-    // captured before country detection existed, or a genuinely unclear photo.
-    r.country ? countryName(r.country) : countryForCurrency(r.originalCurrency ?? r.currency),
+    countryById?.get(r.id) ?? guessReceiptCountry(r),
     r.currency,
     reclaimedNetMinor(r) !== null ? formatMoney(reclaimedNetMinor(r)!, r.currency) : "",
     reclaimedTaxMinor(r) !== null ? formatMoney(reclaimedTaxMinor(r)!, r.currency) : "",

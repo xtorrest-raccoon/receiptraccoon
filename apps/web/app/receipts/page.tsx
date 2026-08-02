@@ -5,7 +5,7 @@ import { convertReceiptCurrency, type Receipt, type ReimbursementStatus } from "
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useFxRate, useHomeCurrency, useMyDisplayPrefs, useReceipts, useUsers } from "../../lib/queries";
 import { useDataStore } from "../../lib/store";
-import { exportReceiptsCsv } from "../../lib/receiptsCsv";
+import { exportReceiptsCsv, guessReceiptCountry } from "../../lib/receiptsCsv";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
 import { MultiSelectDropdown, multiSelectControlStyle } from "../../components/MultiSelectDropdown";
 import { ExportCsvDateRangeModal } from "../../components/ExportCsvDateRangeModal";
@@ -61,8 +61,11 @@ export default function ReceiptsPage() {
   const filteredReceipts = toDisplay(receipts).filter((r) => statusFilter.includes(r.reimbursementStatus));
 
   const exportInRange = (startDate: string, endDate: string) => {
+    // Guess each receipt's country from its currency BEFORE personal-display
+    // conversion below overwrites `currency` with the viewer's chosen one.
+    const countryById = new Map((allForExport ?? []).map((r) => [r.id, guessReceiptCountry(r)]));
     const inRange = toDisplay(allForExport).filter((r) => r.receiptDate && r.receiptDate >= startDate && r.receiptDate <= endDate);
-    exportReceiptsCsv(inRange, users ?? [], "receiptraccoon-my-receipts.csv");
+    exportReceiptsCsv(inRange, users ?? [], "receiptraccoon-my-receipts.csv", countryById);
     setExporting(false);
   };
 

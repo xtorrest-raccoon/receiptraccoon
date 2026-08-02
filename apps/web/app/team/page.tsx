@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { canViewTeamPage, convertReceiptCurrency, formatMoney, isAdmin, isOutstanding, reclaimMinor, type Receipt, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useFxRatesTo, useMileage, useReceipts, useTeam, useUsers } from "../../lib/queries";
-import { exportReceiptsCsv } from "../../lib/receiptsCsv";
+import { exportReceiptsCsv, guessReceiptCountry } from "../../lib/receiptsCsv";
 import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
@@ -93,13 +93,16 @@ export default function TeamPage() {
   // just against the unfiltered export set rather than the on-screen one.
   const exportFxRates = useFxRatesTo((allForExport ?? []).map((r) => r.currency), team?.currency);
   const exportInRange = (startDate: string, endDate: string) => {
+    // Guess each receipt's country from its currency BEFORE the
+    // workspace-currency conversion below overwrites `currency`.
+    const countryById = new Map((allForExport ?? []).map((r) => [r.id, guessReceiptCountry(r)]));
     const inWorkspaceCurrency = (allForExport ?? []).map((r) => {
       if (!team || r.currency === team.currency) return r;
       const rate = exportFxRates[r.currency];
       return rate != null ? convertReceiptCurrency(r, team.currency, rate) : r;
     });
     const inRange = inWorkspaceCurrency.filter((r) => r.receiptDate && r.receiptDate >= startDate && r.receiptDate <= endDate);
-    exportReceiptsCsv(inRange, users ?? [], "receiptraccoon-team-receipts.csv");
+    exportReceiptsCsv(inRange, users ?? [], "receiptraccoon-team-receipts.csv", countryById);
     setExporting(false);
   };
 
