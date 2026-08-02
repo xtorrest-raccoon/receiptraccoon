@@ -169,6 +169,7 @@ const ALL_QUERY_KEYS = [
   "activeWorkspaceId",
   "users",
   "currentUser",
+  "groups",
 ];
 
 function useInvalidateAll() {
@@ -234,6 +235,42 @@ export function useSetReimbursementAssignments() {
   return useMutation({
     mutationFn: ({ approverUserId, employeeIds }: { approverUserId: string; employeeIds: string[] }) =>
       data.setReimbursementAssignments(approverUserId, employeeIds),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useGroups() {
+  return useQuery({ queryKey: ["groups"], queryFn: data.listGroups });
+}
+
+export function useCreateGroup() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (name: string) => data.createGroup(name),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useRenameGroup() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ groupId, name }: { groupId: string; name: string }) => data.renameGroup(groupId, name),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useDeleteGroup() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (groupId: string) => data.deleteGroup(groupId),
+    onSuccess: invalidateAll,
+  });
+}
+
+export function useSetGroupMembers() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ groupId, userIds }: { groupId: string; userIds: string[] }) => data.setGroupMembers(groupId, userIds),
     onSuccess: invalidateAll,
   });
 }

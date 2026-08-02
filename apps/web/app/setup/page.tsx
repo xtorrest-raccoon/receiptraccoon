@@ -14,6 +14,7 @@ import {
   useSetHomeCurrency,
   useUsers,
 } from "../../lib/queries";
+import { GroupsTable } from "../../components/GroupsTable";
 import { ProvisionMemberPanel } from "../../components/ProvisionMemberPanel";
 import { ReimbursementAuthorityTable } from "../../components/ReimbursementAuthorityTable";
 import { UserDisplayPrefsTable } from "../../components/UserDisplayPrefsTable";
@@ -115,6 +116,8 @@ export default function SetupPage() {
 
       <SectionHeading>Security group</SectionHeading>
       <ReimbursementAuthorityTable users={users} currentUser={currentUser} />
+
+      <GroupsTable users={users} currentUser={currentUser} />
 
       <UserDisplayPrefsTable
         users={homeUsers}

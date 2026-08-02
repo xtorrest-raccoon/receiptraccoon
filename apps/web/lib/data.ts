@@ -13,7 +13,7 @@ import * as api from "@rr/api";
 import type { DashboardResponse, DistanceUnit, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
 import { persistActiveWorkspace } from "./activeWorkspace";
 
-export type { CurrentUser, SecurityGroup, WorkspaceUser } from "@rr/api";
+export type { CurrentUser, Group, SecurityGroup, WorkspaceUser } from "@rr/api";
 
 /** Anchored once at load — "today" doesn't change meaningfully within a session. */
 export const TODAY = new Date().toISOString().slice(0, 10);
@@ -288,6 +288,26 @@ export function setMemberSecurityGroup(userId: string, currentRole: Role, group:
 
 export function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {
   return api.setReimbursementAssignments(approverUserId, employeeIds);
+}
+
+export function listGroups(): Promise<api.Group[]> {
+  return api.listGroups();
+}
+
+export function createGroup(name: string): Promise<string> {
+  return api.createGroup(name);
+}
+
+export function renameGroup(groupId: string, name: string): Promise<void> {
+  return api.renameGroup(groupId, name);
+}
+
+export function deleteGroup(groupId: string): Promise<void> {
+  return api.deleteGroup(groupId);
+}
+
+export function setGroupMembers(groupId: string, userIds: string[]): Promise<void> {
+  return api.setGroupMembers(groupId, userIds);
 }
 
 /** Owner/admin setting a co-member's mileage rate override -- null falls back to the workspace default. */

@@ -499,6 +499,64 @@ export async function setReimbursementAssignments(approverUserId: string, employ
   if (insErr) throw insErr;
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  memberIds: string[];
+}
+
+/**
+ * Plain organizational groups (e.g. "Sales team") -- see 0027_groups.sql.
+ * No authority semantics of their own, unlike the Admin/Finance/Approver
+ * security groups; purely for grouping people. Fetches group_members
+ * separately and folds it in client-side rather than a nested embed, since
+ * a group with zero members would otherwise vanish from an inner join.
+ */
+export async function listGroups(): Promise<Group[]> {
+  const wsId = await getCurrentWorkspaceId();
+  const [groupsRes, membersRes] = await Promise.all([
+    client().from("groups").select("id, name").eq("workspace_id", wsId).order("name"),
+    client().from("group_members").select("group_id, user_id"),
+  ]);
+  if (groupsRes.error) throw groupsRes.error;
+  if (membersRes.error) throw membersRes.error;
+
+  const memberRows = membersRes.data as unknown as { group_id: string; user_id: string }[];
+  return (groupsRes.data as unknown as { id: string; name: string }[]).map((g) => ({
+    id: g.id,
+    name: g.name,
+    memberIds: memberRows.filter((m) => m.group_id === g.id).map((m) => m.user_id),
+  }));
+}
+
+export async function createGroup(name: string): Promise<string> {
+  const wsId = await getCurrentWorkspaceId();
+  const { data, error } = await client().from("groups").insert({ workspace_id: wsId, name }).select("id").single();
+  if (error) throw error;
+  return (data as { id: string }).id;
+}
+
+export async function renameGroup(groupId: string, name: string): Promise<void> {
+  const { error } = await client().from("groups").update({ name }).eq("id", groupId);
+  if (error) throw error;
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  const { error } = await client().from("groups").delete().eq("id", groupId);
+  if (error) throw error;
+}
+
+/** Same "replace the whole set" shape as setReimbursementAssignments -- see there for why. */
+export async function setGroupMembers(groupId: string, userIds: string[]): Promise<void> {
+  const { error: delErr } = await client().from("group_members").delete().eq("group_id", groupId);
+  if (delErr) throw delErr;
+  if (userIds.length === 0) return;
+  const { error: insErr } = await client()
+    .from("group_members")
+    .insert(userIds.map((userId) => ({ group_id: groupId, user_id: userId })));
+  if (insErr) throw insErr;
+}
+
 /**
  * Removes someone from the caller's workspace — revokes access immediately
  * (RLS gates everything on workspace membership), but deliberately does NOT
