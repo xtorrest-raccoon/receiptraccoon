@@ -43,6 +43,10 @@ export function useIsHomeWorkspace() {
   return useQuery({ queryKey: ["isHomeWorkspace"], queryFn: data.isCurrentWorkspaceHome });
 }
 
+export function useHomeWorkspaceName() {
+  return useQuery({ queryKey: ["homeWorkspaceName"], queryFn: data.getHomeWorkspaceName });
+}
+
 export function useMyDisplayPrefs() {
   return useQuery({ queryKey: ["myDisplayPrefs"], queryFn: data.getMyDisplayPrefs });
 }
@@ -184,6 +188,7 @@ const ALL_QUERY_KEYS = [
   "mileageRateMilli",
   "myMileageRateMilli",
   "isHomeWorkspace",
+  "homeWorkspaceName",
   "myDisplayPrefs",
   "dailyApprovalRemindersEnabled",
   "workspaceInvites",

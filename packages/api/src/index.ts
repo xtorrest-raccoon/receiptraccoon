@@ -199,6 +199,20 @@ export async function isCurrentWorkspaceHome(): Promise<boolean> {
 }
 
 /**
+ * Name of the caller's actual home workspace -- for pointing someone
+ * toggled into a workspace they only administer (see isCurrentWorkspaceHome)
+ * back to where their own expenses/display settings actually live. Null if
+ * they have no separate home (matches getHomeWorkspaceId's own null case).
+ */
+export async function getHomeWorkspaceName(): Promise<string | null> {
+  const homeId = await getHomeWorkspaceId();
+  if (homeId === null) return null;
+  const { data, error } = await client().from("workspaces").select("name").eq("id", homeId).single();
+  if (error) throw error;
+  return (data as { name: string }).name;
+}
+
+/**
  * Writes the choice to profiles.active_workspace_id so every client reading
  * this caller's profile agrees on it (mobile has no localStorage of its
  * own -- see loadActiveWorkspaceId below). Also updates the in-memory pin
@@ -1684,7 +1698,13 @@ export async function getTeam(month?: string): Promise<TeamResponse> {
   const allOutstanding = allReceipts.filter((r) => isOutstanding(r.reimbursementStatus));
   const tripsOutstanding = allTrips.filter((t) => isOutstanding(t.reimbursementStatus));
   const mileageOutstandingMinor = tripsOutstanding.reduce((s, t) => s + t.amountMinor, 0);
-  const members = computeTeamMemberSummaries(users, allReceipts, today);
+  // Someone can administer this workspace without it being their home (see
+  // 0024_home_workspace.sql) -- they can never have a receipt or trip here,
+  // so a per-member spend row for them would always read 0/€0, permanently.
+  // Excluded from this summary only; they still appear in Setup's own
+  // member-management tables, which are about administration, not spend.
+  const homeUsers = users.filter((u) => u.homeWorkspaceId === null || u.homeWorkspaceId === ws.id);
+  const members = computeTeamMemberSummaries(homeUsers, allReceipts, today);
   const agedOver30 = allOutstanding.filter((r) => daysBetween(r.receiptDate ?? today, today) > 30);
 
   return {

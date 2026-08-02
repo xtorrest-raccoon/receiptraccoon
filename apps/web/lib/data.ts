@@ -136,6 +136,11 @@ export function isCurrentWorkspaceHome(): Promise<boolean> {
   return api.isCurrentWorkspaceHome();
 }
 
+/** Name of the caller's actual home workspace, for pointing them there from a workspace they only administer. See Profile page. */
+export function getHomeWorkspaceName(): Promise<string | null> {
+  return api.getHomeWorkspaceName();
+}
+
 export function getDailyApprovalRemindersEnabled(): Promise<boolean> {
   return api.getDailyApprovalRemindersEnabled();
 }

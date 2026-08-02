@@ -2,7 +2,15 @@
 
 import { currencySymbol, rateToDecimalString } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { useCurrentUser, useHomeCurrency, useDistanceUnit, useMyDisplayPrefs, useMyMileageRateMilli } from "../../lib/queries";
+import {
+  useCurrentUser,
+  useHomeCurrency,
+  useDistanceUnit,
+  useHomeWorkspaceName,
+  useIsHomeWorkspace,
+  useMyDisplayPrefs,
+  useMyMileageRateMilli,
+} from "../../lib/queries";
 
 function InfoCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
@@ -22,12 +30,47 @@ function InfoCard({ label, value, hint }: { label: string; value: string; hint: 
  */
 export default function ProfilePage() {
   const { data: currentUser } = useCurrentUser();
+  const { data: isHome } = useIsHomeWorkspace();
+  const { data: homeWorkspaceName } = useHomeWorkspaceName();
   const { data: workspaceCurrency } = useHomeCurrency();
   const { data: workspaceUnit } = useDistanceUnit();
   const { data: prefs } = useMyDisplayPrefs();
   const { data: rateMilli } = useMyMileageRateMilli();
 
-  if (!currentUser || !workspaceCurrency || !workspaceUnit || !prefs || rateMilli === undefined) return null;
+  if (!currentUser || isHome === undefined) return null;
+
+  if (!isHome) {
+    return (
+      <div>
+        <div style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, letterSpacing: "-0.01em", marginBottom: 4 }}>Profile</div>
+        <div
+          style={{
+            background: color.surface,
+            border: `1px solid ${color.border}`,
+            borderRadius: radius["2xl"],
+            padding: 20,
+            maxWidth: 480,
+            fontSize: fontSize.body,
+            color: color.textMuted,
+            lineHeight: 1.6,
+          }}
+        >
+          You only administer this workspace — it's not where your own receipts and mileage live, so there's nothing
+          personal to show here.{" "}
+          {homeWorkspaceName ? (
+            <>
+              Switch to <strong style={{ color: color.text }}>{homeWorkspaceName}</strong> to see your own display
+              currency, distance unit, and mileage rate.
+            </>
+          ) : (
+            "Switch to your own workspace to see your display currency, distance unit, and mileage rate."
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!workspaceCurrency || !workspaceUnit || !prefs || rateMilli === undefined) return null;
 
   const currency = prefs.currency ?? workspaceCurrency;
   const unit = prefs.distanceUnit ?? workspaceUnit;
