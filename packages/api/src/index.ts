@@ -403,12 +403,14 @@ export interface WorkspaceUser {
   canApproveReimbursements: boolean;
   canProcessReimbursements: boolean;
   /**
-   * Employees this person is specifically scoped to act on — see
-   * 0009_reimbursement_assignments.sql. Empty means no authority over
-   * anyone yet, even if either capability above is true; irrelevant for
-   * owner/admin, who have blanket authority regardless of this list.
+   * Groups (see 0027_groups.sql) this person is specifically scoped to act
+   * on — see 0028_reimbursement_group_authority.sql. Empty means no
+   * authority over anyone yet, even if either capability above is true;
+   * irrelevant for owner/admin, who have blanket authority regardless of
+   * this list. Authority reaches whoever is a member of an assigned group
+   * at check time, not a frozen snapshot of who was in it when assigned.
    */
-  assignedEmployeeIds: string[];
+  assignedGroupIds: string[];
   /** Null means "inherit the workspace's default rate" — see 0013_per_user_mileage_rate.sql. */
   mileageRateMilli: number | null;
   /** Null means "inherit the workspace default" — see 0019_personal_display_prefs.sql. Settable by an admin from Setup, or by the user themselves from Profile. */
@@ -441,7 +443,7 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
         "user_id, role, job_title, can_approve_reimbursements, can_process_reimbursements, mileage_rate_milli, profiles(display_name, display_currency, display_distance_unit, home_workspace_id)",
       )
       .eq("workspace_id", wsId),
-    client().from("reimbursement_assignments").select("approver_id, employee_id").eq("workspace_id", wsId),
+    client().from("reimbursement_group_assignments").select("approver_id, group_id").eq("workspace_id", wsId),
   ]);
   if (assignmentsRes.error) throw assignmentsRes.error;
 
@@ -462,7 +464,7 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
     membersData = fallback.data;
   }
   const rows = membersData as unknown as (MemberWithProfileRow & { user_id: string })[];
-  const assignments = (assignmentsRes.data ?? []) as { approver_id: string; employee_id: string }[];
+  const assignments = (assignmentsRes.data ?? []) as { approver_id: string; group_id: string }[];
   return rows.map((m) => ({
     id: m.user_id,
     name: m.profiles?.display_name ?? "",
@@ -474,28 +476,28 @@ export async function listUsers(): Promise<WorkspaceUser[]> {
     displayCurrency: m.profiles?.display_currency ?? null,
     displayDistanceUnit: m.profiles?.display_distance_unit ?? null,
     homeWorkspaceId: m.profiles?.home_workspace_id ?? null,
-    assignedEmployeeIds: assignments.filter((a) => a.approver_id === m.user_id).map((a) => a.employee_id),
+    assignedGroupIds: assignments.filter((a) => a.approver_id === m.user_id).map((a) => a.group_id),
   }));
 }
 
 /**
- * Replaces the full set of employees an approver/refunder is scoped to in
- * one call, rather than granular add/remove — simpler UX (a checklist of
- * everyone, saved as a whole) and simpler to reason about than incremental
+ * Replaces the full set of groups an approver/refunder is scoped to in one
+ * call, rather than granular add/remove — simpler UX (a checklist of every
+ * group, saved as a whole) and simpler to reason about than incremental
  * inserts/deletes racing each other.
  */
-export async function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {
+export async function setReimbursementGroupAssignments(approverUserId: string, groupIds: string[]): Promise<void> {
   const wsId = await getCurrentWorkspaceId();
   const { error: delErr } = await client()
-    .from("reimbursement_assignments")
+    .from("reimbursement_group_assignments")
     .delete()
     .eq("workspace_id", wsId)
     .eq("approver_id", approverUserId);
   if (delErr) throw delErr;
-  if (employeeIds.length === 0) return;
+  if (groupIds.length === 0) return;
   const { error: insErr } = await client()
-    .from("reimbursement_assignments")
-    .insert(employeeIds.map((employeeId) => ({ workspace_id: wsId, approver_id: approverUserId, employee_id: employeeId })));
+    .from("reimbursement_group_assignments")
+    .insert(groupIds.map((groupId) => ({ workspace_id: wsId, approver_id: approverUserId, group_id: groupId })));
   if (insErr) throw insErr;
 }
 
@@ -546,7 +548,7 @@ export async function deleteGroup(groupId: string): Promise<void> {
   if (error) throw error;
 }
 
-/** Same "replace the whole set" shape as setReimbursementAssignments -- see there for why. */
+/** Same "replace the whole set" shape as setReimbursementGroupAssignments -- see there for why. */
 export async function setGroupMembers(groupId: string, userIds: string[]): Promise<void> {
   const { error: delErr } = await client().from("group_members").delete().eq("group_id", groupId);
   if (delErr) throw delErr;
@@ -566,23 +568,20 @@ export async function setGroupMembers(groupId: string, userIds: string[]): Promi
  *
  * workspace_members' own RLS write policy (owner/admin-only) already covers
  * this delete — no service role needed. Also clears any reimbursement
- * assignments naming them (either side) so nothing stale lingers once
- * they're gone.
+ * group assignments naming them as the approver, so nothing stale lingers
+ * once they're gone (their membership in any group, and any authority that
+ * grants OTHER approvers over them, follows removal automatically -- there's
+ * no separate "employee side" to clean up anymore, unlike the old
+ * per-employee assignments).
  */
 export async function removeMember(userId: string): Promise<void> {
   const wsId = await getCurrentWorkspaceId();
   const { error: approverErr } = await client()
-    .from("reimbursement_assignments")
+    .from("reimbursement_group_assignments")
     .delete()
     .eq("workspace_id", wsId)
     .eq("approver_id", userId);
   if (approverErr) throw approverErr;
-  const { error: employeeErr } = await client()
-    .from("reimbursement_assignments")
-    .delete()
-    .eq("workspace_id", wsId)
-    .eq("employee_id", userId);
-  if (employeeErr) throw employeeErr;
   const { error } = await client().from("workspace_members").delete().eq("workspace_id", wsId).eq("user_id", userId);
   if (error) throw error;
 }

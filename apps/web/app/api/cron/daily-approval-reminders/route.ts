@@ -76,12 +76,13 @@ export async function GET(request: NextRequest) {
   let emailsSent = 0;
 
   for (const ws of (workspaces ?? []) as { id: string; home_currency: string }[]) {
-    const [membersRes, assignmentsRes, receiptsRes, tripsRes] = await Promise.all([
+    const [membersRes, groupsRes, assignmentsRes, receiptsRes, tripsRes] = await Promise.all([
       supabase
         .from("workspace_members")
         .select("user_id, role, can_approve_reimbursements, can_process_reimbursements")
         .eq("workspace_id", ws.id),
-      supabase.from("reimbursement_assignments").select("approver_id, employee_id").eq("workspace_id", ws.id),
+      supabase.from("groups").select("id").eq("workspace_id", ws.id),
+      supabase.from("reimbursement_group_assignments").select("approver_id, group_id").eq("workspace_id", ws.id),
       supabase
         .from("receipts")
         .select("created_by, vendor, receipt_date, total_minor, reimbursement_status")
@@ -100,7 +101,11 @@ export async function GET(request: NextRequest) {
       can_approve_reimbursements: boolean;
       can_process_reimbursements: boolean;
     }[];
-    const assignments = (assignmentsRes.data ?? []) as { approver_id: string; employee_id: string }[];
+    const groupIds = ((groupsRes.data ?? []) as { id: string }[]).map((g) => g.id);
+    const { data: groupMembersData } =
+      groupIds.length > 0 ? await supabase.from("group_members").select("group_id, user_id").in("group_id", groupIds) : { data: [] };
+    const groupMembers = (groupMembersData ?? []) as { group_id: string; user_id: string }[];
+    const assignments = (assignmentsRes.data ?? []) as { approver_id: string; group_id: string }[];
     const receipts = (receiptsRes.data ?? []) as {
       created_by: string;
       vendor: string | null;
@@ -118,7 +123,8 @@ export async function GET(request: NextRequest) {
 
     for (const member of members) {
       const isAdmin = member.role === "owner" || member.role === "admin";
-      const assignedEmployeeIds = assignments.filter((a) => a.approver_id === member.user_id).map((a) => a.employee_id);
+      const assignedGroupIds = assignments.filter((a) => a.approver_id === member.user_id).map((a) => a.group_id);
+      const assignedEmployeeIds = groupMembers.filter((gm) => assignedGroupIds.includes(gm.group_id)).map((gm) => gm.user_id);
       const canActOn = (capability: "approve" | "process", ownerId: string): boolean => {
         if (isAdmin) return true;
         const hasCapability = capability === "approve" ? member.can_approve_reimbursements : member.can_process_reimbursements;

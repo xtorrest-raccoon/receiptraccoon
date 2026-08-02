@@ -286,8 +286,8 @@ export function setMemberSecurityGroup(userId: string, currentRole: Role, group:
   return api.setMemberSecurityGroup(userId, currentRole, group);
 }
 
-export function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {
-  return api.setReimbursementAssignments(approverUserId, employeeIds);
+export function setReimbursementGroupAssignments(approverUserId: string, groupIds: string[]): Promise<void> {
+  return api.setReimbursementGroupAssignments(approverUserId, groupIds);
 }
 
 export function listGroups(): Promise<api.Group[]> {

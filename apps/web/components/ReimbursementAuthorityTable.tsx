@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { getSession, signInWithPassword, type CurrentUser, type SecurityGroup, type WorkspaceUser } from "@rr/api";
+import { getSession, signInWithPassword, type CurrentUser, type Group, type SecurityGroup, type WorkspaceUser } from "@rr/api";
 import { canManageReimbursementAuthority, isAdmin } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { syncSeats } from "../lib/data";
-import { useRemoveMember, useSetMemberSecurityGroup, useSetReimbursementAssignments } from "../lib/queries";
+import { useGroups, useRemoveMember, useSetMemberSecurityGroup, useSetReimbursementGroupAssignments } from "../lib/queries";
 import { Avatar } from "./Avatar";
 import { MultiSelectDropdown, multiSelectControlStyle } from "./MultiSelectDropdown";
 
-function nameOf(users: WorkspaceUser[], id: string): string {
-  return users.find((u) => u.id === id)?.name ?? "Unknown";
+function nameOfGroup(groups: Group[], id: string): string {
+  return groups.find((g) => g.id === id)?.name ?? "Unknown";
 }
 
 /**
@@ -142,8 +142,9 @@ export function ReimbursementAuthorityTable({
   currentUser: CurrentUser;
 }) {
   const setGroup = useSetMemberSecurityGroup();
-  const setAssignments = useSetReimbursementAssignments();
+  const setAssignments = useSetReimbursementGroupAssignments();
   const removeMember = useRemoveMember();
+  const { data: groups } = useGroups();
   const [removing, setRemoving] = useState<WorkspaceUser | null>(null);
   const canGrant = canManageReimbursementAuthority(currentUser.role, currentUser);
   // Stricter than canGrant on purpose — removing someone's access is more
@@ -183,13 +184,12 @@ export function ReimbursementAuthorityTable({
         }}
       >
         <div>User</div>
-        <div>Security group</div>
+        <div>Profile types</div>
         <div>Authority on</div>
       </div>
 
       {users.map((u) => {
         const owner = u.role === "owner";
-        const otherUsers = users.filter((other) => other.id !== u.id);
         const group = groupOf(u);
 
         return (
@@ -250,16 +250,16 @@ export function ReimbursementAuthorityTable({
                   <span style={{ fontSize: fontSize.small, color: color.textFaint }}>—</span>
                 ) : canGrant ? (
                   <MultiSelectDropdown
-                    options={otherUsers.map((other) => ({ value: other.id, label: other.name }))}
-                    selected={u.assignedEmployeeIds}
-                    onChange={(next) => setAssignments.mutate({ approverUserId: u.id, employeeIds: next })}
-                    emptyLabel="No one — not yet assigned"
+                    options={(groups ?? []).map((g) => ({ value: g.id, label: g.name }))}
+                    selected={u.assignedGroupIds}
+                    onChange={(next) => setAssignments.mutate({ approverUserId: u.id, groupIds: next })}
+                    emptyLabel="No group — not yet assigned"
                   />
-                ) : u.assignedEmployeeIds.length === 0 ? (
-                  <span style={{ fontSize: fontSize.small, color: color.textFaint, fontStyle: "italic" }}>No one — not yet assigned</span>
+                ) : u.assignedGroupIds.length === 0 ? (
+                  <span style={{ fontSize: fontSize.small, color: color.textFaint, fontStyle: "italic" }}>No group — not yet assigned</span>
                 ) : (
                   <span style={{ fontSize: fontSize.small, color: color.textMuted }}>
-                    {u.assignedEmployeeIds.map((id) => nameOf(users, id)).join(", ")}
+                    {u.assignedGroupIds.map((id) => nameOfGroup(groups ?? [], id)).join(", ")}
                   </span>
                 )}
               </>

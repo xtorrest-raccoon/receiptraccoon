@@ -230,11 +230,11 @@ export function useSetMemberSecurityGroup() {
   });
 }
 
-export function useSetReimbursementAssignments() {
+export function useSetReimbursementGroupAssignments() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ approverUserId, employeeIds }: { approverUserId: string; employeeIds: string[] }) =>
-      data.setReimbursementAssignments(approverUserId, employeeIds),
+    mutationFn: ({ approverUserId, groupIds }: { approverUserId: string; groupIds: string[] }) =>
+      data.setReimbursementGroupAssignments(approverUserId, groupIds),
     onSuccess: invalidateAll,
   });
 }
