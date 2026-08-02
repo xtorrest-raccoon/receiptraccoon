@@ -11,12 +11,14 @@ import {
   useActiveWorkspaceId,
   useCreateWorkspace,
   useCurrentUser,
+  useDeleteWorkspace,
   useMyWorkspaces,
   useSetWorkspaceName,
   useSwitchWorkspace,
   useWorkspaceName,
 } from "../lib/queries";
-import { BillingIcon, DashboardIcon, MileageIcon, ProfileIcon, ReceiptsIcon, SetupIcon, TeamIcon } from "./icons";
+import { BillingIcon, DashboardIcon, MileageIcon, ProfileIcon, ReceiptsIcon, SetupIcon, SignOutIcon, TeamIcon } from "./icons";
+import { PasswordConfirmModal } from "./PasswordConfirmModal";
 
 interface NavItem {
   href: string;
@@ -51,11 +53,13 @@ function visibleItems(currentUser: CurrentUser | undefined) {
 /**
  * Everyone signed in sees the current workspace's name; only whoever can
  * manage reimbursement authority (same admin/owner-or-super-user audience
- * as the Setup page) gets the dropdown to switch, rename, or add another
- * workspace. Renaming mirrors the original pre-Setup sidebar widget's
- * onBlur-commits pattern; switching just pins a different id (see
- * lib/activeWorkspace.ts) and lets the coarse invalidateAll refetch
- * everything against it.
+ * as the Setup page) gets the dropdown to switch, rename, delete, or add
+ * another workspace. Renaming and deleting both require the actor's own
+ * password (see PasswordConfirmModal) rather than committing instantly --
+ * unlike most settings in this app, a wrong workspace name or an
+ * accidentally deleted workspace isn't a quick undo. Switching just pins a
+ * different id (see lib/activeWorkspace.ts) and lets the coarse
+ * invalidateAll refetch everything against it.
  */
 function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefined }) {
   const { data: workspaceName } = useWorkspaceName();
@@ -64,14 +68,23 @@ function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefin
   const setWorkspaceName = useSetWorkspaceName();
   const switchWorkspace = useSwitchWorkspace();
   const createWorkspace = useCreateWorkspace();
+  const deleteWorkspace = useDeleteWorkspace();
 
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [confirmingRename, setConfirmingRename] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const canManage = currentUser ? canManageReimbursementAuthority(currentUser.role, currentUser) : false;
+  // Stricter than canManage -- deleting destroys every receipt and mileage
+  // trip in the workspace for everyone in it, not just a setting, so this
+  // stays owner-only regardless of granted reimbursement authority. Also
+  // hidden entirely when it's the only workspace -- the RPC would refuse
+  // anyway (every account keeps at least one), so there's nothing to offer.
+  const canDelete = currentUser?.role === "owner" && (workspaces?.length ?? 0) > 1;
 
   useEffect(() => {
     if (workspaceName !== undefined) setNameDraft(workspaceName);
@@ -79,14 +92,18 @@ function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefin
 
   if (workspaceName === undefined) return null;
 
-  const commitName = () => {
+  const cancelRename = () => {
     setRenaming(false);
+    setNameDraft(workspaceName);
+  };
+
+  const saveRename = () => {
     const trimmed = nameDraft.trim();
     if (!trimmed || trimmed === workspaceName) {
-      setNameDraft(workspaceName);
+      cancelRename();
       return;
     }
-    setWorkspaceName.mutate(trimmed);
+    setConfirmingRename(true);
   };
 
   const commitCreate = () => {
@@ -103,55 +120,70 @@ function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefin
 
   return (
     <div style={{ position: "relative", marginBottom: 10 }}>
-      <button
-        type="button"
-        onClick={() => canManage && setOpen((o) => !o)}
-        style={{
-          width: "100%",
-          textAlign: "left",
-          padding: 12,
-          borderRadius: radius.lg,
-          background: color.surfaceMuted,
-          border: "none",
-          cursor: canManage ? "pointer" : "default",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div
-            style={{
-              fontSize: fontSize.tiny + 0.5,
-              fontWeight: fontWeight.semibold,
-              color: color.textFaint,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-          >
+      {renaming ? (
+        // A plain div, not the clickable button below -- nesting the Save/
+        // Cancel buttons inside a <button> would be invalid HTML.
+        <div style={{ padding: 12, borderRadius: radius.lg, background: color.surfaceMuted }}>
+          <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, letterSpacing: "0.04em" }}>
             Workspace
           </div>
-          {canManage && <span style={{ fontSize: fontSize.tiny, color: color.textFaint }}>{open ? "▲" : "▼"}</span>}
-        </div>
-        {renaming ? (
           <input
             autoFocus
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value)}
-            onBlur={commitName}
-            onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Enter") saveRename();
+              if (e.key === "Escape") cancelRename();
             }}
             style={{
               width: "100%",
-              border: "none",
-              background: "none",
-              padding: 0,
+              border: `1px solid ${color.borderStrong}`,
+              borderRadius: radius.sm,
+              background: color.surface,
+              padding: "5px 8px",
               marginTop: 4,
               fontSize: fontSize.small + 1,
               fontWeight: fontWeight.bold,
               color: color.textStrong,
             }}
           />
-        ) : (
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={cancelRename}
+              style={{ flex: 1, padding: "6px 0", borderRadius: radius.sm, border: "none", background: color.surface, color: color.textMuted, fontWeight: fontWeight.semibold, fontSize: fontSize.small, cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveRename}
+              style={{ flex: 1, padding: "6px 0", borderRadius: radius.sm, border: "none", background: color.brand, color: "#fff", fontWeight: fontWeight.bold, fontSize: fontSize.small, cursor: "pointer" }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => canManage && setOpen((o) => !o)}
+          style={{
+            width: "100%",
+            textAlign: "left",
+            padding: 12,
+            borderRadius: radius.lg,
+            background: color.surfaceMuted,
+            border: "none",
+            cursor: canManage ? "pointer" : "default",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: fontSize.tiny + 0.5, fontWeight: fontWeight.semibold, color: color.textFaint, letterSpacing: "0.04em" }}>
+              Workspace
+            </div>
+            {canManage && <span style={{ fontSize: fontSize.tiny, color: color.textFaint }}>{open ? "▲" : "▼"}</span>}
+          </div>
           <div
             style={{
               fontSize: fontSize.small + 1,
@@ -165,8 +197,8 @@ function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefin
           >
             {workspaceName}
           </div>
-        )}
-      </button>
+        </button>
+      )}
 
       {open && canManage && (
         <div
@@ -245,6 +277,30 @@ function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefin
             Rename this workspace
           </button>
 
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmingDelete(true);
+                setOpen(false);
+              }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "8px 10px",
+                borderRadius: radius.sm,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                fontSize: fontSize.small,
+                color: color.up,
+                fontWeight: fontWeight.semibold,
+              }}
+            >
+              Delete this workspace
+            </button>
+          )}
+
           {creating ? (
             <div style={{ padding: "6px 10px" }}>
               <div style={{ display: "flex", gap: 6 }}>
@@ -312,6 +368,34 @@ function WorkspaceSwitcher({ currentUser }: { currentUser: CurrentUser | undefin
           )}
         </div>
       )}
+
+      {confirmingRename ? (
+        <PasswordConfirmModal
+          title="Rename this workspace?"
+          description={`"${workspaceName}" will become "${nameDraft.trim()}". Enter your own password to confirm.`}
+          confirmLabel="Rename"
+          onCancel={() => setConfirmingRename(false)}
+          onConfirmed={() => {
+            setConfirmingRename(false);
+            setRenaming(false);
+            setWorkspaceName.mutate(nameDraft.trim());
+          }}
+        />
+      ) : null}
+
+      {confirmingDelete ? (
+        <PasswordConfirmModal
+          title={`Delete "${workspaceName}"?`}
+          description="Every receipt, mileage trip, and membership in this workspace is permanently deleted for everyone in it. This cannot be undone. Enter your own password to confirm."
+          confirmLabel="Delete"
+          danger
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirmed={() => {
+            setConfirmingDelete(false);
+            if (activeId) deleteWorkspace.mutate(activeId);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -337,7 +421,7 @@ export function Sidebar() {
       }}
     >
       <div style={{ display: "flex", justifyContent: "center", padding: "0 8px 10px 8px" }}>
-        <Image src="/logo.png" alt="ReceiptRaccoon" width={140} height={140} />
+        <Image src="/logo.png" alt="ReceiptRaccoon" width={110} height={110} />
       </div>
 
       <WorkspaceSwitcher currentUser={currentUser} />
@@ -398,16 +482,21 @@ export function Sidebar() {
           // redirects to /login once signOut() resolves.
           onClick={() => signOut()}
           style={{
-            padding: "8px 0",
-            border: "none",
-            background: "none",
-            color: color.textFaint,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            padding: "9px 0",
+            borderRadius: radius.md,
+            border: `1px solid ${color.border}`,
+            background: color.surface,
+            color: color.textMuted,
             fontWeight: fontWeight.semibold,
-            fontSize: fontSize.tiny + 0.5,
-            textAlign: "left",
+            fontSize: fontSize.small,
             cursor: "pointer",
           }}
         >
+          <SignOutIcon color={color.textMuted} />
           Sign out
         </button>
       </div>

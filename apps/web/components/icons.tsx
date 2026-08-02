@@ -47,6 +47,15 @@ export function BillingIcon({ color }: { color: string }) {
   );
 }
 
+export function SignOutIcon({ color }: { color: string }) {
+  return (
+    <svg width={16} height={16} viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M8 17H4.5a1.5 1.5 0 0 1-1.5-1.5v-11A1.5 1.5 0 0 1 4.5 3H8" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13 13.5 17 10l-4-3.5M17 10H7.5" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function ProfileIcon({ color }: { color: string }) {
   return (
     <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true">

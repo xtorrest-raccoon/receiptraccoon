@@ -300,6 +300,14 @@ export function useCreateWorkspace() {
   });
 }
 
+export function useDeleteWorkspace() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (workspaceId: string) => data.deleteWorkspace(workspaceId),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useAddMileageTrip() {
   const invalidateAll = useInvalidateAll();
   return useMutation({

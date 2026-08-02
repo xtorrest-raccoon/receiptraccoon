@@ -248,6 +248,23 @@ export async function createWorkspace(name: string): Promise<string> {
   return id;
 }
 
+/**
+ * Owner-only, permanent -- see api.deleteWorkspace's own comment. If this
+ * was the active workspace, pins a remaining one afterward so the app
+ * doesn't keep pointing at a workspace that no longer exists.
+ */
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  const [activeId, allWorkspaces] = await Promise.all([getActiveWorkspaceId(), listMyWorkspaces()]);
+  await api.deleteWorkspace(workspaceId);
+  if (activeId === workspaceId) {
+    const next = allWorkspaces.find((w) => w.id !== workspaceId);
+    if (next) {
+      await api.persistActiveWorkspaceId(next.id);
+      persistActiveWorkspace(next.id);
+    }
+  }
+}
+
 export function userName(id: string): Promise<string> {
   return api.userName(id);
 }

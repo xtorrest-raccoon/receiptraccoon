@@ -269,6 +269,17 @@ export async function createWorkspace(name: string): Promise<string> {
   return newWsId as string;
 }
 
+/**
+ * Owner-only, permanently destroys the workspace and everything in it (see
+ * 0023_delete_workspace.sql -- the RPC itself enforces both the owner check
+ * and "can't delete your only workspace"). Caller is responsible for
+ * switching to a remaining workspace afterward if this was the active one.
+ */
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  const { error } = await client().rpc("delete_workspace", { p_workspace_id: workspaceId });
+  if (error) throw error;
+}
+
 export type BillingStatus = "inactive" | "active" | "past_due" | "canceled";
 
 export interface CurrentUser {
