@@ -209,7 +209,7 @@ export function ReimbursementAuthorityTable({
               <Avatar name={u.name} />
               <div>
                 <div style={{ fontWeight: fontWeight.bold }}>{u.name}</div>
-                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint }}>{owner ? "Owner" : GROUP_STATUS[group]}</div>
+                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint }}>{owner ? "System Admin" : GROUP_STATUS[group]}</div>
                 {canRemove && u.id !== currentUser.id && u.role !== "owner" ? (
                   <button
                     type="button"
@@ -224,7 +224,7 @@ export function ReimbursementAuthorityTable({
 
             {owner ? (
               <div style={{ fontSize: fontSize.small, color: color.textFaint, gridColumn: "2 / span 2" }}>
-                Full authority over everyone (owner)
+                Full authority over everyone (system admin, cannot be removed)
               </div>
             ) : (
               <>
