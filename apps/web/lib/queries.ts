@@ -220,11 +220,11 @@ export function useDeleteReceipt() {
   });
 }
 
-export function useSetReimbursementAuthority() {
+export function useSetMemberSecurityGroup() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ userId, canApprove, canProcess }: { userId: string; canApprove: boolean; canProcess: boolean }) =>
-      data.setReimbursementAuthority(userId, canApprove, canProcess),
+    mutationFn: ({ userId, currentRole, group }: { userId: string; currentRole: Role; group: data.SecurityGroup }) =>
+      data.setMemberSecurityGroup(userId, currentRole, group),
     onSuccess: invalidateAll,
   });
 }

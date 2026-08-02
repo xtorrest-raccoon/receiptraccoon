@@ -13,7 +13,7 @@ import * as api from "@rr/api";
 import type { DashboardResponse, DistanceUnit, MileageTrip, MyPendingInvite, Receipt, ReimbursementStatus, Role, TeamResponse, WorkspaceInvite } from "@rr/shared";
 import { persistActiveWorkspace } from "./activeWorkspace";
 
-export type { CurrentUser, WorkspaceUser } from "@rr/api";
+export type { CurrentUser, SecurityGroup, WorkspaceUser } from "@rr/api";
 
 /** Anchored once at load — "today" doesn't change meaningfully within a session. */
 export const TODAY = new Date().toISOString().slice(0, 10);
@@ -282,8 +282,8 @@ export function listUsers(): Promise<api.WorkspaceUser[]> {
   return api.listUsers();
 }
 
-export function setReimbursementAuthority(userId: string, canApprove: boolean, canProcess: boolean): Promise<void> {
-  return api.setReimbursementAuthority(userId, canApprove, canProcess);
+export function setMemberSecurityGroup(userId: string, currentRole: Role, group: api.SecurityGroup): Promise<void> {
+  return api.setMemberSecurityGroup(userId, currentRole, group);
 }
 
 export function setReimbursementAssignments(approverUserId: string, employeeIds: string[]): Promise<void> {

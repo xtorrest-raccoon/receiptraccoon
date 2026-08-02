@@ -552,6 +552,34 @@ export async function setReimbursementAuthority(
   if (error) throw error;
 }
 
+export type SecurityGroup = "admin" | "finance" | "approve" | "member";
+
+/**
+ * Unifies role (owner/admin/member) and reimbursement authority into the
+ * four tiers shown on Setup's security-group table: Admin (full platform
+ * access), Finance (refund), Approver (approve/reject), Member (none).
+ * Promoting to/demoting from "admin" writes role directly -- relies on
+ * workspace_members' owner/admin-only members_write RLS policy, same as
+ * setUserMileageRate, so only an existing admin/owner can grant or revoke
+ * admin access. The other three tiers only ever touch the reimbursement
+ * booleans via setReimbursementAuthority, which a non-admin super user can
+ * also do -- demoting an actual admin still requires admin/owner, since
+ * that step needs the role write above.
+ */
+export async function setMemberSecurityGroup(userId: string, currentRole: Role, group: SecurityGroup): Promise<void> {
+  const wsId = await getCurrentWorkspaceId();
+  if (group === "admin") {
+    const { error } = await client().from("workspace_members").update({ role: "admin" }).eq("workspace_id", wsId).eq("user_id", userId);
+    if (error) throw error;
+    return;
+  }
+  if (currentRole === "admin") {
+    const { error } = await client().from("workspace_members").update({ role: "member" }).eq("workspace_id", wsId).eq("user_id", userId);
+    if (error) throw error;
+  }
+  await setReimbursementAuthority(userId, group === "approve", group === "finance");
+}
+
 /**
  * Owner/admin-only, enforced by workspace_members' existing members_write
  * RLS policy (no RPC/super-user carve-out needed here, unlike

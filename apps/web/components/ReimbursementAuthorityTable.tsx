@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { getSession, signInWithPassword, type CurrentUser, type WorkspaceUser } from "@rr/api";
+import { getSession, signInWithPassword, type CurrentUser, type SecurityGroup, type WorkspaceUser } from "@rr/api";
 import { canManageReimbursementAuthority, isAdmin } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { syncSeats } from "../lib/data";
-import { useRemoveMember, useSetReimbursementAssignments, useSetReimbursementAuthority } from "../lib/queries";
+import { useRemoveMember, useSetMemberSecurityGroup, useSetReimbursementAssignments } from "../lib/queries";
 import { Avatar } from "./Avatar";
 import { MultiSelectDropdown, multiSelectControlStyle } from "./MultiSelectDropdown";
 
@@ -13,28 +13,33 @@ function nameOf(users: WorkspaceUser[], id: string): string {
   return users.find((u) => u.id === id)?.name ?? "Unknown";
 }
 
-type AuthorityLevel = "none" | "approve" | "process" | "both";
-
-function levelOf(u: WorkspaceUser): AuthorityLevel {
-  if (u.canApproveReimbursements && u.canProcessReimbursements) return "both";
+/**
+ * Unifies role and reimbursement authority into one four-tier picker. An
+ * existing "both approve and refund" holder (the old combined tier, from
+ * before this was Admin/Finance/Approver/Member) has no equivalent option
+ * anymore -- shown as Finance until explicitly changed, since refund is the
+ * more consequential of the two to silently drop.
+ */
+function groupOf(u: WorkspaceUser): SecurityGroup {
+  if (isAdmin(u.role)) return "admin";
+  if (u.canProcessReimbursements) return "finance";
   if (u.canApproveReimbursements) return "approve";
-  if (u.canProcessReimbursements) return "process";
-  return "none";
+  return "member";
 }
 
-const AUTHORITY_OPTIONS: { value: AuthorityLevel; label: string }[] = [
-  { value: "none", label: "No authority" },
-  { value: "approve", label: "Approve / Reject" },
-  { value: "process", label: "Refund" },
-  { value: "both", label: "Approve, Reject & Refund" },
+const GROUP_OPTIONS: { value: SecurityGroup; label: string }[] = [
+  { value: "admin", label: "Admin (privilege to manage platform setup)" },
+  { value: "finance", label: "Finance (refund)" },
+  { value: "approve", label: "Approver (approve or reject)" },
+  { value: "member", label: "Member (no authority)" },
 ];
 
-/** Short status word for the sub-label under a name — kept distinct from AUTHORITY_OPTIONS' longer dropdown labels. */
-const LEVEL_STATUS: Record<AuthorityLevel, string | null> = {
-  none: null,
+/** Short status word for the sub-label under a name — kept distinct from GROUP_OPTIONS' longer dropdown labels. */
+const GROUP_STATUS: Record<SecurityGroup, string> = {
+  admin: "Admin",
+  finance: "Finance",
   approve: "Approver",
-  process: "Refunder",
-  both: "Super user",
+  member: "Member",
 };
 
 const controlStyle = multiSelectControlStyle;
@@ -136,7 +141,7 @@ export function ReimbursementAuthorityTable({
   users: WorkspaceUser[];
   currentUser: CurrentUser;
 }) {
-  const setAuthority = useSetReimbursementAuthority();
+  const setGroup = useSetMemberSecurityGroup();
   const setAssignments = useSetReimbursementAssignments();
   const removeMember = useRemoveMember();
   const [removing, setRemoving] = useState<WorkspaceUser | null>(null);
@@ -145,6 +150,11 @@ export function ReimbursementAuthorityTable({
   // severe than granting/revoking a capability, so it stays admin/owner-only
   // even for a super user who can already manage authority.
   const canRemove = isAdmin(currentUser.role);
+  // Promoting/demoting Admin writes role, which workspace_members' RLS
+  // restricts to an actual admin/owner -- a super user with canGrant but not
+  // isAdmin can edit the other three tiers but would just hit an RLS error
+  // picking this one, so it's disabled rather than offered and failing.
+  const canPromoteToAdmin = isAdmin(currentUser.role);
 
   return (
     // No overflow: hidden here (unlike other tables in this app) — the
@@ -153,9 +163,9 @@ export function ReimbursementAuthorityTable({
     // clip instead of just rounding the corners.
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], marginTop: 16 }}>
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
-        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Reimbursement authority</div>
+        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Security group</div>
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
-          Who can approve or reject a claim, who can refund it, and specifically whose claims they cover.
+          Who can manage platform setup, refund a claim, approve or reject one, and specifically whose claims they cover.
         </div>
       </div>
 
@@ -173,14 +183,14 @@ export function ReimbursementAuthorityTable({
         }}
       >
         <div>User</div>
-        <div>Approval authority</div>
+        <div>Security group</div>
         <div>Authority on</div>
       </div>
 
       {users.map((u) => {
-        const admin = isAdmin(u.role);
+        const owner = u.role === "owner";
         const otherUsers = users.filter((other) => other.id !== u.id);
-        const level = levelOf(u);
+        const group = groupOf(u);
 
         return (
           <div
@@ -199,10 +209,7 @@ export function ReimbursementAuthorityTable({
               <Avatar name={u.name} />
               <div>
                 <div style={{ fontWeight: fontWeight.bold }}>{u.name}</div>
-                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint }}>
-                  <span style={{ textTransform: "capitalize" }}>{u.role}</span>
-                  {!admin && LEVEL_STATUS[level] ? ` · ${LEVEL_STATUS[level]}` : ""}
-                </div>
+                <div style={{ fontSize: fontSize.tiny + 0.5, color: color.textFaint }}>{owner ? "Owner" : GROUP_STATUS[group]}</div>
                 {canRemove && u.id !== currentUser.id && u.role !== "owner" ? (
                   <button
                     type="button"
@@ -215,33 +222,31 @@ export function ReimbursementAuthorityTable({
               </div>
             </div>
 
-            {admin ? (
+            {owner ? (
               <div style={{ fontSize: fontSize.small, color: color.textFaint, gridColumn: "2 / span 2" }}>
-                Full authority over everyone (admin)
+                Full authority over everyone (owner)
               </div>
             ) : (
               <>
                 <select
-                  value={level}
+                  value={group}
                   disabled={!canGrant}
                   onChange={(e) => {
-                    const next = e.target.value as AuthorityLevel;
-                    setAuthority.mutate({
-                      userId: u.id,
-                      canApprove: next === "approve" || next === "both",
-                      canProcess: next === "process" || next === "both",
-                    });
+                    const next = e.target.value as SecurityGroup;
+                    setGroup.mutate({ userId: u.id, currentRole: u.role, group: next });
                   }}
                   style={controlStyle}
                 >
-                  {AUTHORITY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
+                  {GROUP_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value} disabled={o.value === "admin" && !canPromoteToAdmin}>
                       {o.label}
                     </option>
                   ))}
                 </select>
 
-                {level === "none" ? (
+                {group === "admin" ? (
+                  <span style={{ fontSize: fontSize.small, color: color.textFaint }}>Full authority over everyone</span>
+                ) : group === "member" ? (
                   <span style={{ fontSize: fontSize.small, color: color.textFaint }}>—</span>
                 ) : canGrant ? (
                   <MultiSelectDropdown
