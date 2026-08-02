@@ -1,9 +1,9 @@
 "use client";
 
-import { formatDelta, formatMoney } from "@rr/shared";
+import { convertDashboardCurrency, formatDelta, formatMoney } from "@rr/shared";
 import { color, fontSize, fontWeight } from "@rr/ui-tokens";
 import { TODAY } from "../../lib/data";
-import { useCurrentUser, useDashboard } from "../../lib/queries";
+import { useCurrentUser, useDashboard, useFxRate, useMyDisplayPrefs } from "../../lib/queries";
 import { StatCard } from "../../components/StatCard";
 import { SpendBarChart } from "../../components/SpendBarChart";
 import { SpendPacingCard } from "../../components/SpendPacingCard";
@@ -23,8 +23,16 @@ const CURRENT_MONTH = TODAY.slice(0, 7);
 export default function DashboardPage() {
   const { data: currentUser } = useCurrentUser();
   const { data: dashboard } = useDashboard(CURRENT_MONTH);
-  if (!dashboard) return null;
-  const { stats, currency } = dashboard;
+  // Own-data personal view -- honors the caller's display currency
+  // preference (see apps/web/app/profile/page.tsx) same as MyMileagePanel,
+  // independent of whatever the workspace default currency is set to.
+  const { data: prefs } = useMyDisplayPrefs();
+  const displayCurrency = prefs?.currency ?? dashboard?.currency;
+  const { data: fxRate } = useFxRate(dashboard?.currency, displayCurrency);
+  const displayDashboard =
+    dashboard && displayCurrency && fxRate != null ? convertDashboardCurrency(dashboard, displayCurrency, fxRate) : dashboard;
+  if (!displayDashboard) return null;
+  const { stats, currency } = displayDashboard;
 
   const deltaUp = stats.monthDeltaPct > 0;
 
@@ -60,22 +68,22 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4" style={{ marginBottom: 16 }}>
-        <SpendBarChart weeklySpend={dashboard.weeklySpend} currency={currency} />
+        <SpendBarChart weeklySpend={displayDashboard.weeklySpend} currency={currency} />
         <SpendPacingCard
           monthToDateMinor={stats.monthTotalMinor}
-          prevMonthTotalMinor={dashboard.pacing.prevMonthTotalMinor}
+          prevMonthTotalMinor={displayDashboard.pacing.prevMonthTotalMinor}
           deltaPct={stats.monthDeltaPct}
-          elapsedFraction={dashboard.pacing.elapsedFraction}
+          elapsedFraction={displayDashboard.pacing.elapsedFraction}
           currency={currency}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4" style={{ marginBottom: 16 }}>
         <CategoryBreakdownCard currency={currency} defaultMonth={CURRENT_MONTH} />
-        <TipsCard tips={dashboard.tips} />
+        <TipsCard tips={displayDashboard.tips} />
       </div>
 
-      <RecentReceiptsTable receipts={dashboard.recentReceipts} />
+      <RecentReceiptsTable receipts={displayDashboard.recentReceipts} />
     </div>
   );
 }

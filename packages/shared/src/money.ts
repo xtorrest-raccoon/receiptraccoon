@@ -251,7 +251,21 @@ export function convertReceiptCurrency(receipt: Receipt, toCurrency: string, rat
   };
 }
 
-/** Same personal-display conversion, applied to every amount a dashboard carries — see convertReceiptCurrency above. */
+/**
+ * Same personal-display conversion, applied to every aggregate amount a
+ * dashboard carries — see convertReceiptCurrency above.
+ *
+ * Deliberately does NOT touch recentReceipts' own amounts: `rate` is
+ * dashboard.currency -> toCurrency, but an individual receipt can carry a
+ * DIFFERENT currency of its own (captured before the workspace's currency
+ * was last changed — receipts are never retroactively reconverted, see
+ * Setup's currency card). Applying this rate to such a receipt would
+ * silently produce a wrong number. recentReceipts already renders each row
+ * in its own r.currency (see RecentReceiptsTable), matching how
+ * ReceiptsTable/Team show every receipt everywhere else in the app — a
+ * receipt's amount is a historical fact in the currency it was captured in,
+ * only aggregates get normalized for comparison.
+ */
 export function convertDashboardCurrency(dashboard: DashboardResponse, toCurrency: string, rate: number): DashboardResponse {
   if (dashboard.currency === toCurrency) return dashboard;
   const convert = (m: number) => convertMinor(m, dashboard.currency, toCurrency, rate);
@@ -272,7 +286,6 @@ export function convertDashboardCurrency(dashboard: DashboardResponse, toCurrenc
     },
     weeklySpend: dashboard.weeklySpend.map((w) => ({ ...w, totalMinor: convert(w.totalMinor) })),
     categoryBreakdown: dashboard.categoryBreakdown.map((row) => ({ ...row, amountMinor: convert(row.amountMinor) })),
-    recentReceipts: dashboard.recentReceipts.map((r) => convertReceiptCurrency(r, toCurrency, rate)),
   };
 }
 

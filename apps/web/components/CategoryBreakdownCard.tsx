@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { categoryAccent, formatMoney, formatMonthLabel } from "@rr/shared";
+import { categoryAccent, convertDashboardCurrency, formatMoney, formatMonthLabel } from "@rr/shared";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
-import { useDashboard, useReceipts } from "../lib/queries";
+import { useDashboard, useFxRate, useReceipts } from "../lib/queries";
 
 export function CategoryBreakdownCard({ currency, defaultMonth }: { currency: string; defaultMonth: string }) {
   const { data: allReceipts } = useReceipts({});
@@ -17,7 +17,13 @@ export function CategoryBreakdownCard({ currency, defaultMonth }: { currency: st
 
   const [month, setMonth] = useState(defaultMonth);
   const { data: dashboard } = useDashboard(month);
-  const breakdown = dashboard?.categoryBreakdown ?? [];
+  // This card fetches its own dashboard (scoped to its own month picker,
+  // independent of the parent's) -- `currency` is the caller's resolved
+  // display currency (see Dashboard page), so amounts here need the same
+  // conversion applied rather than assuming this fetch already matches it.
+  const { data: fxRate } = useFxRate(dashboard?.currency, currency);
+  const displayDashboard = dashboard && fxRate != null ? convertDashboardCurrency(dashboard, currency, fxRate) : dashboard;
+  const breakdown = displayDashboard?.categoryBreakdown ?? [];
 
   return (
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 22 }}>

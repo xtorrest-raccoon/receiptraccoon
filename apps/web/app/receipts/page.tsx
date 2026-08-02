@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { type ReimbursementStatus } from "@rr/shared";
+import { convertReceiptCurrency, type Receipt, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
-import { useCategories, useCurrentUser, useReceipts, useUsers } from "../../lib/queries";
+import { useCategories, useCurrentUser, useFxRate, useHomeCurrency, useMyDisplayPrefs, useReceipts, useUsers } from "../../lib/queries";
 import { useDataStore } from "../../lib/store";
 import { exportReceiptsCsv } from "../../lib/receiptsCsv";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
@@ -37,12 +37,24 @@ export default function ReceiptsPage() {
   const { data: receipts } = useReceipts({ q: search || undefined, categoryName: categoryFilter, userId: currentUser?.id });
   const { data: allForExport } = useReceipts({ categoryName: categoryFilter, userId: currentUser?.id });
 
+  // Own-data personal view -- honors the caller's display currency
+  // preference (see apps/web/app/profile/page.tsx), independent of whatever
+  // the workspace default currency is set to. Every receipt here is already
+  // uniformly in the workspace's home currency (auto-converted at scan
+  // time), so one rate covers the whole list.
+  const { data: homeCurrency } = useHomeCurrency();
+  const { data: prefs } = useMyDisplayPrefs();
+  const displayCurrency = prefs?.currency ?? homeCurrency;
+  const { data: fxRate } = useFxRate(homeCurrency, displayCurrency);
+  const toDisplay = (list: Receipt[] | undefined): Receipt[] =>
+    list && displayCurrency && fxRate != null ? list.map((r) => convertReceiptCurrency(r, displayCurrency, fxRate)) : list ?? [];
+
   if (!categories || !users || !currentUser) return null;
 
   // Client-side, same reasoning as categoryName in @rr/api's listReceipts —
   // the row count per workspace doesn't justify a server-side filter here.
-  const filteredReceipts = (receipts ?? []).filter((r) => statusFilter.includes(r.reimbursementStatus));
-  const filteredForExport = (allForExport ?? []).filter((r) => statusFilter.includes(r.reimbursementStatus));
+  const filteredReceipts = toDisplay(receipts).filter((r) => statusFilter.includes(r.reimbursementStatus));
+  const filteredForExport = toDisplay(allForExport).filter((r) => statusFilter.includes(r.reimbursementStatus));
 
   return (
     <div>
