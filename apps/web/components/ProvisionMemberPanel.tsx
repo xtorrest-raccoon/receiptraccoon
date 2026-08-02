@@ -1,12 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import type { Role } from "@rr/shared";
+import type { SecurityGroup } from "@rr/api";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { syncSeats } from "../lib/data";
 import { useProvisionMember } from "../lib/queries";
 
-const ROLES: Role[] = ["member", "admin"];
+// Same four tiers as Profile Definition's security-group picker (see
+// ReimbursementAuthorityTable) -- provisioning can set the new account's
+// tier directly instead of always starting them at Member and needing a
+// separate step afterward to grant Approver/Finance/Admin.
+const GROUP_OPTIONS: { value: SecurityGroup; label: string }[] = [
+  { value: "admin", label: "Admin (privilege to manage platform setup)" },
+  { value: "finance", label: "Finance (refund)" },
+  { value: "approve", label: "Approver (approve or reject)" },
+  { value: "member", label: "Member (no authority)" },
+];
 
 /**
  * Creates an account directly, with a one-time temporary password to relay
@@ -16,7 +25,7 @@ const ROLES: Role[] = ["member", "admin"];
  */
 export function ProvisionMemberPanel() {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("member");
+  const [group, setGroup] = useState<SecurityGroup>("member");
   const [result, setResult] = useState<{ email: string; tempPassword: string; emailSent: boolean } | null>(null);
   const provisionMember = useProvisionMember();
 
@@ -24,7 +33,7 @@ export function ProvisionMemberPanel() {
     const trimmed = email.trim();
     if (!trimmed) return;
     provisionMember.mutate(
-      { email: trimmed, role },
+      { email: trimmed, group },
       {
         onSuccess: (res) => {
           setResult(res);
@@ -61,8 +70,8 @@ export function ProvisionMemberPanel() {
           }}
         />
         <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as Role)}
+          value={group}
+          onChange={(e) => setGroup(e.target.value as SecurityGroup)}
           style={{
             padding: "9px 10px",
             borderRadius: radius.md,
@@ -72,9 +81,9 @@ export function ProvisionMemberPanel() {
             color: color.text,
           }}
         >
-          {ROLES.map((r) => (
-            <option key={r} value={r}>
-              {r}
+          {GROUP_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>

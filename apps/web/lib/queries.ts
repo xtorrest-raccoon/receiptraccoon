@@ -427,7 +427,7 @@ export function useRevokeInvite() {
 export function useProvisionMember() {
   const invalidateAll = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ email, role }: { email: string; role: Role }) => data.provisionMember(email, role),
+    mutationFn: ({ email, group }: { email: string; group: data.SecurityGroup }) => data.provisionMember(email, group),
     onSuccess: invalidateAll,
   });
 }

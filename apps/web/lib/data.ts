@@ -346,14 +346,17 @@ export function revokeInvite(id: string): Promise<void> {
  * and returns the one-time temporary password to relay to that person, plus
  * whether the welcome email went out. See /api/team/provision-member.
  */
-export async function provisionMember(email: string, role: Role): Promise<{ email: string; tempPassword: string; emailSent: boolean }> {
+export async function provisionMember(
+  email: string,
+  group: api.SecurityGroup,
+): Promise<{ email: string; tempPassword: string; emailSent: boolean }> {
   const session = await api.getSession();
   if (!session) throw new Error("Not signed in");
 
   const res = await fetch("/api/team/provision-member", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-    body: JSON.stringify({ email, role }),
+    body: JSON.stringify({ email, group }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {

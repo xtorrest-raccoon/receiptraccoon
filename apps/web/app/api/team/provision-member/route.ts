@@ -23,7 +23,23 @@ import { getActiveMembership, requireUser } from "../../../../lib/auth";
  */
 export const runtime = "nodejs";
 
-const ALLOWED_ROLES = ["member", "admin"];
+// Same four tiers as Profile Definition's security-group picker (see
+// ReimbursementAuthorityTable / setMemberSecurityGroup) -- provisioning can
+// set the new account's tier directly instead of always starting them at
+// Member and needing a separate step afterward to grant Approver/Finance/
+// Admin. Acting on one's OWN claim never gets the role-based blanket-
+// authority bypass (see enforce_reimbursement_authority() in
+// 0009_reimbursement_assignments.sql), so Admin also grants both
+// reimbursement-authority booleans -- otherwise a new admin's own Approve/
+// Refund buttons would render enabled (canTransitionReimbursement assumes
+// every admin has both) yet fail with a raw 403 on click.
+const GROUP_TO_MEMBER_ROW: Record<string, { role: "admin" | "member"; canApprove: boolean; canProcess: boolean }> = {
+  admin: { role: "admin", canApprove: true, canProcess: true },
+  finance: { role: "member", canApprove: false, canProcess: true },
+  approve: { role: "member", canApprove: true, canProcess: false },
+  member: { role: "member", canApprove: false, canProcess: false },
+};
+const ALLOWED_GROUPS = Object.keys(GROUP_TO_MEMBER_ROW);
 const FROM_ADDRESS = "ReceiptRaccoon <noreply@receiptraccoon.fr>";
 
 function generateTempPassword(): string {
@@ -81,10 +97,11 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   const email = (body?.email as string | undefined)?.trim().toLowerCase();
-  const role = body?.role as string | undefined;
-  if (!email || !role || !ALLOWED_ROLES.includes(role)) {
-    return NextResponse.json({ error: "A valid email and role (member or admin) are required" }, { status: 400 });
+  const group = body?.group as string | undefined;
+  if (!email || !group || !ALLOWED_GROUPS.includes(group)) {
+    return NextResponse.json({ error: "A valid email and security group are required" }, { status: 400 });
   }
+  const memberRow = GROUP_TO_MEMBER_ROW[group]!;
 
   const serviceClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const tempPassword = generateTempPassword();
@@ -111,17 +128,12 @@ export async function POST(request: NextRequest) {
   if (deleteErr) {
     return NextResponse.json({ error: deleteErr.message }, { status: 500 });
   }
-  // Provisioning as admin also grants both reimbursement-authority booleans
-  // -- acting on one's OWN claim never gets the role-based blanket-authority
-  // bypass (see enforce_reimbursement_authority() in
-  // 0009_reimbursement_assignments.sql), so without these a new admin's own
-  // Approve/Refund buttons would render enabled (canTransitionReimbursement
-  // assumes every admin has both) yet fail with a raw 403 on click.
   const { error: insertErr } = await serviceClient.from("workspace_members").insert({
     workspace_id: workspaceId,
     user_id: newUserId,
-    role,
-    ...(role === "admin" ? { can_approve_reimbursements: true, can_process_reimbursements: true } : {}),
+    role: memberRow.role,
+    can_approve_reimbursements: memberRow.canApprove,
+    can_process_reimbursements: memberRow.canProcess,
   });
   if (insertErr) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 });
