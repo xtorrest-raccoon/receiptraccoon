@@ -6,6 +6,7 @@ import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { useConsolidatedSeatCount, useCurrentUser } from "../../lib/queries";
 import { PaymentSetupPanel } from "../../components/PaymentSetupPanel";
 import { InvoiceList } from "../../components/InvoiceList";
+import { BillingAddressForm } from "../../components/BillingAddressForm";
 
 function SectionHeading({ children }: { children: string }) {
   return (
@@ -61,6 +62,9 @@ export default function BillingPage() {
 
       <SectionHeading>Payment setup</SectionHeading>
       <PaymentSetupPanel currentUser={currentUser} />
+
+      <SectionHeading>Billing address</SectionHeading>
+      <BillingAddressForm />
 
       <SectionHeading>Invoices</SectionHeading>
       <InvoiceList />

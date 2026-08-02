@@ -191,6 +191,33 @@ export function getConsolidatedSeatCount(): Promise<number> {
   return api.getConsolidatedSeatCount();
 }
 
+export type { BillingAddress } from "@rr/api";
+
+export function getBillingAddress(): Promise<api.BillingAddress> {
+  return api.getBillingAddress();
+}
+
+/**
+ * Owner/admin-only -- saves the customer billing address AND syncs it to
+ * the Stripe Customer object, so this goes through the Next.js route
+ * rather than a plain Supabase update (the Stripe secret key must stay
+ * server-side).
+ */
+export async function setBillingAddress(address: api.BillingAddress): Promise<void> {
+  const session = await api.getSession();
+  if (!session) throw new Error("Not signed in");
+
+  const res = await fetch("/api/billing/update-address", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(address),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error ?? `Could not save the billing address (HTTP ${res.status})`);
+  }
+}
+
 export type { WorkspaceSummary } from "@rr/api";
 
 export function listMyWorkspaces(): Promise<api.WorkspaceSummary[]> {

@@ -1,5 +1,5 @@
 import { Decimal } from "decimal.js";
-import type { DashboardResponse, MileageTrip, OwedToUserSummary, Receipt } from "./types";
+import type { DashboardResponse, MileageTrip, OwedToUserSummary, Receipt } from "./types.js";
 
 /**
  * All money in this system is an integer count of minor units (cents, pence, yen).

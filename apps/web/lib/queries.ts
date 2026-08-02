@@ -73,6 +73,18 @@ export function useConsolidatedSeatCount() {
   return useQuery({ queryKey: ["consolidatedSeatCount"], queryFn: data.getConsolidatedSeatCount });
 }
 
+export function useBillingAddress() {
+  return useQuery({ queryKey: ["billingAddress"], queryFn: data.getBillingAddress });
+}
+
+export function useSetBillingAddress() {
+  const invalidateAll = useInvalidateAll();
+  return useMutation({
+    mutationFn: (address: data.BillingAddress) => data.setBillingAddress(address),
+    onSuccess: invalidateAll,
+  });
+}
+
 export function useMyWorkspaces() {
   return useQuery({ queryKey: ["myWorkspaces"], queryFn: data.listMyWorkspaces });
 }
@@ -148,6 +160,7 @@ const ALL_QUERY_KEYS = [
   "workspaceName",
   "myWorkspaces",
   "consolidatedSeatCount",
+  "billingAddress",
   "activeWorkspaceId",
   "users",
   "currentUser",

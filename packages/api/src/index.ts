@@ -681,6 +681,58 @@ export async function getConsolidatedSeatCount(): Promise<number> {
   return data as number;
 }
 
+/**
+ * Customer billing address for invoices -- see 0022_billing_address.sql.
+ * Editing (which also syncs to the Stripe Customer object) happens via
+ * apps/web's /api/billing/update-address route, not here, since that sync
+ * needs the Stripe secret key held server-side.
+ */
+export interface BillingAddress {
+  legalName: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+  taxId: string | null;
+  billingEmail: string | null;
+}
+
+export async function getBillingAddress(): Promise<BillingAddress> {
+  const wsId = await getCurrentWorkspaceId();
+  const { data, error } = await client()
+    .from("workspaces")
+    .select(
+      "billing_legal_name, billing_address_line1, billing_address_line2, billing_city, billing_state, billing_postal_code, billing_country, billing_tax_id, billing_email",
+    )
+    .eq("id", wsId)
+    .single();
+  if (error) throw error;
+  const row = data as {
+    billing_legal_name: string | null;
+    billing_address_line1: string | null;
+    billing_address_line2: string | null;
+    billing_city: string | null;
+    billing_state: string | null;
+    billing_postal_code: string | null;
+    billing_country: string | null;
+    billing_tax_id: string | null;
+    billing_email: string | null;
+  };
+  return {
+    legalName: row.billing_legal_name,
+    addressLine1: row.billing_address_line1,
+    addressLine2: row.billing_address_line2,
+    city: row.billing_city,
+    state: row.billing_state,
+    postalCode: row.billing_postal_code,
+    country: row.billing_country,
+    taxId: row.billing_tax_id,
+    billingEmail: row.billing_email,
+  };
+}
+
 export async function setWorkspaceName(name: string): Promise<void> {
   const trimmed = name.trim();
   if (!trimmed) return;
