@@ -115,9 +115,15 @@ export function MileageTable({
                 </div>
                 {/* Frozen onto the trip at entry — this person's own rate at
                     the time, not today's workspace default or override. Per
-                    rateUnit, which may differ from the trip's own distanceUnit. */}
+                    rateUnit, which may differ from the trip's own distanceUnit.
+                    In t.originalCurrency if the rate was set in a currency
+                    other than the workspace's own (see
+                    0034_mileage_rate_currency.sql) — `currency` (the prop,
+                    always the workspace's own) is for the Amount column
+                    below, which IS always in it; using it here too would
+                    mislabel a rate that never got converted. */}
                 <div style={{ color: color.textMuted, fontSize: fontSize.small }}>
-                  {currencySymbol(currency)}
+                  {currencySymbol(t.originalCurrency ?? currency)}
                   {rateToDecimalString(t.rateMilli)}/{t.rateUnit}
                 </div>
                 <button

@@ -113,9 +113,14 @@ export function getMileageRateMilli(): Promise<number> {
   return api.getMileageRateMilli();
 }
 
-/** The rate MY trips actually use — my own per-user override if an owner/admin set one, else the workspace default. */
-export function getMyMileageRateMilli(): Promise<number> {
-  return api.getMyMileageRateMilli();
+/**
+ * The rate MY trips actually use — my own per-user override if an
+ * owner/admin set one, else the workspace default — AND the currency it's
+ * actually denominated in (my own display_currency from Setup's user
+ * currency & mileage table, if set, else the workspace's own currency).
+ */
+export function getMyMileageRate(): Promise<{ rateMilli: number; currency: string }> {
+  return api.getMyMileageRate();
 }
 
 /** Whether the currently active workspace is the one the caller may actually submit receipts/mileage into -- see 0024_home_workspace.sql. */

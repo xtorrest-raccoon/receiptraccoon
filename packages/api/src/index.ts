@@ -32,6 +32,7 @@ import {
   computeReimbursable,
   computeTeamMemberSummaries,
   computeWeeklySpend,
+  convertMinor,
   daysBetween,
   inMonth,
   isOutstanding,
@@ -1056,29 +1057,80 @@ export async function setMileageRateMilli(value: number): Promise<void> {
 /**
  * The rate the CALLER's own trips actually use — their own
  * workspace_members.mileage_rate_milli override if an owner/admin set one,
- * else the workspace's default. See 0013_per_user_mileage_rate.sql.
+ * else the workspace's default (see 0013_per_user_mileage_rate.sql) — AND
+ * the currency that rate is actually denominated in. Setup's "User currency
+ * & mileage setup" table is the source of truth for the latter: a person's
+ * own display_currency there takes precedence over the workspace's own
+ * currency (someone paid in EUR still logs trips at a EUR/km rate even if
+ * the workspace's books are kept in SEK) — see 0034_mileage_rate_currency.sql.
  */
-async function getEffectiveMileageRateMilli(ws: WorkspaceRow): Promise<number> {
+async function getEffectiveMileageRateInfo(ws: WorkspaceRow): Promise<{ rateMilli: number; currency: string }> {
   const userId = await getCurrentUserId();
   const { data, error } = await client()
     .from("workspace_members")
-    .select("mileage_rate_milli")
+    .select("mileage_rate_milli, profiles(display_currency)")
     .eq("workspace_id", ws.id)
     .eq("user_id", userId)
     .single();
   if (error) throw error;
-  return (data as { mileage_rate_milli: number | null }).mileage_rate_milli ?? ws.mileage_rate_milli;
+  // Many-to-one embed comes back as a single object, not an array — see
+  // listUsers' own note on this same untyped-client quirk.
+  const row = data as unknown as { mileage_rate_milli: number | null; profiles: { display_currency: string | null } | null };
+  // The workspace-wide default (ws.mileage_rate_milli) is a single number
+  // defined once, in the workspace's own currency -- it doesn't become a
+  // different currency just because this particular person's display
+  // preference is set to one. Only a rate an admin actually typed for THIS
+  // person, in THIS row of Setup's table, is denominated in that row's own
+  // Currency column.
+  if (row.mileage_rate_milli !== null) {
+    return { rateMilli: row.mileage_rate_milli, currency: row.profiles?.display_currency ?? ws.home_currency };
+  }
+  return { rateMilli: ws.mileage_rate_milli, currency: ws.home_currency };
 }
 
-export async function getMyMileageRateMilli(): Promise<number> {
-  return getEffectiveMileageRateMilli(await getWorkspaceRow());
+export async function getMyMileageRate(): Promise<{ rateMilli: number; currency: string }> {
+  return getEffectiveMileageRateInfo(await getWorkspaceRow());
 }
 
-/** What a trip WOULD be worth if saved now — same rate the save itself will use. */
+/**
+ * Best-effort same-day cached rate for converting a mileage rate into the
+ * workspace's own currency at entry — reads fx_rates directly (select is
+ * allowed for any signed-in user, see 0001_init.sql's fx_select), the same
+ * table apps/web/lib/fxRates.ts caches into. Deliberately read-only: fetching
+ * a fresh rate on a cache miss needs the service role, which this package has
+ * no access to — but by the time someone logs mileage they've almost always
+ * already triggered a display-currency fetch this session, which caches
+ * every currency for the day at once, not just the pair requested. Returns
+ * null on a genuine cache miss — never a fabricated rate.
+ */
+async function getCachedFxRate(fromCurrency: string, toCurrency: string): Promise<{ rate: number; rateDate: string } | null> {
+  if (fromCurrency === toCurrency) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: latest } = await client()
+    .from("fx_rates")
+    .select("rate_date")
+    .eq("base", "EUR")
+    .lte("rate_date", today)
+    .order("rate_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!latest) return null;
+  const rateDate = (latest as { rate_date: string }).rate_date;
+  const { data: rows } = await client().from("fx_rates").select("quote, rate").eq("rate_date", rateDate).eq("base", "EUR");
+  if (!rows || rows.length === 0) return null;
+  const rates: Record<string, number> = {};
+  for (const row of rows as { quote: string; rate: number }[]) rates[row.quote] = row.rate;
+  const fromRate = fromCurrency === "EUR" ? 1 : rates[fromCurrency];
+  const toRate = toCurrency === "EUR" ? 1 : rates[toCurrency];
+  if (fromRate === undefined || toRate === undefined) return null;
+  return { rate: toRate / fromRate, rateDate };
+}
+
+/** What a trip WOULD be worth if saved now — same rate the save itself will use, in that rate's own currency (see getEffectiveMileageRateInfo). */
 export async function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): Promise<number> {
   const row = await getWorkspaceRow();
-  const rateMilli = await getEffectiveMileageRateMilli(row);
-  return mileageAmountForTrip(distance, unit, rateMilli, row.mileage_unit, row.home_currency);
+  const { rateMilli, currency } = await getEffectiveMileageRateInfo(row);
+  return mileageAmountForTrip(distance, unit, rateMilli, row.mileage_unit, currency);
 }
 
 // ── categories ───────────────────────────────────────────────────────────
@@ -1455,6 +1507,10 @@ interface TripRow {
   rate_milli: number;
   rate_unit: DistanceUnit;
   amount_minor: number;
+  original_currency: string | null;
+  original_amount_minor: number | null;
+  fx_rate: number | null;
+  fx_rate_date: string | null;
   reimbursement_status: ReimbursementStatus;
   rejection_reason: string | null;
   start_address: string | null;
@@ -1473,6 +1529,10 @@ function mapTripRow(row: TripRow): MileageTrip {
     rateMilli: row.rate_milli,
     rateUnit: row.rate_unit,
     amountMinor: row.amount_minor,
+    originalCurrency: row.original_currency,
+    originalAmountMinor: row.original_amount_minor,
+    fxRate: row.fx_rate,
+    fxRateDate: row.fx_rate_date,
     reimbursementStatus: row.reimbursement_status,
     rejectionReason: row.rejection_reason,
     startAddress: row.start_address,
@@ -1502,16 +1562,42 @@ export async function addMileageTrip(input: {
   const wsId = await getCurrentWorkspaceId();
   const ws = await getWorkspaceRow();
   // The caller's own effective rate (their per-user override if an
-  // owner/admin set one, else the workspace default) — frozen onto this
-  // trip at entry, same reasoning as fx_rate on receipts: existing trips
-  // keep their own rate even if the workspace default or their override
-  // changes later.
-  const rateMilli = await getEffectiveMileageRateMilli(ws);
+  // owner/admin set one, else the workspace default) and the currency it's
+  // actually denominated in — frozen onto this trip at entry, same
+  // reasoning as fx_rate on receipts: existing trips keep their own rate
+  // even if the workspace default or their override changes later.
+  const { rateMilli, currency: rateCurrency } = await getEffectiveMileageRateInfo(ws);
   // The rate is expressed per the workspace's CURRENT mileage_unit (see
   // Settings' "Reimbursement rate per {unit}" label) — frozen alongside the
   // rate itself, so a later unit change can't silently misinterpret this
   // trip's already-locked-in rate. See 0014_mileage_rate_unit.sql.
-  const amountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, rateMilli, ws.mileage_unit, ws.home_currency);
+  const rawAmountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, rateMilli, ws.mileage_unit, rateCurrency);
+
+  // amount_minor must stay in the workspace's own currency -- Team totals
+  // and payroll sum it assuming one currency across every trip. When the
+  // rate's own currency differs, convert now and freeze both the original
+  // figure and the rate used, same pattern as a foreign-currency receipt.
+  let amountMinor = rawAmountMinor;
+  let originalCurrency: string | null = null;
+  let originalAmountMinor: number | null = null;
+  let fxRate: number | null = null;
+  let fxRateDate: string | null = null;
+  if (rateCurrency !== ws.home_currency) {
+    originalCurrency = rateCurrency;
+    originalAmountMinor = rawAmountMinor;
+    const conv = await getCachedFxRate(rateCurrency, ws.home_currency);
+    if (conv) {
+      amountMinor = convertMinor(rawAmountMinor, rateCurrency, ws.home_currency, conv.rate);
+      fxRate = conv.rate;
+      fxRateDate = conv.rateDate;
+    }
+    // else: no cached rate for today -- fail open, same as receipts. Rare
+    // in practice (a display-currency screen almost always already warmed
+    // today's cache before this ever runs). amountMinor stays in
+    // rateCurrency rather than a fabricated conversion; originalCurrency
+    // above still makes that visible rather than silently wrong.
+  }
+
   const { data, error } = await client()
     .from("mileage_trips")
     .insert({
@@ -1524,6 +1610,10 @@ export async function addMileageTrip(input: {
       rate_unit: ws.mileage_unit,
       rate_milli: rateMilli,
       amount_minor: amountMinor,
+      original_currency: originalCurrency,
+      original_amount_minor: originalAmountMinor,
+      fx_rate: fxRate,
+      fx_rate_date: fxRateDate,
       reimbursement_status: "pending",
       start_address: input.startAddress ?? null,
       end_address: input.endAddress ?? null,
@@ -1559,7 +1649,18 @@ export async function updateMileageTrip(
   if (patch.distance !== undefined && patch.distance > 0) {
     const ws = await getWorkspaceRow();
     update.distance = patch.distance;
-    update.amount_minor = mileageAmountForTrip(patch.distance, row.distance_unit, row.rate_milli, row.rate_unit, ws.home_currency);
+    // Rescaled in the rate's OWN currency (originalCurrency if the trip was
+    // entered at a foreign rate, else the workspace's) — then reapplied
+    // through the SAME frozen fx_rate rather than a fresh lookup, so
+    // correcting a distance can't silently reprice the trip at today's rate.
+    const rateCurrency = row.original_currency ?? ws.home_currency;
+    const rawAmountMinor = mileageAmountForTrip(patch.distance, row.distance_unit, row.rate_milli, row.rate_unit, rateCurrency);
+    if (row.original_currency && row.fx_rate != null) {
+      update.original_amount_minor = rawAmountMinor;
+      update.amount_minor = convertMinor(rawAmountMinor, row.original_currency, ws.home_currency, row.fx_rate);
+    } else {
+      update.amount_minor = rawAmountMinor;
+    }
   }
 
   const { data, error } = await client().from("mileage_trips").update(update).eq("id", id).select("*").single();

@@ -188,10 +188,17 @@ export function MileageTripDrawer({
           <div style={{ display: "flex", justifyContent: "space-between", color: color.textMuted, fontSize: fontSize.body }}>
             <span>Rate</span>
             <span>
-              {currencySymbol(currency)}
+              {currencySymbol(trip.originalCurrency ?? currency)}
               {rateToDecimalString(trip.rateMilli)} per {trip.rateUnit}
             </span>
           </div>
+          {trip.originalCurrency && trip.originalAmountMinor !== null ? (
+            <div style={{ fontSize: fontSize.small - 0.5, color: color.textFaint }}>
+              Originally {formatMoney(trip.originalAmountMinor, trip.originalCurrency)}
+              {trip.fxRate ? ` at ${trip.fxRate}` : ""}
+              {trip.fxRateDate ? ` on ${formatShortDate(trip.fxRateDate)}` : ""}
+            </div>
+          ) : null}
           <div
             style={{
               display: "flex",

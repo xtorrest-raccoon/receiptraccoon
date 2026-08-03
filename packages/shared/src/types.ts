@@ -116,12 +116,20 @@ export interface MileageTrip {
   /**
    * Thousandths of a currency unit (€0.675 -> 675), because statutory mileage
    * rates carry three decimals. Frozen at entry, like fxRate — never recomputed
-   * from current workspace settings.
+   * from current workspace settings. Denominated in originalCurrency if set,
+   * else the workspace's own currency (see 0034_mileage_rate_currency.sql).
    */
   rateMilli: number;
   /** The unit rateMilli is expressed per — see 0014_mileage_rate_unit.sql. Also frozen at entry. */
   rateUnit: DistanceUnit;
+  /** Always the workspace's own currency — what Team totals and payroll rely on. */
   amountMinor: number;
+  /** Populated only when the rate used was set in a currency other than the workspace's own — see 0034_mileage_rate_currency.sql. */
+  originalCurrency: string | null;
+  /** What the trip was worth in originalCurrency, before conversion to amountMinor. */
+  originalAmountMinor: number | null;
+  fxRate: number | null;
+  fxRateDate: string | null;
   reimbursementStatus: ReimbursementStatus;
   rejectionReason: string | null;
   /** Populated only when the trip's distance was calculated automatically from these addresses, not typed in manually. */

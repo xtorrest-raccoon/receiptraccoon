@@ -4,7 +4,7 @@ import { useFocusEffect } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
-import { categoryAccent, convertRateMilliCurrency, formatMoney } from "@rr/shared";
+import { categoryAccent, formatMoney } from "@rr/shared";
 import { signOut } from "@rr/api";
 import { rn } from "../../lib/colors";
 import { CURRENT_MONTH } from "../../lib/data";
@@ -13,9 +13,7 @@ import {
   useCurrentUser,
   useDashboard,
   useDisplayDistanceUnit,
-  useDisplayRate,
-  useHomeCurrency,
-  useMyMileageRateMilli,
+  useMyMileageRate,
   useOwedToUser,
   useWorkspaceName,
 } from "../../lib/queries";
@@ -58,11 +56,10 @@ export default function HomeScreen() {
   const { data: distanceUnit } = useDisplayDistanceUnit();
   const { data: workspaceName } = useWorkspaceName();
   // Settings sheet shows MY effective rate (a per-user override if one was
-  // set, else the workspace default), converted to my display currency —
-  // same reasoning as the Mileage tab's rate card.
-  const { data: workspaceCurrency } = useHomeCurrency();
-  const { data: rateMilli } = useMyMileageRateMilli();
-  const { data: rateConv } = useDisplayRate(workspaceCurrency);
+  // set, else the workspace default) — already in whichever currency Setup's
+  // user currency & mileage table has me in, no conversion needed. Same
+  // reasoning as the Mileage tab's rate card.
+  const { data: myRate } = useMyMileageRate();
 
   // Tab screens stay mounted, so a mutation made on the receipt detail screen
   // or Mileage already invalidates these queries in the background — this
@@ -75,7 +72,7 @@ export default function HomeScreen() {
     }, []),
   );
 
-  if (!user || !dashboard || !monthOptions || !owedToUser || !distanceUnit || rateMilli === undefined) {
+  if (!user || !dashboard || !monthOptions || !owedToUser || !distanceUnit || !myRate) {
     return (
       <View style={{ flex: 1, backgroundColor: rn(color.bgMobile), alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={rn(color.brand)} />
@@ -87,15 +84,6 @@ export default function HomeScreen() {
   // Already the personal display currency, not necessarily the workspace's —
   // see lib/data.ts's getDashboard, which converts before this ever reaches here.
   const currency = dashboard.currency;
-  // fetchDisplayRate fails open (network hiccup, cold fx_rates cache, etc.) —
-  // when it does, rateMilli stays in its true, unconverted workspace
-  // currency, so the label passed to SettingsSheet must fall back to
-  // workspaceCurrency too. Labeling an unconverted SEK figure "€" (the
-  // *intended* display currency) would show a number ~11x too large/small
-  // for its label, not just an unconverted one.
-  const rateConverted = rateConv?.rate != null && workspaceCurrency;
-  const settingsRateMilli = rateConverted ? convertRateMilliCurrency(rateMilli, workspaceCurrency, currency, rateConv!.rate!) : rateMilli;
-  const settingsRateCurrency = rateConverted ? currency : workspaceCurrency;
 
   const greeting = getGreeting();
   const breakdown = breakdownDashboard?.categoryBreakdown.filter((c) => c.pct > 0) ?? [];
@@ -230,8 +218,8 @@ export default function HomeScreen() {
         visible={settingsOpen}
         workspaceName={workspaceName}
         distanceUnit={distanceUnit}
-        rateMilli={settingsRateMilli}
-        rateCurrency={settingsRateCurrency}
+        rateMilli={myRate.rateMilli}
+        rateCurrency={myRate.currency}
         homeCurrency={currency}
         onClose={() => setSettingsOpen(false)}
         onSignOut={() => {

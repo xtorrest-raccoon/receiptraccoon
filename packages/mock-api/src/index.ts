@@ -322,11 +322,11 @@ export function addReceipt(input: {
 const MILEAGE_RATE_MILLI = 700;
 
 const TRIPS: MileageTrip[] = [
-  { id: "t_1", workspaceId: WORKSPACE_ID, userId: "u_4", tripDate: "2026-07-02", purpose: "Client site visit", distance: 18.4, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(18.4, MILEAGE_RATE_MILLI, HOME_CURRENCY), reimbursementStatus: "reimbursed", rejectionReason: null, startAddress: null, endAddress: null },
-  { id: "t_2", workspaceId: WORKSPACE_ID, userId: "u_2", tripDate: "2026-07-06", purpose: "Vendor meeting", distance: 9.2, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(9.2, MILEAGE_RATE_MILLI, HOME_CURRENCY), reimbursementStatus: "approved", rejectionReason: null, startAddress: null, endAddress: null },
-  { id: "t_3", workspaceId: WORKSPACE_ID, userId: "u_4", tripDate: "2026-07-09", purpose: "Airport pickup", distance: 24.6, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(24.6, MILEAGE_RATE_MILLI, HOME_CURRENCY), reimbursementStatus: "pending", rejectionReason: null, startAddress: null, endAddress: null },
-  { id: "t_4", workspaceId: WORKSPACE_ID, userId: "u_3", tripDate: "2026-07-13", purpose: "Supply run", distance: 6.1, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(6.1, MILEAGE_RATE_MILLI, HOME_CURRENCY), reimbursementStatus: "pending", rejectionReason: null, startAddress: null, endAddress: null },
-  { id: "t_5", workspaceId: WORKSPACE_ID, userId: "u_4", tripDate: "2026-07-16", purpose: "Client site visit", distance: 18.4, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(18.4, MILEAGE_RATE_MILLI, HOME_CURRENCY), reimbursementStatus: "pending", rejectionReason: null, startAddress: null, endAddress: null },
+  { id: "t_1", workspaceId: WORKSPACE_ID, userId: "u_4", tripDate: "2026-07-02", purpose: "Client site visit", distance: 18.4, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(18.4, MILEAGE_RATE_MILLI, HOME_CURRENCY), originalCurrency: null, originalAmountMinor: null, fxRate: null, fxRateDate: null, reimbursementStatus: "reimbursed", rejectionReason: null, startAddress: null, endAddress: null },
+  { id: "t_2", workspaceId: WORKSPACE_ID, userId: "u_2", tripDate: "2026-07-06", purpose: "Vendor meeting", distance: 9.2, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(9.2, MILEAGE_RATE_MILLI, HOME_CURRENCY), originalCurrency: null, originalAmountMinor: null, fxRate: null, fxRateDate: null, reimbursementStatus: "approved", rejectionReason: null, startAddress: null, endAddress: null },
+  { id: "t_3", workspaceId: WORKSPACE_ID, userId: "u_4", tripDate: "2026-07-09", purpose: "Airport pickup", distance: 24.6, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(24.6, MILEAGE_RATE_MILLI, HOME_CURRENCY), originalCurrency: null, originalAmountMinor: null, fxRate: null, fxRateDate: null, reimbursementStatus: "pending", rejectionReason: null, startAddress: null, endAddress: null },
+  { id: "t_4", workspaceId: WORKSPACE_ID, userId: "u_3", tripDate: "2026-07-13", purpose: "Supply run", distance: 6.1, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(6.1, MILEAGE_RATE_MILLI, HOME_CURRENCY), originalCurrency: null, originalAmountMinor: null, fxRate: null, fxRateDate: null, reimbursementStatus: "pending", rejectionReason: null, startAddress: null, endAddress: null },
+  { id: "t_5", workspaceId: WORKSPACE_ID, userId: "u_4", tripDate: "2026-07-16", purpose: "Client site visit", distance: 18.4, distanceUnit: "mi", rateMilli: MILEAGE_RATE_MILLI, rateUnit: "mi", amountMinor: mileageAmountMinor(18.4, MILEAGE_RATE_MILLI, HOME_CURRENCY), originalCurrency: null, originalAmountMinor: null, fxRate: null, fxRateDate: null, reimbursementStatus: "pending", rejectionReason: null, startAddress: null, endAddress: null },
 ];
 
 /**
@@ -604,6 +604,10 @@ export function addMileageTrip(input: {
     // multiply with no conversion — which is what keeps 100 km at 0.665 exactly
     // 66.50 rather than a cent out.
     amountMinor: mileageAmountMinor(input.distance, mileageRatePerUnitMilli, HOME_CURRENCY),
+    originalCurrency: null,
+    originalAmountMinor: null,
+    fxRate: null,
+    fxRateDate: null,
     reimbursementStatus: "pending",
     rejectionReason: null,
     startAddress: input.startAddress ?? null,

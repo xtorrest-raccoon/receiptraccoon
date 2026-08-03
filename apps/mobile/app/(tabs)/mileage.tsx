@@ -9,7 +9,6 @@ import {
   isRecentOrActionable,
   rateToDecimalString,
   mileageAmountForTrip,
-  convertRateMilliCurrency,
   type DistanceUnit,
   type MileageTrip,
 } from "@rr/shared";
@@ -21,12 +20,11 @@ import {
   useDeleteMileageTrip,
   useDisplayCurrency,
   useDisplayDistanceUnit,
-  useDisplayRate,
   useDistanceUnit,
   useHomeCurrency,
   useIsHomeWorkspace,
   useMileage,
-  useMyMileageRateMilli,
+  useMyMileageRate,
   useUpdateMileageTrip,
 } from "../../lib/queries";
 import { Text } from "../../components/Text";
@@ -38,10 +36,12 @@ import { SwipeToDelete } from "../../components/SwipeToDelete";
 export default function MileageScreen() {
   const insets = useSafeAreaInsets();
 
-  // "workspace*" is the functional truth new trips are logged/estimated in
-  // (must never change — see plan's scope cut). "display*" is what already-
-  // logged trips/rates are shown in, personal-override-or-workspace-default
-  // — falls back to workspace while the personal preference is still loading.
+  // "workspaceUnit" is the functional truth new trips log their distance in
+  // (must never change — see plan's scope cut) — the rate itself is
+  // denominated in this person's own currency, from myRate below, not
+  // necessarily workspaceCurrency. "display*" is what already-logged trips
+  // are shown in, personal-override-or-workspace-default — falls back to
+  // workspace while the personal preference is still loading.
   const { data: workspaceCurrency } = useHomeCurrency();
   const { data: workspaceUnit } = useDistanceUnit();
   const { data: displayCurrency } = useDisplayCurrency();
@@ -54,18 +54,11 @@ export default function MileageScreen() {
   const currency = displayCurrency ?? workspaceCurrency;
   const unit = displayUnit ?? workspaceUnit;
   // My own effective rate — my per-user override if an owner/admin set one,
-  // else the workspace default. Same rate addMileageTrip itself will use.
-  const { data: rateMilli } = useMyMileageRateMilli();
-  const { data: rateConv } = useDisplayRate(workspaceCurrency);
-  const rateConverted = rateMilli !== undefined && rateConv?.rate != null && workspaceCurrency && currency;
-  const displayRateMilli = rateConverted ? convertRateMilliCurrency(rateMilli!, workspaceCurrency!, currency!, rateConv!.rate!) : rateMilli;
-  // fetchDisplayRate fails open (network hiccup, cold fx_rates cache, etc.) —
-  // when it does, displayRateMilli stays in the workspace's own currency, so
-  // the label shown alongside it must fall back to workspaceCurrency too.
-  // Labeling an unconverted figure with `currency` (the intended display
-  // currency) would show a rate that reads as ~10x too big or small for its
-  // label, not just "not yet converted".
-  const displayRateCurrency = rateConverted ? currency : workspaceCurrency;
+  // else the workspace default — and the currency it's actually denominated
+  // in (my own Setup row, if an admin set one there, else the workspace's).
+  // Same rate addMileageTrip itself will use; no conversion needed to show
+  // it, since it's already in whichever currency Setup put me in.
+  const { data: myRate } = useMyMileageRate();
   const { data: trips, isLoading } = useMileage();
   const addMileageTrip = useAddMileageTrip();
   const updateMileageTrip = useUpdateMileageTrip();
@@ -90,7 +83,7 @@ export default function MileageScreen() {
   /** Non-null when a non-editable trip's read-only details are open — see TripDetailModal. */
   const [viewingTrip, setViewingTrip] = useState<MileageTrip | null>(null);
 
-  if (!workspaceCurrency || !workspaceUnit || !currency || !unit || rateMilli === undefined || isLoading || !trips) {
+  if (!workspaceCurrency || !workspaceUnit || !currency || !unit || !myRate || isLoading || !trips) {
     return (
       <View style={{ flex: 1, backgroundColor: rn(color.bgMobile), alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={rn(color.brand)} />
@@ -117,13 +110,15 @@ export default function MileageScreen() {
   const distanceValue = entryMode === "automatic" ? calculated?.distance ?? NaN : manualDistanceValue;
   // Computed locally from the same rate/currency already loaded for this
   // screen, rather than a round-trip per keystroke — mathematically identical
-  // to what addMileageTrip will save, since both resolve the caller's own
-  // effective rate the same way (see getEffectiveMileageRateMilli). Stays in
-  // the workspace's own unit/currency, not the personal display preference —
-  // this is a preview of what will actually be recorded (see plan's scope cut).
+  // to the RAW figure addMileageTrip computes before converting to the
+  // workspace's currency (see getEffectiveMileageRateInfo). Shown in the
+  // rate's own currency, i.e. whatever Setup's user currency & mileage table
+  // has this person in — the actually-saved amount_minor may still get
+  // converted to the workspace's currency server-side, but that's not useful
+  // to preview here; this person thinks in their own currency.
   const estimateMinor =
     !isNaN(distanceValue) && distanceValue > 0
-      ? mileageAmountForTrip(distanceValue, workspaceUnit, rateMilli, workspaceUnit, workspaceCurrency)
+      ? mileageAmountForTrip(distanceValue, workspaceUnit, myRate.rateMilli, workspaceUnit, myRate.currency)
       : null;
 
   const closeForm = () => {
@@ -224,10 +219,14 @@ export default function MileageScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
-        {/* New trips are always logged in workspaceUnit/workspaceCurrency (see
-            estimateMinor, saveTrip, runCalculateDistance above) — already-logged
-            trips below display in the personal unit/currency preference instead,
-            editable only from the web app's Profile page. */}
+        {/* New trips are always logged with distance in workspaceUnit, at this
+            person's own rate (in whichever currency Setup's user currency &
+            mileage table has them in — see estimateMinor, saveTrip,
+            runCalculateDistance above); the saved amount then gets converted
+            to the workspace's own currency, which is what Team/payroll rely
+            on. Already-logged trips below display in the personal unit/
+            currency preference instead, editable only from the web app's
+            Profile page. */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Mileage</Text>
         </View>
@@ -252,8 +251,8 @@ export default function MileageScreen() {
             {/* Not formatMoney: that rounds to two decimals and would show a
                 0.675 rate as 0.68, understating what a long trip is worth. */}
             <Text style={styles.statValue}>
-              {currencySymbol(displayRateCurrency ?? currency)}
-              {rateToDecimalString(displayRateMilli ?? rateMilli)}
+              {currencySymbol(myRate.currency)}
+              {rateToDecimalString(myRate.rateMilli)}
             </Text>
             <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               per {unit}
@@ -367,7 +366,7 @@ export default function MileageScreen() {
             )}
 
             {estimateMinor !== null && (
-              <Text style={styles.estimateText}>Estimated reimbursement: {formatMoney(estimateMinor, workspaceCurrency)}</Text>
+              <Text style={styles.estimateText}>Estimated reimbursement: {formatMoney(estimateMinor, myRate.currency)}</Text>
             )}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
               <Pressable style={styles.cancelButton} onPress={closeForm}>

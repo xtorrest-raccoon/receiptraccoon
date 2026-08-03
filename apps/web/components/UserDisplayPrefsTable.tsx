@@ -99,11 +99,12 @@ function UserPrefsRow({
         value={rateText}
         onChange={(e) => setRateText(e.target.value)}
         onBlur={commitRate}
-        // Always workspace currency/unit -- reimbursement math never uses the
-        // Currency/Distance unit columns to its left, those are display-only
-        // (see the table's own subtitle below). Spelled out here since it
-        // sits right next to that Currency dropdown and is easy to misread
-        // as denominated in it.
+        // The workspace default shown here (when empty) is always in the
+        // workspace's own currency -- it's one number, defined once. A rate
+        // actually TYPED into this field, though, is denominated in THIS
+        // row's own Currency column to the left, not the workspace's --
+        // that's the one thing on this row that changes what gets paid, so
+        // it follows the person's own currency rather than staying fixed.
         placeholder={`Default (${currencySymbol(workspaceCurrency)}${rateToDecimalString(workspaceRateMilli)}/${workspaceUnit})`}
         style={{ ...controlStyle, width: "100%" }}
       />
@@ -135,8 +136,9 @@ export function UserDisplayPrefsTable({
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
         <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>User currency &amp; mileage setup</div>
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
-          Per-person overrides. Currency and distance unit only change how amounts show up for that person (mobile and
-          their own web views) — mileage rate is the actual reimbursement rate their trips are paid at.
+          Per-person overrides. Distance unit only changes how distances show up for that person (mobile and their own
+          web views). Currency does too — but it also decides what currency a Mileage rate typed for that person is
+          in; the saved trip still gets converted to the workspace's own currency for Team totals and payroll.
         </div>
       </div>
 
@@ -156,7 +158,7 @@ export function UserDisplayPrefsTable({
         <div>User</div>
         <div>Currency</div>
         <div>Distance unit</div>
-        <div>Mileage rate ({currencySymbol(workspaceCurrency)}/{workspaceUnit}, always)</div>
+        <div>Mileage rate (per {workspaceUnit}, in this row's own Currency)</div>
       </div>
 
       {users.map((u) => (

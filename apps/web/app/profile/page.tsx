@@ -9,7 +9,7 @@ import {
   useHomeWorkspaceName,
   useIsHomeWorkspace,
   useMyDisplayPrefs,
-  useMyMileageRateMilli,
+  useMyMileageRate,
 } from "../../lib/queries";
 
 function InfoCard({ label, value, hint }: { label: string; value: string; hint: string }) {
@@ -35,7 +35,7 @@ export default function ProfilePage() {
   const { data: workspaceCurrency } = useHomeCurrency();
   const { data: workspaceUnit } = useDistanceUnit();
   const { data: prefs } = useMyDisplayPrefs();
-  const { data: rateMilli } = useMyMileageRateMilli();
+  const { data: myRate } = useMyMileageRate();
 
   if (!currentUser || isHome === undefined) return null;
 
@@ -70,7 +70,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!workspaceCurrency || !workspaceUnit || !prefs || rateMilli === undefined) return null;
+  if (!workspaceCurrency || !workspaceUnit || !prefs || !myRate) return null;
 
   const currency = prefs.currency ?? workspaceCurrency;
   const unit = prefs.distanceUnit ?? workspaceUnit;
@@ -96,8 +96,8 @@ export default function ProfilePage() {
         />
         <InfoCard
           label="Your mileage rate"
-          value={`${currencySymbol(workspaceCurrency)}${rateToDecimalString(rateMilli)} per ${workspaceUnit}`}
-          hint="What your trips are actually reimbursed at — either your own rate, or the workspace default. Always in the workspace's own currency and unit, not your display currency above."
+          value={`${currencySymbol(myRate.currency)}${rateToDecimalString(myRate.rateMilli)} per ${workspaceUnit}`}
+          hint="What your trips are logged at — either your own rate, or the workspace default. In whichever currency Setup's user currency & mileage table has you in, which may differ from the workspace's own currency; the saved trip is still converted to the workspace's currency for Team totals and payroll."
         />
       </div>
     </div>
