@@ -50,6 +50,22 @@ const GROUP_STATUS: Record<SecurityGroup, string> = {
   member: "Member",
 };
 
+/** System Admin isn't a SecurityGroup (see groupOf) -- this is the filter's own superset, one tier per row actually shown in the table. */
+type ProfileTier = "owner" | SecurityGroup;
+
+function tierOf(u: WorkspaceUser): ProfileTier {
+  return u.role === "owner" ? "owner" : groupOf(u);
+}
+
+const TIER_OPTIONS: { value: ProfileTier; label: string }[] = [
+  { value: "owner", label: "System Admin" },
+  { value: "admin", label: "Admin" },
+  { value: "finance", label: "Finance" },
+  { value: "approve", label: "Approver" },
+  { value: "member", label: "Member" },
+];
+const ALL_TIERS: ProfileTier[] = TIER_OPTIONS.map((o) => o.value);
+
 const controlStyle = multiSelectControlStyle;
 
 /**
@@ -75,6 +91,7 @@ export function ReimbursementAuthorityTable({
   const [removing, setRemoving] = useState<WorkspaceUser | null>(null);
   const [promoting, setPromoting] = useState<WorkspaceUser | null>(null);
   const [demoting, setDemoting] = useState<WorkspaceUser | null>(null);
+  const [tierFilter, setTierFilter] = useState<ProfileTier[]>(ALL_TIERS);
   const canGrant = canManageReimbursementAuthority(currentUser.role, currentUser);
   // Stricter than canGrant on purpose — removing someone's access is more
   // severe than granting/revoking a capability, so it stays admin/owner-only
@@ -104,11 +121,30 @@ export function ReimbursementAuthorityTable({
     // needs to escape this container's bounds, which overflow: hidden would
     // clip instead of just rounding the corners.
     <div style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], marginTop: 16 }}>
-      <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
-        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Profile Definition</div>
-        <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
-          Who can manage platform setup, refund a claim, approve or reject one, and specifically whose claims they cover.
+      <div
+        style={{
+          padding: "16px 20px",
+          borderBottom: `1px solid ${color.borderSubtle}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>Profile Definition</div>
+          <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
+            Who can manage platform setup, refund a claim, approve or reject one, and specifically whose claims they cover.
+          </div>
         </div>
+        <MultiSelectDropdown
+          options={TIER_OPTIONS}
+          selected={tierFilter}
+          onChange={(next) => setTierFilter(next as ProfileTier[])}
+          emptyLabel="No profile types selected"
+          buttonStyle={{ ...multiSelectControlStyle, width: 200, padding: "7px 10px", fontSize: fontSize.small, fontWeight: fontWeight.semibold }}
+        />
       </div>
 
       {ownerCount < 2 && currentUserIsOwner ? (
@@ -148,7 +184,11 @@ export function ReimbursementAuthorityTable({
         <div>Authority on</div>
       </div>
 
-      {users.map((u) => {
+      {users.filter((u) => tierFilter.includes(tierOf(u))).length === 0 ? (
+        <div style={{ padding: 30, textAlign: "center", color: color.textFaint, fontSize: fontSize.body }}>No one matches the selected profile types.</div>
+      ) : null}
+
+      {users.filter((u) => tierFilter.includes(tierOf(u))).map((u) => {
         const owner = u.role === "owner";
         const group = groupOf(u);
 
