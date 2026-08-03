@@ -18,6 +18,7 @@ export function SettingsSheet({
   workspaceName,
   distanceUnit,
   rateMilli,
+  rateCurrency,
   homeCurrency,
   onClose,
   onSignOut,
@@ -26,6 +27,15 @@ export function SettingsSheet({
   workspaceName: string | undefined;
   distanceUnit: DistanceUnit | undefined;
   rateMilli: number | undefined;
+  /**
+   * Whichever currency rateMilli is actually denominated in right now — the
+   * caller's display currency once converted, but the workspace's own
+   * currency if that conversion isn't available (see index.tsx). Kept
+   * separate from homeCurrency below: the two can genuinely differ, and
+   * mislabeling an unconverted figure with the wrong currency symbol reads
+   * as a rate ~10x too big or small, not just "not yet converted".
+   */
+  rateCurrency: string | undefined;
   homeCurrency: string | undefined;
   onClose: () => void;
   onSignOut: () => void;
@@ -54,7 +64,7 @@ export function SettingsSheet({
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Rate per {distanceUnit}</Text>
                 <Text style={styles.rowValue}>
-                  {currencySymbol(homeCurrency ?? "EUR")}
+                  {currencySymbol(rateCurrency ?? homeCurrency ?? "EUR")}
                   {rateToDecimalString(rateMilli)}
                 </Text>
               </View>

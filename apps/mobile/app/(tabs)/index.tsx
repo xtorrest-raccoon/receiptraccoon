@@ -87,8 +87,15 @@ export default function HomeScreen() {
   // Already the personal display currency, not necessarily the workspace's —
   // see lib/data.ts's getDashboard, which converts before this ever reaches here.
   const currency = dashboard.currency;
-  const settingsRateMilli =
-    rateConv?.rate != null && workspaceCurrency ? convertRateMilliCurrency(rateMilli, workspaceCurrency, currency, rateConv.rate) : rateMilli;
+  // fetchDisplayRate fails open (network hiccup, cold fx_rates cache, etc.) —
+  // when it does, rateMilli stays in its true, unconverted workspace
+  // currency, so the label passed to SettingsSheet must fall back to
+  // workspaceCurrency too. Labeling an unconverted SEK figure "€" (the
+  // *intended* display currency) would show a number ~11x too large/small
+  // for its label, not just an unconverted one.
+  const rateConverted = rateConv?.rate != null && workspaceCurrency;
+  const settingsRateMilli = rateConverted ? convertRateMilliCurrency(rateMilli, workspaceCurrency, currency, rateConv!.rate!) : rateMilli;
+  const settingsRateCurrency = rateConverted ? currency : workspaceCurrency;
 
   const greeting = getGreeting();
   const breakdown = breakdownDashboard?.categoryBreakdown.filter((c) => c.pct > 0) ?? [];
@@ -224,6 +231,7 @@ export default function HomeScreen() {
         workspaceName={workspaceName}
         distanceUnit={distanceUnit}
         rateMilli={settingsRateMilli}
+        rateCurrency={settingsRateCurrency}
         homeCurrency={currency}
         onClose={() => setSettingsOpen(false)}
         onSignOut={() => {

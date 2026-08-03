@@ -57,10 +57,15 @@ export default function MileageScreen() {
   // else the workspace default. Same rate addMileageTrip itself will use.
   const { data: rateMilli } = useMyMileageRateMilli();
   const { data: rateConv } = useDisplayRate(workspaceCurrency);
-  const displayRateMilli =
-    rateMilli !== undefined && rateConv?.rate != null && workspaceCurrency && currency
-      ? convertRateMilliCurrency(rateMilli, workspaceCurrency, currency, rateConv.rate)
-      : rateMilli;
+  const rateConverted = rateMilli !== undefined && rateConv?.rate != null && workspaceCurrency && currency;
+  const displayRateMilli = rateConverted ? convertRateMilliCurrency(rateMilli!, workspaceCurrency!, currency!, rateConv!.rate!) : rateMilli;
+  // fetchDisplayRate fails open (network hiccup, cold fx_rates cache, etc.) —
+  // when it does, displayRateMilli stays in the workspace's own currency, so
+  // the label shown alongside it must fall back to workspaceCurrency too.
+  // Labeling an unconverted figure with `currency` (the intended display
+  // currency) would show a rate that reads as ~10x too big or small for its
+  // label, not just "not yet converted".
+  const displayRateCurrency = rateConverted ? currency : workspaceCurrency;
   const { data: trips, isLoading } = useMileage();
   const addMileageTrip = useAddMileageTrip();
   const updateMileageTrip = useUpdateMileageTrip();
@@ -247,7 +252,7 @@ export default function MileageScreen() {
             {/* Not formatMoney: that rounds to two decimals and would show a
                 0.675 rate as 0.68, understating what a long trip is worth. */}
             <Text style={styles.statValue}>
-              {currencySymbol(currency)}
+              {currencySymbol(displayRateCurrency ?? currency)}
               {rateToDecimalString(displayRateMilli ?? rateMilli)}
             </Text>
             <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
