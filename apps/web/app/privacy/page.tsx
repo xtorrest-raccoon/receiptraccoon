@@ -67,8 +67,8 @@ export default function PrivacyPage() {
         <p>
           You can ask to see, correct, or delete the personal data we hold about you at any time. To delete your
           account, email us at{" "}
-          <a href="mailto:privacy@receiptraccoon.com" style={{ color: "inherit" }}>
-            privacy@receiptraccoon.com
+          <a href="mailto:contact@receiptraccoon.fr" style={{ color: "inherit" }}>
+            contact@receiptraccoon.fr
           </a>{" "}
           from the address on your account — see our <a href="/support" style={{ color: "inherit" }}>Support page</a>{" "}
           for the full process. If you're an EU or UK resident, this also covers your rights under GDPR; if you're a
@@ -98,8 +98,8 @@ export default function PrivacyPage() {
       <LegalSection heading="Contact">
         <p>
           Questions about this policy? Email{" "}
-          <a href="mailto:privacy@receiptraccoon.com" style={{ color: "inherit" }}>
-            privacy@receiptraccoon.com
+          <a href="mailto:contact@receiptraccoon.fr" style={{ color: "inherit" }}>
+            contact@receiptraccoon.fr
           </a>
           .
         </p>
