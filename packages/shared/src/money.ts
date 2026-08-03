@@ -259,12 +259,12 @@ export function convertReceiptCurrency(receipt: Receipt, toCurrency: string, rat
  * dashboard.currency -> toCurrency, but an individual receipt can carry a
  * DIFFERENT currency of its own (captured before the workspace's currency
  * was last changed — receipts are never retroactively reconverted, see
- * Setup's currency card). Applying this rate to such a receipt would
- * silently produce a wrong number. recentReceipts already renders each row
- * in its own r.currency (see RecentReceiptsTable), matching how
- * ReceiptsTable/Team show every receipt everywhere else in the app — a
- * receipt's amount is a historical fact in the currency it was captured in,
- * only aggregates get normalized for comparison.
+ * Setup's currency card). Applying this single rate to such a receipt would
+ * silently produce a wrong number — the same mistake the Receipts page's
+ * own list once made (fixed by resolving one rate per distinct receipt
+ * currency, see useFxRatesTo). Callers that display recentReceipts (see
+ * apps/web/app/dashboard/page.tsx) need to apply that same per-receipt
+ * conversion themselves rather than this function's single rate.
  */
 export function convertDashboardCurrency(dashboard: DashboardResponse, toCurrency: string, rate: number): DashboardResponse {
   if (dashboard.currency === toCurrency) return dashboard;

@@ -1,9 +1,9 @@
 "use client";
 
-import { convertDashboardCurrency, formatDelta, formatMoney } from "@rr/shared";
+import { convertDashboardCurrency, convertReceiptCurrency, formatDelta, formatMoney } from "@rr/shared";
 import { color, fontSize, fontWeight } from "@rr/ui-tokens";
 import { TODAY } from "../../lib/data";
-import { useCurrentUser, useDashboard, useFxRate, useMyDisplayPrefs } from "../../lib/queries";
+import { useCurrentUser, useDashboard, useFxRate, useFxRatesTo, useMyDisplayPrefs } from "../../lib/queries";
 import { StatCard } from "../../components/StatCard";
 import { SpendBarChart } from "../../components/SpendBarChart";
 import { SpendPacingCard } from "../../components/SpendPacingCard";
@@ -31,6 +31,20 @@ export default function DashboardPage() {
   const { data: fxRate } = useFxRate(dashboard?.currency, displayCurrency);
   const displayDashboard =
     dashboard && displayCurrency && fxRate != null ? convertDashboardCurrency(dashboard, displayCurrency, fxRate) : dashboard;
+
+  // recentReceipts needs its own per-receipt rate, not the single
+  // dashboard.currency -> displayCurrency rate above -- see
+  // convertDashboardCurrency's own doc comment for why it deliberately
+  // leaves these unconverted (a receipt captured before the workspace's
+  // currency was last changed carries a different currency of its own).
+  // Same fix already applied to the Receipts page's own list.
+  const recentFxRates = useFxRatesTo((dashboard?.recentReceipts ?? []).map((r) => r.currency), displayCurrency);
+  const recentReceipts = (dashboard?.recentReceipts ?? []).map((r) => {
+    if (!displayCurrency || r.currency === displayCurrency) return r;
+    const rate = recentFxRates[r.currency];
+    return rate != null ? convertReceiptCurrency(r, displayCurrency, rate) : r;
+  });
+
   if (!displayDashboard) return null;
   const { stats, currency } = displayDashboard;
 
@@ -83,7 +97,7 @@ export default function DashboardPage() {
         <TipsCard tips={displayDashboard.tips} />
       </div>
 
-      <RecentReceiptsTable receipts={displayDashboard.recentReceipts} />
+      <RecentReceiptsTable receipts={recentReceipts} />
     </div>
   );
 }
