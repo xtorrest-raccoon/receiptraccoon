@@ -6,6 +6,7 @@ import { canViewTeamPage, convertReceiptCurrency, formatMoney, isAdmin, isOutsta
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { useCategories, useCurrentUser, useFxRatesTo, useMileage, useReceipts, useTeam, useUsers } from "../../lib/queries";
 import { exportReceiptsCsv, guessReceiptCountry } from "../../lib/receiptsCsv";
+import { exportMileageCsv } from "../../lib/mileageCsv";
 import { StatCard } from "../../components/StatCard";
 import { TeamMembersTable } from "../../components/TeamMembersTable";
 import { MileageTable } from "../../components/MileageTable";
@@ -38,11 +39,16 @@ export default function TeamPage() {
   const [receiptStatusFilter, setReceiptStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
   const [receiptUserFilter, setReceiptUserFilter] = useState("All");
   const [exporting, setExporting] = useState(false);
+  const [exportingMileage, setExportingMileage] = useState(false);
 
   const { data: team } = useTeam();
   const { data: users } = useUsers();
   const { data: categories } = useCategories();
   const { data: mileage } = useMileage(mileageUserFilter === "All" ? undefined : mileageUserFilter);
+  // Deliberately ignores mileageUserFilter -- exporting asks for a date
+  // range instead and always includes every person and status within it,
+  // same reasoning as allForExport below for receipts.
+  const { data: allMileageForExport } = useMileage(undefined);
   const { data: receipts } = useReceipts({
     q: receiptSearch || undefined,
     categoryName: receiptCategoryFilter,
@@ -104,6 +110,13 @@ export default function TeamPage() {
     const inRange = inWorkspaceCurrency.filter((r) => r.receiptDate && r.receiptDate >= startDate && r.receiptDate <= endDate);
     exportReceiptsCsv(inRange, users ?? [], "receiptraccoon-team-receipts.csv", countryById);
     setExporting(false);
+  };
+
+  const exportMileageInRange = (startDate: string, endDate: string) => {
+    if (!team) return;
+    const inRange = (allMileageForExport ?? []).filter((t) => t.tripDate >= startDate && t.tripDate <= endDate);
+    exportMileageCsv(inRange, users ?? [], team.currency, "receiptraccoon-team-mileage.csv");
+    setExportingMileage(false);
   };
 
   if (!currentUser || !allowed) {
@@ -337,6 +350,26 @@ export default function TeamPage() {
               emptyLabel="No statuses selected"
               buttonStyle={filterSelectStyle}
             />
+            <button
+              type="button"
+              onClick={() => setExportingMileage(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "7px 12px",
+                borderRadius: radius.sm + 1,
+                background: color.brand,
+                color: color.surface,
+                fontWeight: fontWeight.bold,
+                fontSize: fontSize.small,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <DownloadIcon color={color.surface} />
+              Export CSV
+            </button>
             <div style={{ fontSize: fontSize.xl, fontWeight: fontWeight.heavy }}>{formatMoney(mileageOutstandingMinor, team.currency)}</div>
           </div>
         </div>
@@ -349,6 +382,9 @@ export default function TeamPage() {
       </div>
 
       {exporting ? <ExportCsvDateRangeModal onCancel={() => setExporting(false)} onConfirm={exportInRange} /> : null}
+      {exportingMileage ? (
+        <ExportCsvDateRangeModal itemLabel="mileage trip" onCancel={() => setExportingMileage(false)} onConfirm={exportMileageInRange} />
+      ) : null}
     </div>
   );
 }

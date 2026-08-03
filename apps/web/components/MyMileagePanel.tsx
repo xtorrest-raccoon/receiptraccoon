@@ -4,6 +4,7 @@ import { useState } from "react";
 import { convertMileageTripCurrency, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
 import { TODAY } from "../lib/data";
+import { exportMileageCsv } from "../lib/mileageCsv";
 import {
   useAddMileageTrip,
   useCurrentUser,
@@ -14,8 +15,10 @@ import {
   useMyDisplayPrefs,
   useUsers,
 } from "../lib/queries";
+import { ExportCsvDateRangeModal } from "./ExportCsvDateRangeModal";
 import { MileageTable } from "./MileageTable";
 import { MultiSelectDropdown, multiSelectControlStyle } from "./MultiSelectDropdown";
+import { DownloadIcon } from "./icons";
 
 const STATUS_OPTIONS: ReimbursementStatus[] = ["pending", "approved", "reimbursed", "rejected"];
 // Rejected/reimbursed are settled — default to what still needs action.
@@ -57,6 +60,7 @@ export function MyMileagePanel() {
   const [distance, setDistance] = useState("");
   const [distanceUnit, setDistanceUnit] = useState<"mi" | "km">("mi");
   const [statusFilter, setStatusFilter] = useState<ReimbursementStatus[]>(DEFAULT_STATUS_FILTER);
+  const [exporting, setExporting] = useState(false);
 
   const canSubmit = isHome !== false && purpose.trim() !== "" && tripDate !== "" && Number(distance) > 0;
 
@@ -76,6 +80,15 @@ export function MyMileagePanel() {
   if (!users || !homeCurrency || !displayCurrency) return null;
 
   const filteredTrips = (displayTrips ?? []).filter((t) => statusFilter.includes(t.reimbursementStatus));
+
+  // Unlike Receipts' export, no separate unfiltered fetch is needed here --
+  // trips/displayTrips are already every status, only statusFilter (applied
+  // above, not here) narrows what's shown on screen.
+  const exportInRange = (startDate: string, endDate: string) => {
+    const inRange = (displayTrips ?? []).filter((t) => t.tripDate >= startDate && t.tripDate <= endDate);
+    exportMileageCsv(inRange, users, displayCurrency, "receiptraccoon-my-mileage.csv");
+    setExporting(false);
+  };
 
   return (
     <div>
@@ -147,7 +160,7 @@ export function MyMileagePanel() {
         ) : null}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 10 }}>
         <MultiSelectDropdown
           options={STATUS_OPTIONS.map((s) => ({ value: s, label: reimbursementChip[s].label }))}
           selected={statusFilter}
@@ -155,9 +168,31 @@ export function MyMileagePanel() {
           emptyLabel="No statuses selected"
           buttonStyle={{ ...multiSelectControlStyle, width: 200, padding: "9px 14px", fontSize: fontSize.body, fontWeight: fontWeight.semibold }}
         />
+        <button
+          type="button"
+          onClick={() => setExporting(true)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "9px 14px",
+            borderRadius: radius.md,
+            background: color.brand,
+            color: color.surface,
+            fontWeight: fontWeight.bold,
+            fontSize: fontSize.body,
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          <DownloadIcon color={color.surface} />
+          Export CSV
+        </button>
       </div>
 
       <MileageTable trips={filteredTrips} currency={displayCurrency} users={users} />
+
+      {exporting ? <ExportCsvDateRangeModal itemLabel="mileage trip" onCancel={() => setExporting(false)} onConfirm={exportInRange} /> : null}
     </div>
   );
 }

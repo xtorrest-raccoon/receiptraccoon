@@ -5,15 +5,17 @@ import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { TODAY } from "../lib/data";
 
 /**
- * Asks for a start/end date before exporting -- every receipt in that range
- * is included regardless of reimbursement status, unlike the on-screen
- * table's own status filter (which only ever narrows what's displayed, not
- * what a fresh export should contain).
+ * Asks for a start/end date before exporting -- every item in that range is
+ * included regardless of reimbursement status, unlike the on-screen table's
+ * own status filter (which only ever narrows what's displayed, not what a
+ * fresh export should contain). Shared by receipts and mileage exports.
  */
 export function ExportCsvDateRangeModal({
+  itemLabel = "receipt",
   onCancel,
   onConfirm,
 }: {
+  itemLabel?: string;
   onCancel: () => void;
   onConfirm: (startDate: string, endDate: string) => void;
 }) {
@@ -26,9 +28,9 @@ export function ExportCsvDateRangeModal({
       style={{ position: "fixed", inset: 0, background: "color-mix(in oklch, black 45%, transparent)", zIndex: 30, display: "flex", alignItems: "center", justifyContent: "center" }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{ width: 360, background: color.surface, borderRadius: radius["2xl"], padding: 24 }}>
-        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, marginBottom: 6 }}>Export receipts</div>
+        <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, marginBottom: 6 }}>Export {itemLabel}s</div>
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginBottom: 16, lineHeight: 1.5 }}>
-          Every receipt in this date range is included, whatever its status — pending, approved, reimbursed, or
+          Every {itemLabel} in this date range is included, whatever its status — pending, approved, reimbursed, or
           rejected.
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
