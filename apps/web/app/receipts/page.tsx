@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { convertReceiptCurrency, type Receipt, type ReimbursementStatus } from "@rr/shared";
 import { color, fontSize, fontWeight, radius, reimbursementChip } from "@rr/ui-tokens";
-import { useCategories, useCurrentUser, useFxRate, useHomeCurrency, useMyDisplayPrefs, useReceipts, useUsers } from "../../lib/queries";
+import { useCategories, useCurrentUser, useFxRatesTo, useHomeCurrency, useMyDisplayPrefs, useReceipts, useUsers } from "../../lib/queries";
 import { useDataStore } from "../../lib/store";
 import { exportReceiptsCsv, guessReceiptCountry } from "../../lib/receiptsCsv";
 import { ReceiptsTable } from "../../components/ReceiptsTable";
@@ -44,15 +44,27 @@ export default function ReceiptsPage() {
 
   // Own-data personal view -- honors the caller's display currency
   // preference (see apps/web/app/profile/page.tsx), independent of whatever
-  // the workspace default currency is set to. Every receipt here is already
-  // uniformly in the workspace's home currency (auto-converted at scan
-  // time), so one rate covers the whole list.
+  // the workspace default currency is set to. A receipt captured before the
+  // workspace's currency was last changed still carries its own original
+  // currency (never retroactively reconverted -- see Setup's Currency
+  // card), so this can't assume one rate covers the whole list -- each
+  // receipt's own currency needs its own rate to displayCurrency, same
+  // reasoning as Team's receiptsInWorkspaceCurrency.
   const { data: homeCurrency } = useHomeCurrency();
   const { data: prefs } = useMyDisplayPrefs();
   const displayCurrency = prefs?.currency ?? homeCurrency;
-  const { data: fxRate } = useFxRate(homeCurrency, displayCurrency);
+  // Sourced from allForExport (the same user, no search/category/status
+  // filters) rather than the on-screen `receipts` -- a superset of whatever
+  // distinct currencies the filtered list could ever contain, so one map
+  // covers both toDisplay(receipts) below and toDisplay(allForExport) in
+  // exportInRange without a second set of rate lookups.
+  const fxRates = useFxRatesTo((allForExport ?? []).map((r) => r.currency), displayCurrency);
   const toDisplay = (list: Receipt[] | undefined): Receipt[] =>
-    list && displayCurrency && fxRate != null ? list.map((r) => convertReceiptCurrency(r, displayCurrency, fxRate)) : list ?? [];
+    (list ?? []).map((r) => {
+      if (!displayCurrency || r.currency === displayCurrency) return r;
+      const rate = fxRates[r.currency];
+      return rate != null ? convertReceiptCurrency(r, displayCurrency, rate) : r;
+    });
 
   if (!categories || !users || !currentUser) return null;
 
