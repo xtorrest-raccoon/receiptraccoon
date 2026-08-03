@@ -127,7 +127,7 @@ const ALL_QUERY_KEYS = [
   "owedToUser",
 ];
 
-function useInvalidateAll() {
+export function useInvalidateAll() {
   const queryClient = useQueryClient();
   return () => {
     for (const key of ALL_QUERY_KEYS) queryClient.invalidateQueries({ queryKey: [key] });

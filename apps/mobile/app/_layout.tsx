@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -8,7 +9,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getSession, loadActiveWorkspaceId, onAuthStateChange } from "@rr/api";
 import { AcceptInviteModal } from "../components/AcceptInviteModal";
 import { FinishSetupScreen } from "../components/FinishSetupScreen";
-import { useCurrentUser } from "../lib/queries";
+import { useCurrentUser, useInvalidateAll } from "../lib/queries";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
@@ -38,6 +39,26 @@ function AuthGate({ children }: { children: ReactNode }) {
   // membership happens to sort first.
   useEffect(() => {
     if (session && session !== "loading") loadActiveWorkspaceId();
+  }, [session]);
+
+  // The effect above only runs at cold launch/sign-in -- everything it
+  // affects (active workspace, and every workspace-wide setting an admin can
+  // change from web's Setup, like the mileage rate) still comes from
+  // long-lived, already-mounted queries that never refetch on their own
+  // while the app just sits in the background. Re-sync every time the app
+  // is brought back to the foreground, so a change made on web shows up here
+  // without needing a full app restart.
+  const invalidateAll = useInvalidateAll();
+  useEffect(() => {
+    if (!session || session === "loading") return;
+    const subscription = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (next === "active") {
+        loadActiveWorkspaceId();
+        invalidateAll();
+      }
+    });
+    return () => subscription.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   useEffect(() => {
