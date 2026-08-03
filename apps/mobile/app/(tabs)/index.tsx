@@ -157,9 +157,12 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Spend over time: mirrors apps/web/components/SpendBarChart.tsx. */}
+        {/* Spend over time: mirrors apps/web/components/SpendBarChart.tsx, but
+            shows 8 weeks instead of web's 10 -- mobile's card is narrower, so
+            8 bars stay legible where 10 would crowd. computeWeeklySpend
+            itself still returns 10; just trimmed to the most recent 8 here. */}
         <View style={styles.card}>
-          <SpendBarChart weeklySpend={dashboard.weeklySpend} currency={currency} />
+          <SpendBarChart weeklySpend={dashboard.weeklySpend.slice(-8)} currency={currency} />
         </View>
 
         {/* Category breakdown */}
