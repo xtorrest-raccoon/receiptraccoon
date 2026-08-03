@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { canDeleteReceipt, isRecentOrActionable, type Receipt } from "@rr/shared";
 import { rn } from "../../lib/colors";
-import { useDeleteReceipt, useHomeCurrency, useReceipts } from "../../lib/queries";
+import { useDeleteReceipt, useReceipts } from "../../lib/queries";
 import { Text } from "../../components/Text";
 import { ReceiptRow } from "../../components/ReceiptRow";
 import { SwipeToDelete } from "../../components/SwipeToDelete";
@@ -13,7 +13,6 @@ import { SwipeToDelete } from "../../components/SwipeToDelete";
 export default function ReceiptsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: currency } = useHomeCurrency();
   const { data: receipts, isLoading, refetch } = useReceipts();
   const deleteReceipt = useDeleteReceipt();
 
@@ -62,7 +61,7 @@ export default function ReceiptsScreen() {
         <Text style={styles.title}>Receipts</Text>
       </View>
 
-      {isLoading || !currency ? (
+      {isLoading ? (
         <View style={styles.centerFill}>
           <ActivityIndicator color={rn(color.brand)} />
         </View>
@@ -88,8 +87,13 @@ export default function ReceiptsScreen() {
               onDelete={() => confirmDelete(item)}
             >
               <ReceiptRow
+                // The receipt's OWN currency, not a screen-wide value --
+                // listReceipts already converts each one to this person's
+                // display currency (see lib/data.ts), so this is that
+                // already-converted figure's actual currency, not the
+                // workspace's.
                 receipt={item}
-                currency={currency}
+                currency={item.currency}
                 onPress={() => router.push(`/receipt/${item.id}`)}
               />
             </SwipeToDelete>

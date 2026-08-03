@@ -14,11 +14,14 @@ import { StatusBadge } from "./StatusBadge";
 export function TripDetailModal({
   trip,
   currency,
+  workspaceCurrency,
   displayUnit,
   onClose,
 }: {
   trip: MileageTrip | null;
   currency: string;
+  /** Fallback for trip.rateMilli's own currency when trip.originalCurrency is null — see the Rate row below. */
+  workspaceCurrency: string;
   displayUnit: DistanceUnit;
   onClose: () => void;
 }) {
@@ -65,7 +68,12 @@ export function TripDetailModal({
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Rate</Text>
                   <Text style={styles.detailValue}>
-                    {currencySymbol(currency)}
+                    {/* trip.rateMilli is frozen at entry in trip.originalCurrency
+                        if it was set in a currency other than the workspace's
+                        own (see 0034_mileage_rate_currency.sql) -- `currency`
+                        (the personal display currency) is only right for the
+                        Reimbursement amount below, which amountMinor always is. */}
+                    {currencySymbol(trip.originalCurrency ?? workspaceCurrency)}
                     {rateToDecimalString(trip.rateMilli)} per {trip.rateUnit}
                   </Text>
                 </View>

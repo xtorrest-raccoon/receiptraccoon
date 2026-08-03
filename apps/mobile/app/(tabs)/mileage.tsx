@@ -411,6 +411,7 @@ export default function MileageScreen() {
       <TripDetailModal
         trip={viewingTrip}
         currency={currency}
+        workspaceCurrency={workspaceCurrency}
         displayUnit={unit}
         onClose={() => setViewingTrip(null)}
       />
