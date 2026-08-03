@@ -37,6 +37,13 @@ const RESET_PASSWORD_PATH = "/reset-password";
 // The public marketing page — same "signed-out visitors stay, signed-in
 // visitors get bounced to the app" treatment as the login page itself.
 const LANDING_PATH = "/";
+// Privacy/Terms/Support -- linked from the landing page's footer, from
+// mobile's Settings sheet, and handed to App Store Connect/Google Play as
+// the required policy URLs. Must render for EVERYONE, signed in or not --
+// unlike the landing page, a signed-in visitor should stay here too rather
+// than get bounced to /dashboard (someone reading the privacy policy from
+// inside the app shouldn't be redirected away from it).
+const STANDALONE_PATHS = new Set(["/privacy", "/terms", "/support"]);
 const PUBLIC_PATHS = new Set([LOGIN_PATH, LANDING_PATH]);
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -53,7 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (session === "loading" || pathname === RESET_PASSWORD_PATH) return;
+    if (session === "loading" || pathname === RESET_PASSWORD_PATH || STANDALONE_PATHS.has(pathname)) return;
     const onPublicPath = PUBLIC_PATHS.has(pathname);
     if (!session && !onPublicPath) {
       router.replace(LOGIN_PATH);
@@ -82,9 +89,13 @@ function AppShellBody({
 }) {
   // The login page renders its own full-screen layout — no sidebar/top bar
   // around it, same reason the mobile app's (auth) group sits outside the
-  // tab navigator. Reset-password and the public landing page are the same
-  // shape, for the same reason.
-  if (pathname === LOGIN_PATH || pathname === RESET_PASSWORD_PATH || pathname === LANDING_PATH) return <>{children}</>;
+  // tab navigator. Reset-password, the landing page, and Privacy/Terms/
+  // Support are the same shape, for the same reason — the latter three also
+  // need to render for a SIGNED-IN visitor too (see the effect above),
+  // unlike the landing page which bounces them to /dashboard instead.
+  if (pathname === LOGIN_PATH || pathname === RESET_PASSWORD_PATH || pathname === LANDING_PATH || STANDALONE_PATHS.has(pathname)) {
+    return <>{children}</>;
+  }
 
   if (session === "loading" || !session) {
     return <div style={{ minHeight: "100vh", background: color.bgWeb }} />;

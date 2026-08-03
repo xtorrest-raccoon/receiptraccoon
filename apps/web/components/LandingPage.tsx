@@ -82,7 +82,7 @@ const NAV_LINKS = [
   { label: "Pricing", href: "#pricing" },
 ];
 
-function LandingNav() {
+export function LandingNav() {
   return (
     <header style={{ position: "sticky", top: 0, zIndex: 20, background: color.surface, borderBottom: `1px solid ${color.border}` }}>
       <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", gap: 12 }}>
@@ -629,7 +629,7 @@ function ClosingCta() {
   );
 }
 
-function Footer() {
+export function Footer() {
   return (
     <footer style={{ background: color.inkPanel, borderTop: "1px solid rgba(255,255,255,0.08)", padding: "24px" }}>
       <div className="flex flex-col sm:flex-row" style={{ maxWidth: 1200, margin: "0 auto", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
@@ -652,11 +652,16 @@ function Footer() {
             © {new Date().getFullYear()} ReceiptRaccoon. All rights reserved.
           </span>
         </div>
-        {/* Plain text, not links -- Privacy/Terms/Support pages don't exist yet. */}
         <div className="flex items-center" style={{ gap: 24 }}>
-          <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>Privacy</span>
-          <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>Terms</span>
-          <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>Support</span>
+          <Link href="/privacy" style={{ fontSize: fontSize.body, color: color.inkPanelText, textDecoration: "none" }}>
+            Privacy
+          </Link>
+          <Link href="/terms" style={{ fontSize: fontSize.body, color: color.inkPanelText, textDecoration: "none" }}>
+            Terms
+          </Link>
+          <Link href="/support" style={{ fontSize: fontSize.body, color: color.inkPanelText, textDecoration: "none" }}>
+            Support
+          </Link>
         </div>
       </div>
     </footer>

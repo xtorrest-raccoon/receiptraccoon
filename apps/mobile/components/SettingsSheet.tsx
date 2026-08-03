@@ -1,8 +1,14 @@
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { color } from "@rr/ui-tokens";
 import { currencySymbol, rateToDecimalString, type DistanceUnit } from "@rr/shared";
 import { rn, rnAlpha } from "../lib/colors";
 import { Text } from "./Text";
+
+// The web app's own deployed URL -- not derived from getApiBaseUrl() (that
+// one points at whatever dev server Metro is running against, wrong for
+// these two links even in production builds). Same URL App Store Connect/
+// Google Play get for the required Privacy Policy link.
+const WEB_APP_URL = "https://receiptraccoon-web.vercel.app";
 
 /**
  * Settings bottom sheet, reached from the gear in the Home header.
@@ -80,6 +86,15 @@ export function SettingsSheet({
             ) : null}
           </ScrollView>
 
+          <View style={styles.linkRow}>
+            <Pressable onPress={() => Linking.openURL(`${WEB_APP_URL}/privacy`)}>
+              <Text style={styles.linkLabel}>Privacy</Text>
+            </Pressable>
+            <Pressable onPress={() => Linking.openURL(`${WEB_APP_URL}/support`)}>
+              <Text style={styles.linkLabel}>Support</Text>
+            </Pressable>
+          </View>
+
           <Pressable style={styles.signOutRow} onPress={onSignOut}>
             <Text style={styles.signOutLabel}>Sign out</Text>
           </Pressable>
@@ -136,6 +151,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: rn(color.text),
+  },
+  linkRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 20,
+    marginTop: 14,
+  },
+  linkLabel: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: rn(color.textMuted),
+    textDecorationLine: "underline",
   },
   signOutRow: {
     marginTop: 8,
