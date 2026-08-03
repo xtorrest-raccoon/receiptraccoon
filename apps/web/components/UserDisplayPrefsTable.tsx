@@ -95,19 +95,60 @@ function UserPrefsRow({
         <option value="km">km</option>
       </select>
 
-      <input
-        value={rateText}
-        onChange={(e) => setRateText(e.target.value)}
-        onBlur={commitRate}
-        // The workspace default shown here (when empty) is always in the
-        // workspace's own currency -- it's one number, defined once. A rate
-        // actually TYPED into this field, though, is denominated in THIS
-        // row's own Currency column to the left, not the workspace's --
-        // that's the one thing on this row that changes what gets paid, so
-        // it follows the person's own currency rather than staying fixed.
-        placeholder={`Default (${currencySymbol(workspaceCurrency)}${rateToDecimalString(workspaceRateMilli)}/${workspaceUnit})`}
-        style={{ ...controlStyle, width: "100%" }}
-      />
+      {/* Currency and unit sit right on the field itself, not just in the
+          column header or a placeholder that disappears once you type --
+          this is the one row-specific fact that's easy to misread once
+          there's an adjacent, differently-valued Currency dropdown. The
+          currency prefix follows THIS row's own effective currency (its
+          override, or the workspace default); the unit suffix is always
+          workspaceUnit, since new trips always log their distance in it
+          regardless of anyone's display preference (see plan's scope cut). */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          border: `1px solid ${color.borderStrong}`,
+          borderRadius: radius.sm,
+          overflow: "hidden",
+          background: color.surface,
+        }}
+      >
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "0 7px",
+            fontSize: fontSize.small,
+            fontWeight: fontWeight.bold,
+            color: color.textMuted,
+            background: color.surfaceMuted,
+            borderRight: `1px solid ${color.borderStrong}`,
+          }}
+        >
+          {currencySymbol(user.displayCurrency ?? workspaceCurrency)}
+        </span>
+        <input
+          value={rateText}
+          onChange={(e) => setRateText(e.target.value)}
+          onBlur={commitRate}
+          placeholder={`Default (${rateToDecimalString(workspaceRateMilli)})`}
+          style={{ ...controlStyle, flex: 1, minWidth: 0, border: "none", borderRadius: 0 }}
+        />
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "0 7px",
+            fontSize: fontSize.small,
+            fontWeight: fontWeight.bold,
+            color: color.textMuted,
+            background: color.surfaceMuted,
+            borderLeft: `1px solid ${color.borderStrong}`,
+          }}
+        >
+          /{workspaceUnit}
+        </span>
+      </div>
     </div>
   );
 }
@@ -158,7 +199,7 @@ export function UserDisplayPrefsTable({
         <div>User</div>
         <div>Currency</div>
         <div>Distance unit</div>
-        <div>Mileage rate (per {workspaceUnit}, in this row's own Currency)</div>
+        <div>Mileage rate</div>
       </div>
 
       {users.map((u) => (
