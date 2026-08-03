@@ -118,7 +118,7 @@ export default function MileageScreen() {
   // to preview here; this person thinks in their own currency.
   const estimateMinor =
     !isNaN(distanceValue) && distanceValue > 0
-      ? mileageAmountForTrip(distanceValue, workspaceUnit, myRate.rateMilli, workspaceUnit, myRate.currency)
+      ? mileageAmountForTrip(distanceValue, workspaceUnit, myRate.rateMilli, myRate.unit, myRate.currency)
       : null;
 
   const closeForm = () => {
@@ -255,7 +255,7 @@ export default function MileageScreen() {
               {rateToDecimalString(myRate.rateMilli)}
             </Text>
             <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              per {unit}
+              per {myRate.unit}
             </Text>
           </View>
         </View>

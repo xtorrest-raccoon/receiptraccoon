@@ -96,8 +96,8 @@ export default function ProfilePage() {
         />
         <InfoCard
           label="Your mileage rate"
-          value={`${currencySymbol(myRate.currency)}${rateToDecimalString(myRate.rateMilli)} per ${workspaceUnit}`}
-          hint="What your trips are logged at — either your own rate, or the workspace default. In whichever currency Setup's user currency & mileage table has you in, which may differ from the workspace's own currency; the saved trip is still converted to the workspace's currency for Team totals and payroll."
+          value={`${currencySymbol(myRate.currency)}${rateToDecimalString(myRate.rateMilli)} per ${myRate.unit}`}
+          hint="What your trips are logged at — either your own rate, or the workspace default. In whichever currency and unit Setup's user currency & mileage table has you in, which may differ from the workspace's own; the saved trip is still converted to the workspace's currency for Team totals and payroll."
         />
       </div>
     </div>

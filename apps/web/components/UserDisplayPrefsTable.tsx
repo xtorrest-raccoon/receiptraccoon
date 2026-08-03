@@ -53,6 +53,19 @@ function UserPrefsRow({
     }
   };
 
+  // Matches getEffectiveMileageRateInfo's own precedence exactly: only a
+  // rate actually typed for this row is denominated in that row's own
+  // Currency/Distance unit -- the workspace-wide default (shown via the
+  // placeholder below, while this field is empty) is one number defined
+  // once, in the workspace's own currency/unit, regardless of this row's
+  // personal display preference. Keyed off the live text, not just the
+  // already-saved value, so the prefix/suffix already reflect what a
+  // rate being typed right now will resolve to once it commits, not what
+  // was true before this edit started.
+  const hasRate = rateText.trim() !== "";
+  const rateCurrency = hasRate ? user.displayCurrency ?? workspaceCurrency : workspaceCurrency;
+  const rateUnit = hasRate ? user.displayDistanceUnit ?? workspaceUnit : workspaceUnit;
+
   return (
     <div
       style={{
@@ -98,11 +111,12 @@ function UserPrefsRow({
       {/* Currency and unit sit right on the field itself, not just in the
           column header or a placeholder that disappears once you type --
           this is the one row-specific fact that's easy to misread once
-          there's an adjacent, differently-valued Currency dropdown. The
-          currency prefix follows THIS row's own effective currency (its
-          override, or the workspace default); the unit suffix is always
-          workspaceUnit, since new trips always log their distance in it
-          regardless of anyone's display preference (see plan's scope cut). */}
+          there's an adjacent, differently-valued Currency dropdown. Both
+          the prefix and suffix follow THIS row's own effective values (its
+          override, or the workspace default) -- changing the Distance unit
+          dropdown to the left auto-converts a rate already typed here to
+          the equivalent figure in the new unit (see setUserDisplayDistanceUnit),
+          so this suffix and the number it's attached to never drift apart. */}
       <div
         style={{
           display: "flex",
@@ -125,7 +139,7 @@ function UserPrefsRow({
             borderRight: `1px solid ${color.borderStrong}`,
           }}
         >
-          {currencySymbol(user.displayCurrency ?? workspaceCurrency)}
+          {currencySymbol(rateCurrency)}
         </span>
         <input
           value={rateText}
@@ -146,7 +160,7 @@ function UserPrefsRow({
             borderLeft: `1px solid ${color.borderStrong}`,
           }}
         >
-          /{workspaceUnit}
+          /{rateUnit}
         </span>
       </div>
     </div>
@@ -177,9 +191,11 @@ export function UserDisplayPrefsTable({
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${color.borderSubtle}` }}>
         <div style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold }}>User currency &amp; mileage setup</div>
         <div style={{ fontSize: fontSize.small, color: color.textMuted, marginTop: 2 }}>
-          Per-person overrides. Distance unit only changes how distances show up for that person (mobile and their own
-          web views). Currency does too — but it also decides what currency a Mileage rate typed for that person is
-          in; the saved trip still gets converted to the workspace's own currency for Team totals and payroll.
+          Per-person overrides. User Currency and Distance unit change how amounts/distances show up for that person
+          (mobile and their own web views) — but they also decide what currency and unit a Mileage rate typed for
+          that person is in, shown right on the field itself. Changing Distance unit auto-converts a rate already
+          typed here to the equivalent figure in the new unit. The saved trip still gets converted to the workspace's
+          own currency for Team totals and payroll.
         </div>
       </div>
 
@@ -197,7 +213,7 @@ export function UserDisplayPrefsTable({
         }}
       >
         <div>User</div>
-        <div>Currency</div>
+        <div>User Currency</div>
         <div>Distance unit</div>
         <div>Mileage rate</div>
       </div>

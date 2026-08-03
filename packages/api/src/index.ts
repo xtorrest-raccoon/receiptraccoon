@@ -762,9 +762,35 @@ export async function setUserDisplayCurrency(userId: string, code: string | null
   if (error) throw error;
 }
 
+/**
+ * Changing this person's distance unit also carries their own mileage rate
+ * override (if they have one) along with it, converted to the equivalent
+ * figure in the new unit -- otherwise flipping mi/km would silently leave a
+ * €0.665 rate that meant "per km" now misread as "per mi" (a ~38% pay cut)
+ * without the number ever visibly changing. Same reasoning as
+ * setMileageUnit's own conversion for the workspace-wide default; this is
+ * the per-user counterpart.
+ */
 export async function setUserDisplayDistanceUnit(userId: string, unit: DistanceUnit | null): Promise<void> {
+  const ws = await getWorkspaceRow();
+  const { data, error: fetchErr } = await client()
+    .from("workspace_members")
+    .select("mileage_rate_milli, profiles(display_distance_unit)")
+    .eq("workspace_id", ws.id)
+    .eq("user_id", userId)
+    .single();
+  if (fetchErr) throw fetchErr;
+  const row = data as unknown as { mileage_rate_milli: number | null; profiles: { display_distance_unit: DistanceUnit | null } | null };
+
   const { error } = await client().rpc("set_user_display_distance_unit", { target_user_id: userId, new_unit: unit });
   if (error) throw error;
+
+  const oldUnit = row.profiles?.display_distance_unit ?? ws.mileage_unit;
+  const newUnit = unit ?? ws.mileage_unit;
+  if (row.mileage_rate_milli !== null && oldUnit !== newUnit) {
+    const converted = Math.round(newUnit === "km" ? row.mileage_rate_milli / MI_TO_KM : row.mileage_rate_milli * MI_TO_KM);
+    await setUserMileageRate(userId, converted);
+  }
 }
 
 export async function userName(id: string): Promise<string> {
@@ -1058,37 +1084,45 @@ export async function setMileageRateMilli(value: number): Promise<void> {
  * The rate the CALLER's own trips actually use — their own
  * workspace_members.mileage_rate_milli override if an owner/admin set one,
  * else the workspace's default (see 0013_per_user_mileage_rate.sql) — AND
- * the currency that rate is actually denominated in. Setup's "User currency
- * & mileage setup" table is the source of truth for the latter: a person's
- * own display_currency there takes precedence over the workspace's own
- * currency (someone paid in EUR still logs trips at a EUR/km rate even if
- * the workspace's books are kept in SEK) — see 0034_mileage_rate_currency.sql.
+ * the currency and distance unit that rate is actually denominated in.
+ * Setup's "User currency & mileage setup" table is the source of truth for
+ * both: a person's own display_currency/display_distance_unit there take
+ * precedence over the workspace's own (someone paid in EUR per mile still
+ * logs trips at a EUR/mi rate even if the workspace's books are kept in
+ * SEK/km) — see 0034_mileage_rate_currency.sql and setUserDisplayDistanceUnit.
  */
-async function getEffectiveMileageRateInfo(ws: WorkspaceRow): Promise<{ rateMilli: number; currency: string }> {
+async function getEffectiveMileageRateInfo(ws: WorkspaceRow): Promise<{ rateMilli: number; currency: string; unit: DistanceUnit }> {
   const userId = await getCurrentUserId();
   const { data, error } = await client()
     .from("workspace_members")
-    .select("mileage_rate_milli, profiles(display_currency)")
+    .select("mileage_rate_milli, profiles(display_currency, display_distance_unit)")
     .eq("workspace_id", ws.id)
     .eq("user_id", userId)
     .single();
   if (error) throw error;
   // Many-to-one embed comes back as a single object, not an array — see
   // listUsers' own note on this same untyped-client quirk.
-  const row = data as unknown as { mileage_rate_milli: number | null; profiles: { display_currency: string | null } | null };
+  const row = data as unknown as {
+    mileage_rate_milli: number | null;
+    profiles: { display_currency: string | null; display_distance_unit: DistanceUnit | null } | null;
+  };
   // The workspace-wide default (ws.mileage_rate_milli) is a single number
-  // defined once, in the workspace's own currency -- it doesn't become a
-  // different currency just because this particular person's display
-  // preference is set to one. Only a rate an admin actually typed for THIS
-  // person, in THIS row of Setup's table, is denominated in that row's own
-  // Currency column.
+  // defined once, in the workspace's own currency and unit -- it doesn't
+  // become a different currency/unit just because this particular person's
+  // display preference is set to one. Only a rate an admin actually typed
+  // for THIS person, in THIS row of Setup's table, is denominated in that
+  // row's own Currency/Distance unit columns.
   if (row.mileage_rate_milli !== null) {
-    return { rateMilli: row.mileage_rate_milli, currency: row.profiles?.display_currency ?? ws.home_currency };
+    return {
+      rateMilli: row.mileage_rate_milli,
+      currency: row.profiles?.display_currency ?? ws.home_currency,
+      unit: row.profiles?.display_distance_unit ?? ws.mileage_unit,
+    };
   }
-  return { rateMilli: ws.mileage_rate_milli, currency: ws.home_currency };
+  return { rateMilli: ws.mileage_rate_milli, currency: ws.home_currency, unit: ws.mileage_unit };
 }
 
-export async function getMyMileageRate(): Promise<{ rateMilli: number; currency: string }> {
+export async function getMyMileageRate(): Promise<{ rateMilli: number; currency: string; unit: DistanceUnit }> {
   return getEffectiveMileageRateInfo(await getWorkspaceRow());
 }
 
@@ -1126,11 +1160,11 @@ async function getCachedFxRate(fromCurrency: string, toCurrency: string): Promis
   return { rate: toRate / fromRate, rateDate };
 }
 
-/** What a trip WOULD be worth if saved now — same rate the save itself will use, in that rate's own currency (see getEffectiveMileageRateInfo). */
+/** What a trip WOULD be worth if saved now — same rate the save itself will use, in that rate's own currency and unit (see getEffectiveMileageRateInfo). */
 export async function estimateMileageAmountMinor(distance: number, unit: DistanceUnit): Promise<number> {
   const row = await getWorkspaceRow();
-  const { rateMilli, currency } = await getEffectiveMileageRateInfo(row);
-  return mileageAmountForTrip(distance, unit, rateMilli, row.mileage_unit, currency);
+  const { rateMilli, currency, unit: rateUnit } = await getEffectiveMileageRateInfo(row);
+  return mileageAmountForTrip(distance, unit, rateMilli, rateUnit, currency);
 }
 
 // ── categories ───────────────────────────────────────────────────────────
@@ -1562,16 +1596,12 @@ export async function addMileageTrip(input: {
   const wsId = await getCurrentWorkspaceId();
   const ws = await getWorkspaceRow();
   // The caller's own effective rate (their per-user override if an
-  // owner/admin set one, else the workspace default) and the currency it's
-  // actually denominated in — frozen onto this trip at entry, same
+  // owner/admin set one, else the workspace default) and the currency/unit
+  // it's actually denominated in — frozen onto this trip at entry, same
   // reasoning as fx_rate on receipts: existing trips keep their own rate
   // even if the workspace default or their override changes later.
-  const { rateMilli, currency: rateCurrency } = await getEffectiveMileageRateInfo(ws);
-  // The rate is expressed per the workspace's CURRENT mileage_unit (see
-  // Settings' "Reimbursement rate per {unit}" label) — frozen alongside the
-  // rate itself, so a later unit change can't silently misinterpret this
-  // trip's already-locked-in rate. See 0014_mileage_rate_unit.sql.
-  const rawAmountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, rateMilli, ws.mileage_unit, rateCurrency);
+  const { rateMilli, currency: rateCurrency, unit: rateUnit } = await getEffectiveMileageRateInfo(ws);
+  const rawAmountMinor = mileageAmountForTrip(input.distance, input.distanceUnit, rateMilli, rateUnit, rateCurrency);
 
   // amount_minor must stay in the workspace's own currency -- Team totals
   // and payroll sum it assuming one currency across every trip. When the
@@ -1607,7 +1637,7 @@ export async function addMileageTrip(input: {
       purpose: input.purpose,
       distance: input.distance,
       distance_unit: input.distanceUnit,
-      rate_unit: ws.mileage_unit,
+      rate_unit: rateUnit,
       rate_milli: rateMilli,
       amount_minor: amountMinor,
       original_currency: originalCurrency,

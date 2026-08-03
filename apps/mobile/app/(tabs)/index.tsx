@@ -220,6 +220,7 @@ export default function HomeScreen() {
         distanceUnit={distanceUnit}
         rateMilli={myRate.rateMilli}
         rateCurrency={myRate.currency}
+        rateUnit={myRate.unit}
         homeCurrency={currency}
         onClose={() => setSettingsOpen(false)}
         onSignOut={() => {

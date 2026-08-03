@@ -128,11 +128,12 @@ export function getMileageRateMilli(): Promise<number> {
 
 /**
  * The caller's own effective rate -- their own per-user override if an admin
- * set one, else the workspace default -- AND the currency it's actually
- * denominated in (their own display_currency from Setup's user currency &
- * mileage table, if set, else the workspace's own currency). See Profile page.
+ * set one, else the workspace default -- AND the currency/unit it's
+ * actually denominated in (their own display_currency/display_distance_unit
+ * from Setup's user currency & mileage table, if set, else the workspace's
+ * own). See Profile page.
  */
-export function getMyMileageRate(): Promise<{ rateMilli: number; currency: string }> {
+export function getMyMileageRate(): Promise<{ rateMilli: number; currency: string; unit: DistanceUnit }> {
   return api.getMyMileageRate();
 }
 
