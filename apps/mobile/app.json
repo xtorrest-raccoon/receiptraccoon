@@ -7,6 +7,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "receiptraccoon",
+    "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.receiptraccoon.mobile",
@@ -17,7 +18,11 @@
     },
     "android": {
       "package": "com.receiptraccoon.mobile",
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#5EAE7C"
+      }
     },
     "plugins": [
       "expo-router",

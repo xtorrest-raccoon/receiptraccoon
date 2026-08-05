@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 13.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://dlbxommlhwdrilrauvcn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SuhqA2mEQQHUo67EJ9_bUw_rJDzcjGR",
+        "EXPO_PUBLIC_API_URL": "https://receiptraccoon-web.vercel.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://dlbxommlhwdrilrauvcn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SuhqA2mEQQHUo67EJ9_bUw_rJDzcjGR",
+        "EXPO_PUBLIC_API_URL": "https://receiptraccoon-web.vercel.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://dlbxommlhwdrilrauvcn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SuhqA2mEQQHUo67EJ9_bUw_rJDzcjGR",
+        "EXPO_PUBLIC_API_URL": "https://receiptraccoon-web.vercel.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

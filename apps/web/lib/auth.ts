@@ -23,18 +23,29 @@ export async function requireUser(
     return { error: NextResponse.json({ error: "Not signed in" }, { status: 401 }) };
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { autoRefreshToken: false, persistSession: false } },
-  );
-
-  // getUser() re-validates the JWT against the auth server, unlike reading a
-  // local session — the right check for a token a client just handed you.
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  // getUser(token) re-validates the JWT against the auth server, unlike
+  // reading a local session — the right check for a token a client just
+  // handed you. Deliberately a PLAIN client with no global Authorization
+  // header override: gotrue-js's getUser() throws AuthSessionMissingError
+  // when this client has persistSession: false and no session of its own,
+  // even when a jwt is passed explicitly and even when that jwt is valid —
+  // the global header only ever covered PostgREST/Storage calls, not this
+  // gotrue-js method, and its mere presence was enough to trip that check.
+  const validator = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: userData, error: userErr } = await validator.auth.getUser(token);
   if (userErr || !userData.user) {
     return { error: NextResponse.json({ error: "Invalid or expired session" }, { status: 401 }) };
   }
+
+  // A separate client, scoped to the caller's own token via the global
+  // header, for the RLS-respecting queries the caller actually returns —
+  // this one is never asked to validate a session itself.
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
   return { supabase, userId: userData.user.id };
 }

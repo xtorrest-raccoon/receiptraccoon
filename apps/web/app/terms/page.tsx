@@ -88,8 +88,8 @@ export default function TermsPage() {
       <LegalSection heading="Contact">
         <p>
           Questions about these terms? Email{" "}
-          <a href="mailto:contact@receiptraccoon.fr" style={{ color: "inherit" }}>
-            contact@receiptraccoon.fr
+          <a href="mailto:contact@receiptraccoon.io" style={{ color: "inherit" }}>
+            contact@receiptraccoon.io
           </a>
           .
         </p>

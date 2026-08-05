@@ -393,12 +393,15 @@ export function revokeInvite(id: string): Promise<void> {
 /**
  * Admin/owner-only: creates a brand-new account directly (no self-registration)
  * and returns the one-time temporary password to relay to that person, plus
- * whether the welcome email went out. See /api/team/provision-member.
+ * whether the welcome email went out. If this email already had an account
+ * from a prior membership that was removed, re-attaches it to this workspace
+ * instead (`reactivated: true`, `tempPassword: null` — they keep whatever
+ * password they already had). See /api/team/provision-member.
  */
 export async function provisionMember(
   email: string,
   group: api.SecurityGroup,
-): Promise<{ email: string; tempPassword: string; emailSent: boolean }> {
+): Promise<{ email: string; tempPassword: string | null; emailSent: boolean; reactivated: boolean }> {
   const session = await api.getSession();
   if (!session) throw new Error("Not signed in");
 

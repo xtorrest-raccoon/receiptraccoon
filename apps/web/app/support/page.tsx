@@ -5,8 +5,8 @@ export default function SupportPage() {
     <LegalPageLayout title="Support" updated="August 3, 2026">
       <p>
         Need help, or something not working as expected? Email us at{" "}
-        <a href="mailto:contact@receiptraccoon.fr" style={{ color: "inherit" }}>
-          contact@receiptraccoon.fr
+        <a href="mailto:contact@receiptraccoon.io" style={{ color: "inherit" }}>
+          contact@receiptraccoon.io
         </a>{" "}
         and we'll get back to you — please include your workspace name so we can find your account faster.
       </p>
@@ -35,8 +35,8 @@ export default function SupportPage() {
       <LegalSection heading="Deleting your account">
         <p>
           To delete your ReceiptRaccoon account and personal data, email{" "}
-          <a href="mailto:contact@receiptraccoon.fr" style={{ color: "inherit" }}>
-            contact@receiptraccoon.fr
+          <a href="mailto:contact@receiptraccoon.io" style={{ color: "inherit" }}>
+            contact@receiptraccoon.io
           </a>{" "}
           from the email address on your account, with the subject line "Delete my account." We'll confirm your
           identity and remove your account, typically within 30 days. Note: if you're the only System Admin of your

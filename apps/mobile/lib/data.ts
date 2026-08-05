@@ -156,16 +156,29 @@ export async function getDisplayDistanceUnit(): Promise<DistanceUnit> {
  * error, same as calculateMileageDistance's error handling below: a display
  * nicety must never block or crash a screen.
  */
+async function postFxRate(fromCurrency: string, toCurrency: string, accessToken: string): Promise<Response> {
+  return fetch(`${getApiBaseUrl()}/api/fx-rate`, {
+    method: "POST",
+    body: JSON.stringify({ from: fromCurrency, to: toCurrency }),
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+  });
+}
+
 async function fetchDisplayRate(fromCurrency: string, toCurrency: string): Promise<number | null> {
   if (fromCurrency === toCurrency) return null;
   try {
     const session = await api.getSession();
     if (!session) return null;
-    const res = await fetch(`${getApiBaseUrl()}/api/fx-rate`, {
-      method: "POST",
-      body: JSON.stringify({ from: fromCurrency, to: toCurrency }),
-      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-    });
+    let res = await postFxRate(fromCurrency, toCurrency, session.access_token);
+    // A 401 here can mean the token had already rotated by the time this
+    // request reached the server (getSession() can hand back a token that's
+    // a beat behind an in-flight refresh) -- force a fresh one and retry once
+    // before treating it as a real auth failure and fail-opening.
+    if (res.status === 401) {
+      const freshSession = await api.refreshSession();
+      if (!freshSession) return null;
+      res = await postFxRate(fromCurrency, toCurrency, freshSession.access_token);
+    }
     if (!res.ok) return null;
     const data = await res.json();
     return data.rate ?? null;
@@ -192,15 +205,27 @@ export function estimateMileageAmountMinor(distance: number, unit: DistanceUnit)
   return api.estimateMileageAmountMinor(distance, unit);
 }
 
-/** Personal-only, same reasoning as getDashboard above. */
+/**
+ * Personal-only, same reasoning as getDashboard above. Deliberately NOT a
+ * single blanket rate off receipts[0].currency -- a receipt keeps whatever
+ * currency the workspace was set to at scan time (see this file's own
+ * header on "never retroactively reconvert"), so a list can genuinely mix
+ * currencies if the workspace's own currency was ever changed. One rate off
+ * the first receipt would silently leave every OTHER currency's receipts
+ * unconverted (or wrongly converted) whenever that first receipt happened
+ * to already match the display currency.
+ */
 export async function listReceipts(opts: { month?: string; categoryName?: string; q?: string } = {}): Promise<Receipt[]> {
   const receipts = await api.listReceipts({ ...opts, userId: await currentUserId() });
   const displayCurrency = await getDisplayCurrency();
-  const workspaceCurrency = receipts[0]?.currency;
-  if (!workspaceCurrency || displayCurrency === workspaceCurrency) return receipts;
-  const rate = await fetchDisplayRate(workspaceCurrency, displayCurrency);
-  if (rate === null) return receipts;
-  return receipts.map((r) => convertReceiptCurrency(r, displayCurrency, rate));
+  const distinctCurrencies = Array.from(new Set(receipts.map((r) => r.currency))).filter((c) => c !== displayCurrency);
+  if (distinctCurrencies.length === 0) return receipts;
+  const rates = await Promise.all(distinctCurrencies.map((c) => fetchDisplayRate(c, displayCurrency)));
+  const rateByCurrency = new Map(distinctCurrencies.map((c, i) => [c, rates[i]]));
+  return receipts.map((r) => {
+    const rate = rateByCurrency.get(r.currency);
+    return rate != null ? convertReceiptCurrency(r, displayCurrency, rate) : r;
+  });
 }
 
 export async function getReceipt(id: string): Promise<Receipt | undefined> {

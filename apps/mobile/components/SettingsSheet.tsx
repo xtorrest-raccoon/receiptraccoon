@@ -80,7 +80,7 @@ export function SettingsSheet({
             ) : null}
             {homeCurrency ? (
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Currency</Text>
+                <Text style={styles.rowLabel}>User Currency</Text>
                 <Text style={styles.rowValue}>{homeCurrency}</Text>
               </View>
             ) : null}

@@ -127,6 +127,20 @@ export async function getSession(): Promise<Session | null> {
   return data.session;
 }
 
+/**
+ * Forces a token refresh rather than trusting whatever getSession() already
+ * has cached — for a caller that just got a 401 handing a token to another
+ * server (see fetchDisplayRate in apps/mobile/lib/data.ts) and needs to rule
+ * out "the token had already rotated by the time it got used" before giving
+ * up. Returns null rather than throwing; the caller already treats that as
+ * "can't verify, don't act" for the same reason getSession() itself does.
+ */
+export async function refreshSession(): Promise<Session | null> {
+  const { data, error } = await client().auth.refreshSession();
+  if (error) return null;
+  return data.session;
+}
+
 export function onAuthStateChange(callback: (session: Session | null) => void): () => void {
   const { data } = client().auth.onAuthStateChange((_event, session) => callback(session));
   return () => data.subscription.unsubscribe();

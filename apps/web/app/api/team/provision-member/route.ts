@@ -81,6 +81,30 @@ async function sendWelcomeEmail(email: string, loginUrl: string): Promise<boolea
   }
 }
 
+/** Same delivery mechanism as sendWelcomeEmail, for the re-provisioned-account case below. */
+async function sendReactivatedEmail(email: string, loginUrl: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: FROM_ADDRESS,
+        to: email,
+        subject: "Your ReceiptRaccoon access has been restored",
+        html: `
+          <p>Your access to ReceiptRaccoon has been restored.</p>
+          <p><a href="${loginUrl}">Sign in at ${loginUrl}</a> with your existing password, or use "Forgot password?" there if you don't remember it.</p>
+        `,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
   if ("error" in auth) return auth.error;
@@ -111,42 +135,83 @@ export async function POST(request: NextRequest) {
     password: tempPassword,
     email_confirm: true,
   });
-  if (createErr || !created.user) {
-    // Most common case: this email already has an account somewhere else.
+
+  if (!createErr && created.user) {
+    const newUserId = created.user.id;
+
+    // handle_new_user() just gave them their own solo workspace as its owner —
+    // move them into the admin's workspace instead, same "delete old
+    // membership, insert new one" shape as accept_workspace_invite(), just
+    // driven by the admin instead of the new user clicking Accept.
+    const { error: deleteErr } = await serviceClient.from("workspace_members").delete().eq("user_id", newUserId);
+    if (deleteErr) {
+      return NextResponse.json({ error: deleteErr.message }, { status: 500 });
+    }
+    const { error: insertErr } = await serviceClient.from("workspace_members").insert({
+      workspace_id: workspaceId,
+      user_id: newUserId,
+      role: memberRow.role,
+      can_approve_reimbursements: memberRow.canApprove,
+      can_process_reimbursements: memberRow.canProcess,
+    });
+    if (insertErr) {
+      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+    }
+    const { error: flagErr } = await serviceClient
+      .from("profiles")
+      .update({ must_change_password: true, home_workspace_id: workspaceId })
+      .eq("id", newUserId);
+    if (flagErr) {
+      return NextResponse.json({ error: flagErr.message }, { status: 500 });
+    }
+
+    const emailSent = await sendWelcomeEmail(email, `${request.nextUrl.origin}/login`);
+    return NextResponse.json({ email, tempPassword, emailSent, reactivated: false });
+  }
+
+  // createUser failed -- most commonly because this email already has an
+  // auth account, typically from a PRIOR membership that was removed:
+  // removeMember() deliberately never deletes the underlying account, only
+  // the workspace_members row (see that function's own comment), so the
+  // account is still sitting there, just orphaned from every workspace.
+  // Look it up and re-attach it here instead of failing outright -- that's
+  // the whole point of that design ("re-provisioning ... restores access").
+  const { data: existingUserId, error: lookupErr } = await serviceClient.rpc("get_user_id_by_email", {
+    lookup_email: email,
+  });
+  if (lookupErr || !existingUserId) {
     return NextResponse.json(
       { error: createErr?.message ?? "Could not create that account — that email may already be registered elsewhere." },
       { status: 409 },
     );
   }
-  const newUserId = created.user.id;
 
-  // handle_new_user() just gave them their own solo workspace as its owner —
-  // move them into the admin's workspace instead, same "delete old
-  // membership, insert new one" shape as accept_workspace_invite(), just
-  // driven by the admin instead of the new user clicking Accept.
-  const { error: deleteErr } = await serviceClient.from("workspace_members").delete().eq("user_id", newUserId);
-  if (deleteErr) {
-    return NextResponse.json({ error: deleteErr.message }, { status: 500 });
-  }
-  const { error: insertErr } = await serviceClient.from("workspace_members").insert({
+  const { error: reattachErr } = await serviceClient.from("workspace_members").insert({
     workspace_id: workspaceId,
-    user_id: newUserId,
+    user_id: existingUserId,
     role: memberRow.role,
     can_approve_reimbursements: memberRow.canApprove,
     can_process_reimbursements: memberRow.canProcess,
   });
-  if (insertErr) {
-    return NextResponse.json({ error: insertErr.message }, { status: 500 });
+  if (reattachErr) {
+    // Most likely already a member of this exact workspace.
+    return NextResponse.json(
+      { error: "That email already has an account, and is already a member of this workspace." },
+      { status: 409 },
+    );
   }
-  const { error: flagErr } = await serviceClient
+  // Only fill in home_workspace_id if they don't already have one from
+  // elsewhere -- unlike a brand-new account, this person may still belong
+  // to another workspace they consider home.
+  const { data: existingProfile } = await serviceClient
     .from("profiles")
-    .update({ must_change_password: true, home_workspace_id: workspaceId })
-    .eq("id", newUserId);
-  if (flagErr) {
-    return NextResponse.json({ error: flagErr.message }, { status: 500 });
+    .select("home_workspace_id")
+    .eq("id", existingUserId)
+    .single();
+  if (!(existingProfile as { home_workspace_id: string | null } | null)?.home_workspace_id) {
+    await serviceClient.from("profiles").update({ home_workspace_id: workspaceId }).eq("id", existingUserId);
   }
 
-  const emailSent = await sendWelcomeEmail(email, `${request.nextUrl.origin}/login`);
-
-  return NextResponse.json({ email, tempPassword, emailSent });
+  const emailSent = await sendReactivatedEmail(email, `${request.nextUrl.origin}/login`);
+  return NextResponse.json({ email, tempPassword: null, emailSent, reactivated: true });
 }

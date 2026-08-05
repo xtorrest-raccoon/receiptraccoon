@@ -26,7 +26,9 @@ const GROUP_OPTIONS: { value: SecurityGroup; label: string }[] = [
 export function ProvisionMemberPanel() {
   const [email, setEmail] = useState("");
   const [group, setGroup] = useState<SecurityGroup>("member");
-  const [result, setResult] = useState<{ email: string; tempPassword: string; emailSent: boolean } | null>(null);
+  const [result, setResult] = useState<{ email: string; tempPassword: string | null; emailSent: boolean; reactivated: boolean } | null>(
+    null,
+  );
   const provisionMember = useProvisionMember();
 
   const create = () => {
@@ -114,29 +116,46 @@ export function ProvisionMemberPanel() {
       {result ? (
         <div style={{ background: color.brandTint, borderRadius: radius.lg, padding: "14px 16px" }}>
           <div style={{ fontSize: fontSize.small, fontWeight: fontWeight.bold, marginBottom: 6 }}>
-            Account created for {result.email}
+            {result.reactivated ? `Access restored for ${result.email}` : `Account created for ${result.email}`}
           </div>
           <div style={{ fontSize: fontSize.small, color: result.emailSent ? color.textMuted : color.up, marginBottom: 8 }}>
             {result.emailSent
-              ? "Welcome email sent with a sign-in link."
-              : "Couldn't send the welcome email — let them know to sign in themselves."}
+              ? result.reactivated
+                ? "Email sent letting them know access is restored."
+                : "Welcome email sent with a sign-in link."
+              : "Couldn't send the email — let them know to sign in themselves."}
           </div>
-          <div style={{ fontSize: fontSize.small, color: color.textMuted, marginBottom: 8 }}>
-            Temporary password — shown once, copy it now and relay it to them yourself:
-          </div>
-          <div
-            style={{
-              fontFamily: "monospace",
-              fontSize: fontSize.lg,
-              fontWeight: fontWeight.bold,
-              padding: "8px 12px",
-              borderRadius: radius.sm,
-              background: color.surface,
-              display: "inline-block",
-            }}
-          >
-            {result.tempPassword}
-          </div>
+          {result.reactivated ? (
+            // This email already had an account -- most likely from before
+            // someone removed them (removeMember() never deletes the
+            // underlying account, only their workspace membership). They
+            // keep whatever password they already had; no new temp password
+            // to relay, and "Forgot password?" on the sign-in screen covers
+            // the case where they don't remember it.
+            <div style={{ fontSize: fontSize.small, color: color.textMuted }}>
+              This person already had an account — their existing password still works. If they don&rsquo;t remember it, they
+              can use &ldquo;Forgot password?&rdquo; on the sign-in screen.
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: fontSize.small, color: color.textMuted, marginBottom: 8 }}>
+                Temporary password — shown once, copy it now and relay it to them yourself:
+              </div>
+              <div
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: fontSize.lg,
+                  fontWeight: fontWeight.bold,
+                  padding: "8px 12px",
+                  borderRadius: radius.sm,
+                  background: color.surface,
+                  display: "inline-block",
+                }}
+              >
+                {result.tempPassword}
+              </div>
+            </>
+          )}
         </div>
       ) : null}
     </div>
