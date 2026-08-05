@@ -39,7 +39,20 @@ export function prevMonthOf(yyyyMm: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function computeCategoryBreakdown(receipts: Receipt[]): CategoryBreakdownRow[] {
+/**
+ * A rejected receipt was never actually recognized as a business expense —
+ * the company isn't reimbursing it, so it must never count toward spend
+ * reporting (this function, computeMonthPacing, computeWeeklySpend below).
+ * Deliberately narrower than isOutstanding/OUTSTANDING_STATUSES above: a
+ * REIMBURSED receipt is legitimate completed spend and stays counted here,
+ * it's just no longer "outstanding".
+ */
+function excludeRejected(receipts: Receipt[]): Receipt[] {
+  return receipts.filter((r) => r.reimbursementStatus !== "rejected");
+}
+
+export function computeCategoryBreakdown(receiptsIncludingRejected: Receipt[]): CategoryBreakdownRow[] {
+  const receipts = excludeRejected(receiptsIncludingRejected);
   const total = receipts.reduce((s, r) => s + reclaimMinor(r), 0) || 1;
   const byName = new Map<string, number>();
   for (const r of receipts) {
@@ -74,7 +87,8 @@ export interface MonthPacing {
  * month that has already ended compares in full, since there is no partial
  * period to account for.
  */
-export function computeMonthPacing(allReceipts: Receipt[], month: string, today: string): MonthPacing {
+export function computeMonthPacing(allReceiptsIncludingRejected: Receipt[], month: string, today: string): MonthPacing {
+  const allReceipts = excludeRejected(allReceiptsIncludingRejected);
   const monthReceipts = allReceipts.filter((r) => inMonth(r.receiptDate ?? "", month));
   const prevReceipts = allReceipts.filter((r) => inMonth(r.receiptDate ?? "", prevMonthOf(month)));
 
@@ -104,10 +118,11 @@ export function computeMonthPacing(allReceipts: Receipt[], month: string, today:
 }
 
 export function computeWeeklySpend(
-  allReceipts: Receipt[],
+  allReceiptsIncludingRejected: Receipt[],
   today: string,
   weeks = 10,
 ): { weekStart: string; totalMinor: number }[] {
+  const allReceipts = excludeRejected(allReceiptsIncludingRejected);
   const weeklySpend: { weekStart: string; totalMinor: number }[] = [];
   const end = new Date(`${today}T00:00:00`);
   for (let i = weeks - 1; i >= 0; i--) {
