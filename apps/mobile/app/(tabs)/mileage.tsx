@@ -36,12 +36,13 @@ import { SwipeToDelete } from "../../components/SwipeToDelete";
 export default function MileageScreen() {
   const insets = useSafeAreaInsets();
 
-  // "workspaceUnit" is the functional truth new trips log their distance in
-  // (must never change — see plan's scope cut) — the rate itself is
-  // denominated in this person's own currency, from myRate below, not
-  // necessarily workspaceCurrency. "display*" is what already-logged trips
-  // are shown in, personal-override-or-workspace-default — falls back to
-  // workspace while the personal preference is still loading.
+  // "workspaceUnit" is the workspace's own raw default, used as a fallback
+  // and for logic that genuinely needs it (below). New trips are logged in
+  // "unit" -- this person's own effective distance unit (their override, or
+  // the workspace default while none is set) -- so the New Trip form's
+  // placeholder/estimate/save all agree with the Rate card above them,
+  // which already showed the effective unit. "display*" is what
+  // already-logged trips are shown in, same effective-or-workspace rule.
   const { data: workspaceCurrency } = useHomeCurrency();
   const { data: workspaceUnit } = useDistanceUnit();
   const { data: displayCurrency } = useDisplayCurrency();
@@ -118,7 +119,7 @@ export default function MileageScreen() {
   // to preview here; this person thinks in their own currency.
   const estimateMinor =
     !isNaN(distanceValue) && distanceValue > 0
-      ? mileageAmountForTrip(distanceValue, workspaceUnit, myRate.rateMilli, myRate.unit, myRate.currency)
+      ? mileageAmountForTrip(distanceValue, unit, myRate.rateMilli, myRate.unit, myRate.currency)
       : null;
 
   const closeForm = () => {
@@ -156,7 +157,7 @@ export default function MileageScreen() {
     setCalcError(null);
     setCalculated(null);
     try {
-      const result = await calculateMileageDistance(newStartAddress.trim(), newEndAddress.trim(), workspaceUnit);
+      const result = await calculateMileageDistance(newStartAddress.trim(), newEndAddress.trim(), unit);
       setCalculated(result);
     } catch (err) {
       setCalcError(err instanceof Error ? err.message : "Couldn't calculate that distance.");
@@ -182,7 +183,7 @@ export default function MileageScreen() {
         tripDate: newDate,
         purpose: newPurpose.trim(),
         distance: distanceValue,
-        distanceUnit: workspaceUnit,
+        distanceUnit: unit,
         ...(entryMode === "automatic" && calculated
           ? { startAddress: calculated.originAddress, endAddress: calculated.destinationAddress }
           : {}),
@@ -219,14 +220,14 @@ export default function MileageScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
-        {/* New trips are always logged with distance in workspaceUnit, at this
-            person's own rate (in whichever currency Setup's user currency &
-            mileage table has them in — see estimateMinor, saveTrip,
-            runCalculateDistance above); the saved amount then gets converted
-            to the workspace's own currency, which is what Team/payroll rely
-            on. Already-logged trips below display in the personal unit/
-            currency preference instead, editable only from the web app's
-            Profile page. */}
+        {/* New trips are logged with distance in this person's own effective
+            unit and at their own rate (in whichever currency Setup's user
+            currency & mileage table has them in — see estimateMinor,
+            saveTrip, runCalculateDistance above); the saved amount then gets
+            converted to the workspace's own currency, which is what
+            Team/payroll rely on. Already-logged trips below display in the
+            same personal unit/currency preference, editable only from the
+            web app's Profile page. */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Mileage</Text>
         </View>
@@ -358,7 +359,7 @@ export default function MileageScreen() {
               <TextInput
                 value={newDistance}
                 onChangeText={setNewDistance}
-                placeholder={`Distance (${workspaceUnit})`}
+                placeholder={`Distance (${unit})`}
                 placeholderTextColor={rn(color.textFaint)}
                 keyboardType="decimal-pad"
                 style={styles.addTripInput}
