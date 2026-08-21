@@ -97,6 +97,13 @@ export default {
     discard: "破棄",
     saveReceipt: "領収書を保存",
     categoryPickerTitle: "カテゴリー",
+    currencyLabel: "領収書の通貨",
+    currencyPickerTitle: "通貨",
+    fetchingRate: "為替レートを取得中…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "為替レートを取得できません — 保存前にもう一度お試しください。",
+    couldntConvertTitle: "通貨を変換できませんでした",
+    couldntConvertBody: "{{from}}から{{to}}への為替レートを取得できませんでした。接続を確認してもう一度お試しください。",
   },
   saved: {
     title: "領収書を保存しました",

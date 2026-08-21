@@ -98,6 +98,13 @@ export default {
     discard: "Verwijderen",
     saveReceipt: "Bon opslaan",
     categoryPickerTitle: "Categorie",
+    currencyLabel: "Valuta van de bon",
+    currencyPickerTitle: "Valuta",
+    fetchingRate: "Wisselkoers ophalen…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "Wisselkoers niet beschikbaar — probeer het opnieuw voordat je opslaat.",
+    couldntConvertTitle: "Kan valuta niet omrekenen",
+    couldntConvertBody: "We konden geen wisselkoers ophalen van {{from}} naar {{to}}. Controleer je verbinding en probeer het opnieuw.",
   },
   saved: {
     title: "Bon opgeslagen",

@@ -98,6 +98,13 @@ export default {
     discard: "Descartar",
     saveReceipt: "Guardar recibo",
     categoryPickerTitle: "Categoría",
+    currencyLabel: "Moneda del recibo",
+    currencyPickerTitle: "Moneda",
+    fetchingRate: "Obteniendo tipo de cambio…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "Tipo de cambio no disponible — inténtalo de nuevo antes de guardar.",
+    couldntConvertTitle: "No se pudo convertir la moneda",
+    couldntConvertBody: "No pudimos obtener un tipo de cambio de {{from}} a {{to}}. Comprueba tu conexión e inténtalo de nuevo.",
   },
   saved: {
     title: "Recibo guardado",

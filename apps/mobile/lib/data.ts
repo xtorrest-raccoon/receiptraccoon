@@ -156,20 +156,20 @@ export async function getDisplayDistanceUnit(): Promise<DistanceUnit> {
  * error, same as calculateMileageDistance's error handling below: a display
  * nicety must never block or crash a screen.
  */
-async function postFxRate(fromCurrency: string, toCurrency: string, accessToken: string): Promise<Response> {
+async function postFxRate(fromCurrency: string, toCurrency: string, accessToken: string, date?: string): Promise<Response> {
   return fetch(`${getApiBaseUrl()}/api/fx-rate`, {
     method: "POST",
-    body: JSON.stringify({ from: fromCurrency, to: toCurrency }),
+    body: JSON.stringify({ from: fromCurrency, to: toCurrency, ...(date ? { date } : {}) }),
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
   });
 }
 
-async function fetchDisplayRate(fromCurrency: string, toCurrency: string): Promise<number | null> {
+async function fetchRate(fromCurrency: string, toCurrency: string, date?: string): Promise<number | null> {
   if (fromCurrency === toCurrency) return null;
   try {
     const session = await api.getSession();
     if (!session) return null;
-    let res = await postFxRate(fromCurrency, toCurrency, session.access_token);
+    let res = await postFxRate(fromCurrency, toCurrency, session.access_token, date);
     // A 401 here can mean the token had already rotated by the time this
     // request reached the server (getSession() can hand back a token that's
     // a beat behind an in-flight refresh) -- force a fresh one and retry once
@@ -177,7 +177,7 @@ async function fetchDisplayRate(fromCurrency: string, toCurrency: string): Promi
     if (res.status === 401) {
       const freshSession = await api.refreshSession();
       if (!freshSession) return null;
-      res = await postFxRate(fromCurrency, toCurrency, freshSession.access_token);
+      res = await postFxRate(fromCurrency, toCurrency, freshSession.access_token, date);
     }
     if (!res.ok) return null;
     const data = await res.json();
@@ -185,6 +185,27 @@ async function fetchDisplayRate(fromCurrency: string, toCurrency: string): Promi
   } catch {
     return null;
   }
+}
+
+async function fetchDisplayRate(fromCurrency: string, toCurrency: string): Promise<number | null> {
+  return fetchRate(fromCurrency, toCurrency);
+}
+
+/**
+ * For the Review receipt screen's manual currency picker: the rate as of
+ * the receipt's OWN date, matching the same date-anchored-to-the-purchase
+ * principle /api/extract's own conversion already uses, so a manual
+ * correction is priced the same way an automatic one would have been —
+ * never today's rate for a receipt from last week. Fails open (null) on
+ * any error, same as every other rate lookup in this file: never block a
+ * save over a display nicety, and never fabricate a rate.
+ */
+export async function fetchReceiptCurrencyRate(
+  fromCurrency: string,
+  toCurrency: string,
+  receiptDate: string,
+): Promise<number | null> {
+  return fetchRate(fromCurrency, toCurrency, receiptDate);
 }
 
 /**

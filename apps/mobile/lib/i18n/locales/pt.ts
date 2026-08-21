@@ -98,6 +98,13 @@ export default {
     discard: "Descartar",
     saveReceipt: "Guardar recibo",
     categoryPickerTitle: "Categoria",
+    currencyLabel: "Moeda do recibo",
+    currencyPickerTitle: "Moeda",
+    fetchingRate: "A obter taxa de câmbio…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "Taxa de câmbio indisponível — tente novamente antes de guardar.",
+    couldntConvertTitle: "Não foi possível converter a moeda",
+    couldntConvertBody: "Não conseguimos obter uma taxa de câmbio de {{from}} para {{to}}. Verifique a sua ligação e tente novamente.",
   },
   saved: {
     title: "Recibo guardado",

@@ -98,6 +98,13 @@ export default {
     discard: "Abandonner",
     saveReceipt: "Enregistrer le reçu",
     categoryPickerTitle: "Catégorie",
+    currencyLabel: "Devise du reçu",
+    currencyPickerTitle: "Devise",
+    fetchingRate: "Récupération du taux de change…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "Taux de change indisponible — réessayez avant d'enregistrer.",
+    couldntConvertTitle: "Impossible de convertir la devise",
+    couldntConvertBody: "Nous n'avons pas pu récupérer de taux de change de {{from}} vers {{to}}. Vérifiez votre connexion et réessayez.",
   },
   saved: {
     title: "Reçu enregistré",

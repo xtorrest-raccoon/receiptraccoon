@@ -98,6 +98,13 @@ export default {
     discard: "Verwerfen",
     saveReceipt: "Beleg speichern",
     categoryPickerTitle: "Kategorie",
+    currencyLabel: "Belegwährung",
+    currencyPickerTitle: "Währung",
+    fetchingRate: "Wechselkurs wird abgerufen…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "Wechselkurs nicht verfügbar — bitte vor dem Speichern erneut versuchen.",
+    couldntConvertTitle: "Währung konnte nicht umgerechnet werden",
+    couldntConvertBody: "Wir konnten keinen Wechselkurs von {{from}} zu {{to}} abrufen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   },
   saved: {
     title: "Beleg gespeichert",

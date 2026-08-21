@@ -117,6 +117,16 @@ export function countryForCurrency(currency: string): string {
 }
 
 /**
+ * Every currency code this app can actually resolve an FX rate for (the ECB
+ * daily reference feed's own set — see getFxRate/CURRENCY_COUNTRIES above).
+ * For the Review receipt screen's manual currency picker: a receipt can be
+ * in any of these regardless of the narrower @rr/api SUPPORTED_CURRENCIES
+ * list, which only governs what a WORKSPACE's own home currency can be set
+ * to, a much narrower/deliberate choice.
+ */
+export const RECEIPT_CURRENCIES: readonly string[] = Object.keys(CURRENCY_COUNTRIES).sort();
+
+/**
  * Full name for an ISO 3166-1 alpha-2 country code ("FR" -> "France") — for
  * the receipt's own detected country (see Receipt.country), which unlike
  * currency maps 1:1 onto a real country, so no hand-rolled table is needed

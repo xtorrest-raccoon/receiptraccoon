@@ -102,6 +102,13 @@ export default {
     discard: "Discard",
     saveReceipt: "Save receipt",
     categoryPickerTitle: "Category",
+    currencyLabel: "Receipt currency",
+    currencyPickerTitle: "Currency",
+    fetchingRate: "Fetching exchange rate…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "Exchange rate unavailable — try again before saving.",
+    couldntConvertTitle: "Couldn't convert currency",
+    couldntConvertBody: "We couldn't fetch an exchange rate from {{from}} to {{to}}. Check your connection and try again.",
   },
   saved: {
     title: "Receipt saved",

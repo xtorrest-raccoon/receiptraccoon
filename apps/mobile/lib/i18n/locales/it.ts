@@ -98,6 +98,13 @@ export default {
     discard: "Elimina",
     saveReceipt: "Salva ricevuta",
     categoryPickerTitle: "Categoria",
+    currencyLabel: "Valuta della ricevuta",
+    currencyPickerTitle: "Valuta",
+    fetchingRate: "Recupero del tasso di cambio…",
+    approxConverted: "≈ {{amount}}",
+    rateUnavailable: "Tasso di cambio non disponibile — riprova prima di salvare.",
+    couldntConvertTitle: "Impossibile convertire la valuta",
+    couldntConvertBody: "Non siamo riusciti a recuperare un tasso di cambio da {{from}} a {{to}}. Controlla la connessione e riprova.",
   },
   saved: {
     title: "Ricevuta salvata",
