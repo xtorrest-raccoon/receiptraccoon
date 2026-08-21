@@ -25,6 +25,23 @@ export interface ExtractOptions extends ExtractionRequest {
   escalationModel?: string;
 }
 
+/** Below this, an ambiguous date routes to needs_review regardless of the model's own reported confidence. */
+const DATE_AMBIGUITY_CONFIDENCE_CAP = 0.3;
+
+/**
+ * A date-format mismatch is a real, provable disagreement between the
+ * model's own country and date fields (see checkDateFormatAmbiguity) — not
+ * a reasoning-quality problem a stronger model call would fix, so this caps
+ * confidence directly rather than relying on validation.worthEscalating.
+ */
+function capAmbiguousDateConfidence(
+  fieldConfidence: Record<string, number>,
+  validation: ValidationOutcome,
+): Record<string, number> {
+  if (!validation.dateFormatAmbiguous) return fieldConfidence;
+  return { ...fieldConfidence, receipt_date: Math.min(fieldConfidence.receipt_date ?? 0, DATE_AMBIGUITY_CONFIDENCE_CAP) };
+}
+
 export interface ExtractOutcome {
   result: ExtractionResult;
   validation: ValidationOutcome;
@@ -53,7 +70,7 @@ export async function extractReceipt(opts: ExtractOptions): Promise<ExtractOutco
   const first = await provider.extract(opts);
   let validation = validateExtraction(first.data, { homeCurrency: opts.homeCurrency });
   let confidence = computeOverallConfidence({
-    fieldConfidence: first.fieldConfidence,
+    fieldConfidence: capAmbiguousDateConfidence(first.fieldConfidence, validation),
     validationsPassed: validation.passed,
     legibility: first.data.legibility,
   });
@@ -71,7 +88,7 @@ export async function extractReceipt(opts: ExtractOptions): Promise<ExtractOutco
       homeCurrency: opts.homeCurrency,
     });
     const secondConfidence = computeOverallConfidence({
-      fieldConfidence: second.fieldConfidence,
+      fieldConfidence: capAmbiguousDateConfidence(second.fieldConfidence, secondValidation),
       validationsPassed: secondValidation.passed,
       legibility: second.data.legibility,
     });

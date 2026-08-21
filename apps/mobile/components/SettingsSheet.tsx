@@ -54,7 +54,7 @@ export function SettingsSheet({
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>Settings</Text>
-          <Text style={styles.hint}>Workspace settings are managed from the web app.</Text>
+          <Text style={styles.hint}>Workspace settings are managed from the web app by the admin.</Text>
 
           <ScrollView style={{ maxHeight: 320 }}>
             {workspaceName ? (

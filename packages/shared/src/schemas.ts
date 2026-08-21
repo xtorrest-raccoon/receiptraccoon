@@ -17,7 +17,13 @@ export const LineItemExtraction = z.object({
 /** Fields that never vary by workspace. */
 const baseExtractionShape = {
   vendor: z.string().nullable(),
-  receipt_date: z.string().nullable(), // ISO YYYY-MM-DD
+  receipt_date: z.string().nullable(), // ISO YYYY-MM-DD, the model's own interpretation
+  // As printed, verbatim, before any interpretation (e.g. "03/07/2026") -- lets
+  // deterministic validation cross-check an ambiguous numeric date against the
+  // extracted country's date-order convention. Null when the receipt spells the
+  // date out unambiguously (a month name, or no date at all) rather than misused
+  // as "no date" -- receipt_date itself remains the field that means that.
+  receipt_date_raw: z.string().nullable(),
   currency: z.string().nullable(), // ISO 4217
   // ISO 3166-1 alpha-2. Informational (CSV/reporting) only — not in the
   // confidence object below, unlike currency, since nothing reimbursement-

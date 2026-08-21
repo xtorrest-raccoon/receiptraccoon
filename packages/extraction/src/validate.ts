@@ -25,10 +25,85 @@ export interface ValidationOutcome {
   issues: ValidationIssue[];
   /** True when escalating to a stronger model could plausibly help. */
   worthEscalating: boolean;
+  /**
+   * True when receipt_date_raw was a numeric day/month date where the model's
+   * own interpretation (receipt_date) doesn't match what the extracted
+   * country's date-order convention implies -- see checkDateFormatAmbiguity.
+   * Escalating to a stronger model will not fix this (it is not a reasoning
+   * failure, the ambiguity is real), so index.ts caps receipt_date's field
+   * confidence directly to route it to a human instead of a second AI call.
+   */
+  dateFormatAmbiguous: boolean;
 }
 
 const MAX_FUTURE_DAYS = 2;
 const MAX_AGE_YEARS = 3;
+
+/**
+ * The well-established outlier: countries that conventionally print numeric
+ * dates as MM/DD rather than DD/MM. Deliberately short and conservative --
+ * only the US is included with real confidence; extend this list only on
+ * actual evidence, since a wrong entry here would flag CORRECT dates as
+ * mismatched instead of catching real errors.
+ */
+const MM_DD_COUNTRIES = new Set(["US"]);
+
+/**
+ * Cross-checks a numeric day/month date against the country's conventional
+ * order. Returns null when there's nothing to check (no raw text, no
+ * ambiguity — day > 12 on either side already disambiguates by construction,
+ * or the model's own interpretation isn't a valid alternate reading of the
+ * same two numbers), or the ISO date the country's convention implies when
+ * that differs from what the model actually returned.
+ *
+ * Deliberately narrow: this only fires when we can PROVE two things at once
+ * disagree (the model's own country field vs. its own date field) — never a
+ * blanket "this date looks ambiguous" flag, which would trigger on roughly
+ * 4 in 10 receipts by chance alone (any day-of-month ≤ 12) regardless of
+ * whether the source format was ever actually ambiguous.
+ */
+function checkDateFormatAmbiguity(
+  rawDate: string | null,
+  isoDate: string,
+  country: string | null,
+): string | null {
+  if (!rawDate) return null;
+
+  // First two numeric groups in the raw text -- the day/month pair, whichever
+  // order they were printed in. A 4-digit group is the year, never part of
+  // the ambiguity, and its position (leading, as in YYYY-MM-DD) already
+  // disambiguates the other two unambiguously, so only match when the first
+  // two groups are both 1-2 digits.
+  const match = rawDate.match(/\b(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})\b/);
+  if (!match) return null;
+  const a = Number(match[1]);
+  const b = Number(match[2]);
+  if (a > 12 || b > 12 || a === b) return null; // unambiguous, or swap is a no-op
+
+  const [, , isoMonth, isoDay] = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/) ?? [];
+  if (!isoMonth || !isoDay) return null;
+  const modelMonth = Number(isoMonth);
+  const modelDay = Number(isoDay);
+
+  // The model's own reading has to actually be one of the two possible
+  // readings of these exact two numbers -- if it's neither (e.g. it read the
+  // year differently, or this raw text wasn't really the source of
+  // receipt_date at all), there's nothing this check can safely say.
+  const readAsDayMonth = modelDay === a && modelMonth === b;
+  const readAsMonthDay = modelDay === b && modelMonth === a;
+  if (!readAsDayMonth && !readAsMonthDay) return null;
+
+  const countryExpectsMonthDay = country != null && MM_DD_COUNTRIES.has(country);
+  const modelMatchesCountry = countryExpectsMonthDay ? readAsMonthDay : readAsDayMonth;
+  if (modelMatchesCountry) return null;
+
+  // Model's interpretation disagrees with its own country field -- report
+  // what the country's convention would have produced instead.
+  const year = isoDate.slice(0, 4);
+  const expectedDay = countryExpectsMonthDay ? b : a;
+  const expectedMonth = countryExpectsMonthDay ? a : b;
+  return `${year}-${String(expectedMonth).padStart(2, "0")}-${String(expectedDay).padStart(2, "0")}`;
+}
 
 export function validateExtraction(
   data: ReceiptExtraction,
@@ -44,6 +119,7 @@ export function validateExtraction(
       passed: false,
       issues: [{ field: "is_receipt", severity: "hard", message: "Not a purchase receipt" }],
       worthEscalating: false,
+      dateFormatAmbiguous: false,
     };
   }
   if (data.legibility === "poor") {
@@ -51,6 +127,7 @@ export function validateExtraction(
       passed: false,
       issues: [{ field: "legibility", severity: "hard", message: "Image is mostly unreadable" }],
       worthEscalating: false,
+      dateFormatAmbiguous: false,
     };
   }
 
@@ -73,6 +150,7 @@ export function validateExtraction(
   }
 
   // Date
+  let dateFormatAmbiguous = false;
   if (!data.receipt_date) {
     issues.push({ field: "receipt_date", severity: "hard", message: "Date missing" });
   } else {
@@ -89,6 +167,16 @@ export function validateExtraction(
           field: "receipt_date",
           severity: "soft",
           message: `Date is more than ${MAX_AGE_YEARS} years old`,
+        });
+      }
+
+      const countryReading = checkDateFormatAmbiguity(data.receipt_date_raw, data.receipt_date, data.country);
+      if (countryReading) {
+        dateFormatAmbiguous = true;
+        issues.push({
+          field: "receipt_date",
+          severity: "soft",
+          message: `Ambiguous numeric date "${data.receipt_date_raw}" — ${data.country ?? "unknown country"}'s convention suggests ${countryReading}, not ${data.receipt_date}`,
         });
       }
     }
@@ -162,5 +250,6 @@ export function validateExtraction(
     passed: hard.length === 0,
     issues,
     worthEscalating: hard.length > 0,
+    dateFormatAmbiguous,
   };
 }

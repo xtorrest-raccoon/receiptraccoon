@@ -20,6 +20,10 @@ Rules:
   tax labels). Return null if genuinely unclear rather than guessing.
 - Dates: ISO 8601 YYYY-MM-DD. If the year is absent, infer from context; if ambiguous, return null.
 - Ambiguous numeric date formats: prefer the locale implied by the receipt's language and currency.
+- receipt_date_raw: the date exactly as printed, verbatim, before any interpretation
+  (e.g. "03/07/2026" or "3 juil. 2026") -- this lets a numeric day/month swap be
+  caught later even if your own interpretation above guessed wrong. Null only when
+  no date is printed at all.
 - subtotal excludes tax; total includes it. If only the total is printed, set subtotal
   to null rather than back-computing it.
 - Tips are not tax. If a tip line exists, exclude it from tax and note it in "notes".
