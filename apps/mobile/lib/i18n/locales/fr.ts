@@ -5,6 +5,7 @@ export default {
     close: "Fermer",
     back: "Retour",
     retry: "Réessayer",
+    done: "Terminé",
   },
   tabs: {
     home: "Accueil",

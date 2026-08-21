@@ -9,6 +9,7 @@ export default {
     close: "Close",
     back: "Back",
     retry: "Retry",
+    done: "Done",
   },
   tabs: {
     home: "Home",

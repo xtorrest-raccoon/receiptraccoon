@@ -1,12 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Image } from "expo-image";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import { formatMoney, formatShortDate, minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
-import { rn } from "../../lib/colors";
+import { rn, rnAlpha } from "../../lib/colors";
 import { findDuplicateReceipt, type DraftReceipt } from "../../lib/data";
 import { useAddReceipt, useCategories, useHomeCurrency, useUploadReceiptPhoto } from "../../lib/queries";
 import { getDraftReceipt, resetCapture, setSavedSummary } from "../../lib/captureStore";
@@ -14,6 +15,28 @@ import { Text } from "../../components/Text";
 import { TextInput } from "../../components/TextInput";
 import { CategoryChip } from "../../components/CategoryChip";
 import { PickerSheet } from "../../components/PickerSheet";
+
+/** "2026-07-03" -> a local Date for that calendar day, not midnight UTC (which can land on the wrong day west of Greenwich). Falls back to today when unset/unparseable, so the picker never opens on an invalid date. */
+function parseDateOrToday(iso: string): Date {
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date();
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function toIsoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Deliberately NOT formatShortDate — that one always omits the year (fine
+ * for a receipt list row you're skimming), but this field is where someone
+ * actually confirms/corrects the date before saving, so the year has to be
+ * visible to catch a wrong one (see the country/date-format-ambiguity work
+ * this same session, which exists for exactly this class of error).
+ */
+function formatDateWithYear(iso: string): string {
+  return parseDateOrToday(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 export default function ConfirmScreen() {
   const { t } = useTranslation();
@@ -33,6 +56,7 @@ export default function ConfirmScreen() {
   const [category, setCategory] = useState("Other");
   const [comment, setComment] = useState("");
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   useEffect(() => {
     if (!currency) return;
@@ -131,6 +155,15 @@ export default function ConfirmScreen() {
     );
   };
 
+  const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
+    // Android's picker is a self-dismissing native dialog -- it must be
+    // unmounted here or it stays stuck open. iOS's stays open until the
+    // "Done" button below closes it, so a new pick there isn't itself a
+    // close signal.
+    if (Platform.OS === "android") setDatePickerOpen(false);
+    if (event.type === "set" && selected) setDate(toIsoDate(selected));
+  };
+
   const onCancel = () => {
     Alert.alert(t("confirm.discardTitle"), t("confirm.discardBody"), [
       { text: t("confirm.keepEditing"), style: "cancel" },
@@ -174,7 +207,11 @@ export default function ConfirmScreen() {
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
               <Field label={t("confirm.dateLabel")}>
-                <TextInput value={date} onChangeText={setDate} placeholder={t("confirm.datePlaceholder")} style={styles.input} />
+                <Pressable onPress={() => setDatePickerOpen(true)} style={styles.input}>
+                  <Text style={date ? styles.dateValueText : styles.dateValuePlaceholder}>
+                    {date ? formatDateWithYear(date) : t("confirm.datePlaceholder")}
+                  </Text>
+                </Pressable>
               </Field>
             </View>
             <View style={{ flex: 1 }}>
@@ -259,6 +296,27 @@ export default function ConfirmScreen() {
         onSelect={setCategory}
         onClose={() => setCategoryPickerOpen(false)}
       />
+
+      {/* Android's picker is a self-contained native dialog -- mounting it is
+          enough, no wrapper needed. iOS's "spinner" display renders inline
+          wherever it's mounted rather than floating itself, so it needs its
+          own bottom-sheet here (same shape as PickerSheet) with an explicit
+          "Done" to close, since nothing else on iOS dismisses it. */}
+      {datePickerOpen && Platform.OS === "android" && (
+        <DateTimePicker value={parseDateOrToday(date)} mode="date" display="default" onChange={onDateChange} />
+      )}
+      {Platform.OS === "ios" && (
+        <Modal visible={datePickerOpen} transparent animationType="fade" onRequestClose={() => setDatePickerOpen(false)}>
+          <Pressable style={styles.backdrop} onPress={() => setDatePickerOpen(false)}>
+            <Pressable style={styles.datePickerSheet} onPress={(e) => e.stopPropagation()}>
+              <DateTimePicker value={parseDateOrToday(date)} mode="date" display="spinner" onChange={onDateChange} />
+              <Pressable style={styles.datePickerDone} onPress={() => setDatePickerOpen(false)}>
+                <Text style={styles.datePickerDoneLabel}>{t("common.done")}</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -328,6 +386,41 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     color: rn(color.text),
+  },
+  dateValueText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: rn(color.text),
+  },
+  dateValuePlaceholder: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: rn(color.textFaint),
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: rnAlpha(color.text, 0.35),
+    justifyContent: "flex-end",
+  },
+  datePickerSheet: {
+    backgroundColor: rn(color.surface),
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 28,
+    alignItems: "center",
+  },
+  datePickerDone: {
+    marginTop: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+    backgroundColor: rn(color.brand),
+  },
+  datePickerDoneLabel: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
   },
   fxBanner: {
     backgroundColor: rn(reimbursementChip.approved.bg),

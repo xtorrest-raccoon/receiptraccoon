@@ -5,6 +5,7 @@ export default {
     close: "閉じる",
     back: "戻る",
     retry: "再試行",
+    done: "完了",
   },
   tabs: {
     home: "ホーム",

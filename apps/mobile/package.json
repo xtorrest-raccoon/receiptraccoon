@@ -13,6 +13,7 @@
   "dependencies": {
     "@openspacelabs/react-native-zoomable-view": "^2.4.2",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/datetimepicker": "8.4.4",
     "@react-navigation/bottom-tabs": "^7.18.11",
     "@rr/api": "workspace:*",
     "@rr/mock-api": "workspace:*",
