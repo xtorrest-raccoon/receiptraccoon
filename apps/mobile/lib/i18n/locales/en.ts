@@ -220,8 +220,6 @@ export default {
     distanceUnit: "Distance unit",
     ratePer: "Rate per {{unit}}",
     userCurrency: "User Currency",
-    language: "Language",
-    languageSystemDefault: "System default",
     privacy: "Privacy",
     support: "Support",
     signOut: "Sign out",

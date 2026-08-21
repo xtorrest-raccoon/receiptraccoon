@@ -216,8 +216,6 @@ export default {
     distanceUnit: "Unidade de distância",
     ratePer: "Taxa por {{unit}}",
     userCurrency: "Moeda do utilizador",
-    language: "Idioma",
-    languageSystemDefault: "Idioma do sistema",
     privacy: "Privacidade",
     support: "Suporte",
     signOut: "Terminar sessão",

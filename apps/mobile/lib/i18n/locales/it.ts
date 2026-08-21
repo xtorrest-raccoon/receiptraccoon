@@ -216,8 +216,6 @@ export default {
     distanceUnit: "Unità di distanza",
     ratePer: "Tariffa per {{unit}}",
     userCurrency: "Valuta dell'utente",
-    language: "Lingua",
-    languageSystemDefault: "Lingua di sistema",
     privacy: "Privacy",
     support: "Assistenza",
     signOut: "Esci",

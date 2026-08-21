@@ -213,8 +213,6 @@ export default {
     distanceUnit: "距離の単位",
     ratePer: "{{unit}}あたりのレート",
     userCurrency: "ユーザー通貨",
-    language: "言語",
-    languageSystemDefault: "システムのデフォルト",
     privacy: "プライバシー",
     support: "サポート",
     signOut: "サインアウト",

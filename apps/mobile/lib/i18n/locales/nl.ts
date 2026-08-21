@@ -216,8 +216,6 @@ export default {
     distanceUnit: "Afstandseenheid",
     ratePer: "Tarief per {{unit}}",
     userCurrency: "Gebruikersvaluta",
-    language: "Taal",
-    languageSystemDefault: "Systeemtaal",
     privacy: "Privacy",
     support: "Ondersteuning",
     signOut: "Uitloggen",

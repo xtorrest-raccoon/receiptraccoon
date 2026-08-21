@@ -1,12 +1,9 @@
-import { useEffect, useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { currencySymbol, rateToDecimalString, type DistanceUnit } from "@rr/shared";
 import { rn, rnAlpha } from "../lib/colors";
-import { getLanguageOverride, setLanguageOverride, LANGUAGE_LABELS, SUPPORTED_LANGUAGES, type SupportedLanguage } from "../lib/i18n";
 import { Text } from "./Text";
-import { PickerSheet } from "./PickerSheet";
 
 // The web app's own deployed URL -- not derived from getApiBaseUrl() (that
 // one points at whatever dev server Metro is running against, wrong for
@@ -53,30 +50,7 @@ export function SettingsSheet({
   onClose: () => void;
   onSignOut: () => void;
 }) {
-  const { t, i18n } = useTranslation();
-  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
-  // null means "no override -- following the phone's system language" (see
-  // lib/i18n's getLanguageOverride). Loaded once on mount; setLanguageOption
-  // below keeps it in sync with what the picker actually does.
-  const [languageOverride, setLanguageOverrideState] = useState<SupportedLanguage | null>(null);
-
-  useEffect(() => {
-    getLanguageOverride().then(setLanguageOverrideState);
-  }, []);
-
-  const setLanguageOption = (value: string) => {
-    const next = value === "system" ? null : (value as SupportedLanguage);
-    setLanguageOverrideState(next);
-    setLanguageOverride(next);
-  };
-
-  const languageOptions = [
-    { value: "system", label: t("settings.languageSystemDefault") },
-    ...SUPPORTED_LANGUAGES.map((code) => ({ value: code, label: LANGUAGE_LABELS[code] })),
-  ];
-  const currentLanguageLabel = languageOverride
-    ? LANGUAGE_LABELS[languageOverride]
-    : `${t("settings.languageSystemDefault")} (${LANGUAGE_LABELS[(i18n.language as SupportedLanguage) ?? "en"] ?? i18n.language})`;
+  const { t } = useTranslation();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -113,10 +87,6 @@ export function SettingsSheet({
                 <Text style={styles.rowValue}>{homeCurrency}</Text>
               </View>
             ) : null}
-            <Pressable style={styles.row} onPress={() => setLanguagePickerOpen(true)}>
-              <Text style={styles.rowLabel}>{t("settings.language")}</Text>
-              <Text style={styles.rowValue}>{currentLanguageLabel}</Text>
-            </Pressable>
           </ScrollView>
 
           <View style={styles.linkRow}>
@@ -137,15 +107,6 @@ export function SettingsSheet({
           </Pressable>
         </Pressable>
       </Pressable>
-
-      <PickerSheet
-        visible={languagePickerOpen}
-        title={t("settings.language")}
-        options={languageOptions}
-        selectedValue={languageOverride ?? "system"}
-        onSelect={setLanguageOption}
-        onClose={() => setLanguagePickerOpen(false)}
-      />
     </Modal>
   );
 }
