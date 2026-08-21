@@ -71,33 +71,44 @@ export async function setLanguageOverride(language: SupportedLanguage | null): P
   }
 }
 
+// Languages in SUPPORTED_LANGUAGES whose plural rules have only the "other"
+// category (no "_one" variant is ever needed). Hardcoded rather than read
+// from Intl.PluralRules: that API isn't reliably present on Hermes across
+// devices, and this is a fixed fact about each language, not something that
+// needs to be queried at runtime.
+const SINGLE_CATEGORY_PLURAL_LANGUAGES: readonly SupportedLanguage[] = ["ja"];
+
 /**
  * Dev-only: every locale must carry exactly the keys English has (missing
  * keys silently fall back to English at runtime -- fine for users, but easy
- * to miss during review). Logs rather than throws, so a translation gap
- * never breaks the app for real users if this ever ran in production.
+ * to miss during review). Wrapped in try/catch and never awaited by the
+ * caller for a reason: this must never be able to block real app startup,
+ * on this device or any other -- see the incident where an earlier version
+ * of this used Intl.PluralRules, which isn't reliably present on Hermes and
+ * crashed the whole app before it could render anything.
  */
 function checkKeyParity(): void {
   if (!__DEV__) return;
-  const keysOf = (obj: object, prefix = ""): string[] =>
-    Object.entries(obj).flatMap(([k, v]) =>
-      v && typeof v === "object" ? keysOf(v, `${prefix}${k}.`) : [`${prefix}${k}`],
-    );
-  const englishKeys = new Set(keysOf(en));
-  for (const [code, dict] of Object.entries(resources)) {
-    if (code === "en") continue;
-    // A language whose plural rules have only the "other" category (e.g.
-    // Japanese) never needs a "_one" variant -- English's own "_one" keys
-    // are correctly absent there, not a translation gap.
-    const singleCategoryPlurals = new Intl.PluralRules(code).resolvedOptions().pluralCategories.length <= 1;
-    const relevantEnglishKeys = singleCategoryPlurals
-      ? [...englishKeys].filter((k) => !k.endsWith("_one"))
-      : [...englishKeys];
-    const theseKeys = new Set(keysOf(dict.translation));
-    const missing = relevantEnglishKeys.filter((k) => !theseKeys.has(k));
-    const extra = [...theseKeys].filter((k) => !englishKeys.has(k));
-    if (missing.length) console.warn(`[i18n] ${code} is missing keys:`, missing);
-    if (extra.length) console.warn(`[i18n] ${code} has extra keys not in en:`, extra);
+  try {
+    const keysOf = (obj: object, prefix = ""): string[] =>
+      Object.entries(obj).flatMap(([k, v]) =>
+        v && typeof v === "object" ? keysOf(v, `${prefix}${k}.`) : [`${prefix}${k}`],
+      );
+    const englishKeys = new Set(keysOf(en));
+    for (const [code, dict] of Object.entries(resources)) {
+      if (code === "en") continue;
+      const singleCategoryPlurals = (SINGLE_CATEGORY_PLURAL_LANGUAGES as readonly string[]).includes(code);
+      const relevantEnglishKeys = singleCategoryPlurals
+        ? [...englishKeys].filter((k) => !k.endsWith("_one"))
+        : [...englishKeys];
+      const theseKeys = new Set(keysOf(dict.translation));
+      const missing = relevantEnglishKeys.filter((k) => !theseKeys.has(k));
+      const extra = [...theseKeys].filter((k) => !englishKeys.has(k));
+      if (missing.length) console.warn(`[i18n] ${code} is missing keys:`, missing);
+      if (extra.length) console.warn(`[i18n] ${code} has extra keys not in en:`, extra);
+    }
+  } catch (e) {
+    console.warn("[i18n] key-parity check itself failed (non-fatal, skipping):", e);
   }
 }
 
