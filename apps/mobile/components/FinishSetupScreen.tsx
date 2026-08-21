@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { rn } from "../lib/colors";
 import { signOut } from "../lib/data";
@@ -12,15 +13,13 @@ import { Text } from "./Text";
  * than trying to replicate it.
  */
 export function FinishSetupScreen() {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Finish setting up your account</Text>
-      <Text style={styles.body}>
-        Your account was created with a temporary password. Sign in to the web app once to choose your own password,
-        then come back here.
-      </Text>
+      <Text style={styles.title}>{t("finishSetup.title")}</Text>
+      <Text style={styles.body}>{t("finishSetup.body")}</Text>
       <Pressable style={styles.signOutButton} onPress={() => signOut()}>
-        <Text style={styles.signOutLabel}>Sign out</Text>
+        <Text style={styles.signOutLabel}>{t("finishSetup.signOut")}</Text>
       </Pressable>
     </View>
   );

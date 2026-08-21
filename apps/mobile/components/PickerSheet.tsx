@@ -1,4 +1,5 @@
 import { FlatList, Modal, Pressable, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { rn, rnAlpha } from "../lib/colors";
 import { Text } from "./Text";
@@ -28,6 +29,7 @@ export function PickerSheet({
   onSelect: (value: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -55,7 +57,7 @@ export function PickerSheet({
             }}
           />
           <Pressable style={styles.cancel} onPress={onClose}>
-            <Text style={styles.cancelLabel}>Cancel</Text>
+            <Text style={styles.cancelLabel}>{t("common.cancel")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

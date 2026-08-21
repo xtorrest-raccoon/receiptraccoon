@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { rn } from "../../lib/colors";
 import { RetakePhotoError, TODAY, blankDraftReceipt, extractReceiptFromPhoto } from "../../lib/data";
@@ -17,6 +18,7 @@ import { Text } from "../../components/Text";
 const STILL_WORKING_AFTER_MS = 10_000;
 
 export default function ProcessingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [stillWorking, setStillWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,11 +76,11 @@ export default function ProcessingScreen() {
   if (needsRetake) {
     return (
       <View style={[styles.container, { backgroundColor: rn(color.bgMobile) }]}>
-        <Text style={styles.title}>This photo is too unclear to read</Text>
+        <Text style={styles.title}>{t("processing.tooUnclearTitle")}</Text>
         <Text style={styles.subtitle}>{error}</Text>
         <View style={styles.actionsRow}>
           <Pressable style={styles.retryButton} onPress={onRetake}>
-            <Text style={styles.retryButtonLabel}>Retake photo</Text>
+            <Text style={styles.retryButtonLabel}>{t("processing.retakePhoto")}</Text>
           </Pressable>
         </View>
       </View>
@@ -88,14 +90,14 @@ export default function ProcessingScreen() {
   if (error) {
     return (
       <View style={[styles.container, { backgroundColor: rn(color.bgMobile) }]}>
-        <Text style={styles.title}>Couldn't read this receipt</Text>
+        <Text style={styles.title}>{t("processing.couldntReadTitle")}</Text>
         <Text style={styles.subtitle}>{error}</Text>
         <View style={styles.actionsRow}>
           <Pressable style={styles.retryButton} onPress={() => setAttempt((a) => a + 1)}>
-            <Text style={styles.retryButtonLabel}>Retry</Text>
+            <Text style={styles.retryButtonLabel}>{t("common.retry")}</Text>
           </Pressable>
           <Pressable style={styles.manualButton} onPress={onEnterManually}>
-            <Text style={styles.manualButtonLabel}>Enter manually</Text>
+            <Text style={styles.manualButtonLabel}>{t("processing.enterManually")}</Text>
           </Pressable>
         </View>
       </View>
@@ -105,9 +107,9 @@ export default function ProcessingScreen() {
   return (
     <View style={[styles.container, { backgroundColor: rn(color.bgMobile) }]}>
       <Spinner size={56} />
-      <Text style={styles.title}>Reading your receipt…</Text>
-      <Text style={styles.subtitle}>Extracting vendor, date, total, tax, and line items.</Text>
-      {stillWorking && <Text style={styles.stillWorking}>Still working — this can take a little longer…</Text>}
+      <Text style={styles.title}>{t("processing.readingReceipt")}</Text>
+      <Text style={styles.subtitle}>{t("processing.extractingDetails")}</Text>
+      {stillWorking && <Text style={styles.stillWorking}>{t("processing.stillWorking")}</Text>}
     </View>
   );
 }

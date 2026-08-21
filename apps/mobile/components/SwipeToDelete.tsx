@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Animated, Pressable, StyleSheet, View } from "react-native";
 import Swipeable from "react-native-gesture-handler/Swipeable";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { rn } from "../lib/colors";
 import { Text } from "./Text";
@@ -25,6 +26,7 @@ export function SwipeToDelete({
   onDelete: () => void;
   enabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const ref = useRef<Swipeable>(null);
 
   if (!enabled) return <>{children}</>;
@@ -46,14 +48,14 @@ export function SwipeToDelete({
         <Pressable
           style={styles.action}
           accessibilityRole="button"
-          accessibilityLabel="Delete receipt"
+          accessibilityLabel={t("common.delete")}
           onPress={() => {
             ref.current?.close();
             onDelete();
           }}
         >
           <Animated.View style={{ transform: [{ scale }] }}>
-            <Text style={styles.actionLabel}>Delete</Text>
+            <Text style={styles.actionLabel}>{t("common.delete")}</Text>
           </Animated.View>
         </Pressable>
       </View>

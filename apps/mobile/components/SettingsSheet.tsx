@@ -1,8 +1,12 @@
+import { useEffect, useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { currencySymbol, rateToDecimalString, type DistanceUnit } from "@rr/shared";
 import { rn, rnAlpha } from "../lib/colors";
+import { getLanguageOverride, setLanguageOverride, LANGUAGE_LABELS, SUPPORTED_LANGUAGES, type SupportedLanguage } from "../lib/i18n";
 import { Text } from "./Text";
+import { PickerSheet } from "./PickerSheet";
 
 // The web app's own deployed URL -- not derived from getApiBaseUrl() (that
 // one points at whatever dev server Metro is running against, wrong for
@@ -49,29 +53,54 @@ export function SettingsSheet({
   onClose: () => void;
   onSignOut: () => void;
 }) {
+  const { t, i18n } = useTranslation();
+  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
+  // null means "no override -- following the phone's system language" (see
+  // lib/i18n's getLanguageOverride). Loaded once on mount; setLanguageOption
+  // below keeps it in sync with what the picker actually does.
+  const [languageOverride, setLanguageOverrideState] = useState<SupportedLanguage | null>(null);
+
+  useEffect(() => {
+    getLanguageOverride().then(setLanguageOverrideState);
+  }, []);
+
+  const setLanguageOption = (value: string) => {
+    const next = value === "system" ? null : (value as SupportedLanguage);
+    setLanguageOverrideState(next);
+    setLanguageOverride(next);
+  };
+
+  const languageOptions = [
+    { value: "system", label: t("settings.languageSystemDefault") },
+    ...SUPPORTED_LANGUAGES.map((code) => ({ value: code, label: LANGUAGE_LABELS[code] })),
+  ];
+  const currentLanguageLabel = languageOverride
+    ? LANGUAGE_LABELS[languageOverride]
+    : `${t("settings.languageSystemDefault")} (${LANGUAGE_LABELS[(i18n.language as SupportedLanguage) ?? "en"] ?? i18n.language})`;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.hint}>Workspace settings are managed from the web app by the admin.</Text>
+          <Text style={styles.title}>{t("settings.title")}</Text>
+          <Text style={styles.hint}>{t("settings.hint")}</Text>
 
           <ScrollView style={{ maxHeight: 320 }}>
             {workspaceName ? (
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Workspace</Text>
+                <Text style={styles.rowLabel}>{t("settings.workspace")}</Text>
                 <Text style={styles.rowValue}>{workspaceName}</Text>
               </View>
             ) : null}
             {distanceUnit ? (
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Distance unit</Text>
+                <Text style={styles.rowLabel}>{t("settings.distanceUnit")}</Text>
                 <Text style={styles.rowValue}>{distanceUnit}</Text>
               </View>
             ) : null}
             {rateMilli !== undefined && rateUnit ? (
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Rate per {rateUnit}</Text>
+                <Text style={styles.rowLabel}>{t("settings.ratePer", { unit: rateUnit })}</Text>
                 <Text style={styles.rowValue}>
                   {currencySymbol(rateCurrency ?? homeCurrency ?? "EUR")}
                   {rateToDecimalString(rateMilli)}
@@ -80,30 +109,43 @@ export function SettingsSheet({
             ) : null}
             {homeCurrency ? (
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>User Currency</Text>
+                <Text style={styles.rowLabel}>{t("settings.userCurrency")}</Text>
                 <Text style={styles.rowValue}>{homeCurrency}</Text>
               </View>
             ) : null}
+            <Pressable style={styles.row} onPress={() => setLanguagePickerOpen(true)}>
+              <Text style={styles.rowLabel}>{t("settings.language")}</Text>
+              <Text style={styles.rowValue}>{currentLanguageLabel}</Text>
+            </Pressable>
           </ScrollView>
 
           <View style={styles.linkRow}>
             <Pressable onPress={() => Linking.openURL(`${WEB_APP_URL}/privacy`)}>
-              <Text style={styles.linkLabel}>Privacy</Text>
+              <Text style={styles.linkLabel}>{t("settings.privacy")}</Text>
             </Pressable>
             <Pressable onPress={() => Linking.openURL(`${WEB_APP_URL}/support`)}>
-              <Text style={styles.linkLabel}>Support</Text>
+              <Text style={styles.linkLabel}>{t("settings.support")}</Text>
             </Pressable>
           </View>
 
           <Pressable style={styles.signOutRow} onPress={onSignOut}>
-            <Text style={styles.signOutLabel}>Sign out</Text>
+            <Text style={styles.signOutLabel}>{t("settings.signOut")}</Text>
           </Pressable>
 
           <Pressable style={styles.close} onPress={onClose}>
-            <Text style={styles.closeLabel}>Close</Text>
+            <Text style={styles.closeLabel}>{t("settings.close")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>
+
+      <PickerSheet
+        visible={languagePickerOpen}
+        title={t("settings.language")}
+        options={languageOptions}
+        selectedValue={languageOverride ?? "system"}
+        onSelect={setLanguageOption}
+        onClose={() => setLanguagePickerOpen(false)}
+      />
     </Modal>
   );
 }

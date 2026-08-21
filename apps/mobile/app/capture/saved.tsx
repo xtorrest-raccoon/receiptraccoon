@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { formatMoney } from "@rr/shared";
 import { rn } from "../../lib/colors";
@@ -8,6 +9,7 @@ import { getSavedSummary, resetCapture } from "../../lib/captureStore";
 import { Text } from "../../components/Text";
 
 export default function SavedScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [summary, setSummary] = useState(getSavedSummary());
 
@@ -25,14 +27,14 @@ export default function SavedScreen() {
       <View style={styles.tick}>
         <Text style={styles.tickMark}>✓</Text>
       </View>
-      <Text style={styles.title}>Receipt saved</Text>
+      <Text style={styles.title}>{t("saved.title")}</Text>
       {summary && (
         <Text style={styles.summary}>
           {summary.vendor} · {formatMoney(summary.totalMinor, summary.currency)} · {summary.category}
         </Text>
       )}
       <Pressable style={styles.doneButton} onPress={onDone}>
-        <Text style={styles.doneButtonLabel}>Done</Text>
+        <Text style={styles.doneButtonLabel}>{t("saved.done")}</Text>
       </Pressable>
     </View>
   );

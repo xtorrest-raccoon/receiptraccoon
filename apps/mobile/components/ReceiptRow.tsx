@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { formatMoney, formatShortDate, initials, type Receipt } from "@rr/shared";
 import { rn } from "../lib/colors";
@@ -6,6 +7,7 @@ import { StatusBadge } from "./StatusBadge";
 import { Text } from "./Text";
 
 export function ReceiptRow({ receipt, currency, onPress }: { receipt: Receipt; currency: string; onPress: () => void }) {
+  const { t } = useTranslation();
   return (
     <Pressable onPress={onPress} style={styles.row}>
       <View style={styles.avatar}>
@@ -13,7 +15,7 @@ export function ReceiptRow({ receipt, currency, onPress }: { receipt: Receipt; c
       </View>
       <View style={styles.mid}>
         <Text style={styles.vendor} numberOfLines={1}>
-          {receipt.vendor ?? "Unknown vendor"}
+          {receipt.vendor ?? t("receiptDetail.unknownVendor")}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
           {receipt.receiptDate ? formatShortDate(receipt.receiptDate) : "—"} · {receipt.categoryName ?? "Other"}

@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { Image, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "./Text";
 import { WorldMap } from "./WorldMap";
 
@@ -28,6 +29,7 @@ export const TravelCard = forwardRef<View, TravelCardProps>(function TravelCard(
   { name, visited, worldPct, tripCount, countryCount, onSelectCountry },
   ref,
 ) {
+  const { t } = useTranslation();
   return (
     <View ref={ref} collapsable={false} style={styles.card}>
       <View style={styles.headerRow}>
@@ -39,7 +41,7 @@ export const TravelCard = forwardRef<View, TravelCardProps>(function TravelCard(
         </View>
         <View style={styles.travelsRow}>
           <Text style={styles.planeIcon}>✈️</Text>
-          <Text style={styles.travelsText}>{name}&rsquo;s Travels</Text>
+          <Text style={styles.travelsText}>{t("analytics.travelsSuffix", { name })}</Text>
         </View>
       </View>
 
@@ -50,17 +52,17 @@ export const TravelCard = forwardRef<View, TravelCardProps>(function TravelCard(
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{worldPct}%</Text>
-          <Text style={styles.statLabel}>Of the world</Text>
+          <Text style={styles.statLabel}>{t("analytics.ofTheWorld")}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{tripCount}</Text>
-          <Text style={styles.statLabel}>Trips</Text>
+          <Text style={styles.statLabel}>{t("analytics.trips")}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{countryCount}</Text>
-          <Text style={styles.statLabel}>Countries</Text>
+          <Text style={styles.statLabel}>{t("analytics.countries")}</Text>
         </View>
       </View>
     </View>

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { categoryAccent, computeCategoryBreakdown, daysBetween, formatMoney, formatShortDate, reclaimMinor } from "@rr/shared";
@@ -12,6 +13,7 @@ import { CURRENT_MONTH } from "../../lib/data";
 import { Text } from "../../components/Text";
 
 export default function CountryDetailScreen() {
+  const { t } = useTranslation();
   const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -36,8 +38,8 @@ export default function CountryDetailScreen() {
   if (countryReceipts.length === 0 || !code) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + 14 }]}>
-        <BackLink onPress={() => router.back()} />
-        <Text style={styles.emptyText}>No receipts found for this country.</Text>
+        <BackLink label={t("country.backLink")} onPress={() => router.back()} />
+        <Text style={styles.emptyText}>{t("country.noReceipts")}</Text>
       </View>
     );
   }
@@ -52,28 +54,28 @@ export default function CountryDetailScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: rn(color.bgMobile) }} contentContainerStyle={[styles.container, { paddingTop: insets.top + 14 }]}>
-      <BackLink onPress={() => router.back()} />
+      <BackLink label={t("country.backLink")} onPress={() => router.back()} />
 
       <View style={styles.headerCard}>
         <Text style={styles.flag}>{flagEmoji(code)}</Text>
         <Text style={styles.countryName}>{COUNTRY_NAMES[code] ?? code}</Text>
         <Text style={styles.dateRange}>
-          {formatShortDate(firstDate)} – {formatShortDate(lastDate)} · {days} {days === 1 ? "day" : "days"}
+          {formatShortDate(firstDate)} – {formatShortDate(lastDate)} · {t("country.day", { count: days })}
         </Text>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Spent</Text>
+          <Text style={styles.statLabel}>{t("country.spent")}</Text>
           <Text style={styles.statValue}>{formatMoney(totalMinor, currency)}</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Avg. per day</Text>
+          <Text style={styles.statLabel}>{t("country.avgPerDay")}</Text>
           <Text style={styles.statValue}>{formatMoney(avgPerDayMinor, currency)}</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>By category</Text>
+      <Text style={styles.sectionTitle}>{t("country.byCategory")}</Text>
       <View style={styles.card}>
         {breakdown.map((c, i) => (
           <View key={c.name} style={[styles.categoryRow, i < breakdown.length - 1 && styles.rowBorder]}>
@@ -81,8 +83,7 @@ export default function CountryDetailScreen() {
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.categoryName}>{c.name}</Text>
               <Text style={styles.categoryCount}>
-                {countryReceipts.filter((r) => (r.categoryName ?? "Other") === c.name).length} transaction
-                {countryReceipts.filter((r) => (r.categoryName ?? "Other") === c.name).length === 1 ? "" : "s"}
+                {t("country.transaction", { count: countryReceipts.filter((r) => (r.categoryName ?? "Other") === c.name).length })}
               </Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
@@ -93,7 +94,7 @@ export default function CountryDetailScreen() {
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Receipts</Text>
+      <Text style={styles.sectionTitle}>{t("country.receiptsSection")}</Text>
       <View style={styles.card}>
         {countryReceipts.map((r, i) => (
           <Pressable
@@ -102,7 +103,7 @@ export default function CountryDetailScreen() {
             style={[styles.receiptRow, i < countryReceipts.length - 1 && styles.rowBorder]}
           >
             <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={styles.receiptVendor}>{r.vendor ?? "Unknown vendor"}</Text>
+              <Text style={styles.receiptVendor}>{r.vendor ?? t("receiptDetail.unknownVendor")}</Text>
               <Text style={styles.receiptDate}>{r.receiptDate ? formatShortDate(r.receiptDate) : "—"}</Text>
             </View>
             <Text style={styles.receiptAmount}>{formatMoney(reclaimMinor(r), currency)}</Text>
@@ -113,10 +114,10 @@ export default function CountryDetailScreen() {
   );
 }
 
-function BackLink({ onPress }: { onPress: () => void }) {
+function BackLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={{ marginBottom: 12 }}>
-      <Text style={styles.backLink}>‹ Analytics</Text>
+      <Text style={styles.backLink}>{label}</Text>
     </Pressable>
   );
 }

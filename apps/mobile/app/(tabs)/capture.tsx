@@ -4,6 +4,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import { rn, rnAlpha } from "../../lib/colors";
@@ -12,6 +13,7 @@ import { useIsHomeWorkspace } from "../../lib/queries";
 import { Text } from "../../components/Text";
 
 export default function CaptureScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data: isHome } = useIsHomeWorkspace();
@@ -36,7 +38,7 @@ export default function CaptureScreen() {
     } catch (err) {
       // Previously swallowed: a failed takePictureAsync looked identical to a
       // shutter tap that did nothing at all, with no way to tell why.
-      Alert.alert("Couldn't take photo", err instanceof Error ? err.message : String(err));
+      Alert.alert(t("capture.couldntTakePhotoTitle"), err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
@@ -48,7 +50,7 @@ export default function CaptureScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert("Photo library access needed", "Enable it in Settings to import a receipt photo.");
+        Alert.alert(t("capture.photoLibraryAccessTitle"), t("capture.photoLibraryAccessBody"));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: "images", quality: 0.7 });
@@ -58,7 +60,7 @@ export default function CaptureScreen() {
         router.push("/capture/processing");
       }
     } catch (err) {
-      Alert.alert("Couldn't import photo", err instanceof Error ? err.message : String(err));
+      Alert.alert(t("capture.couldntImportPhotoTitle"), err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
@@ -73,12 +75,10 @@ export default function CaptureScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.container, styles.permissionContainer]}>
-        <Text style={styles.permissionTitle}>Camera access needed</Text>
-        <Text style={styles.permissionBody}>
-          ReceiptRaccoon needs your camera to photograph and scan receipts.
-        </Text>
+        <Text style={styles.permissionTitle}>{t("capture.cameraAccessTitle")}</Text>
+        <Text style={styles.permissionBody}>{t("capture.cameraAccessBody")}</Text>
         <Pressable style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonLabel}>Grant access</Text>
+          <Text style={styles.permissionButtonLabel}>{t("capture.grantAccess")}</Text>
         </Pressable>
       </View>
     );
@@ -92,13 +92,10 @@ export default function CaptureScreen() {
   if (isHome === false) {
     return (
       <View style={[styles.container, styles.permissionContainer]}>
-        <Text style={styles.permissionTitle}>Not your home workspace</Text>
-        <Text style={styles.permissionBody}>
-          You can only submit receipts into the workspace you were originally added to. Switch back to it from the
-          web app to log a new receipt.
-        </Text>
+        <Text style={styles.permissionTitle}>{t("capture.notYourHomeWorkspaceTitle")}</Text>
+        <Text style={styles.permissionBody}>{t("capture.notYourHomeWorkspaceBody")}</Text>
         <Pressable style={styles.permissionButton} onPress={onCancel}>
-          <Text style={styles.permissionButtonLabel}>Back</Text>
+          <Text style={styles.permissionButtonLabel}>{t("common.back")}</Text>
         </Pressable>
       </View>
     );
@@ -136,7 +133,7 @@ export default function CaptureScreen() {
       </View>
 
       <Pressable onPress={onCancel} style={[styles.cancel, { top: insets.top + 8 }]}>
-        <Text style={styles.cancelLabel}>Cancel</Text>
+        <Text style={styles.cancelLabel}>{t("capture.cancel")}</Text>
       </Pressable>
     </View>
   );

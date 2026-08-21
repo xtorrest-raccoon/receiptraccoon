@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import { formatMoney, formatShortDate, rateToDecimalString, currencySymbol, type MileageTrip, type DistanceUnit } from "@rr/shared";
 import { rn, rnAlpha } from "../lib/colors";
@@ -25,6 +26,7 @@ export function TripDetailModal({
   displayUnit: DistanceUnit;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={trip !== null} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -42,7 +44,7 @@ export function TripDetailModal({
               {trip.reimbursementStatus === "rejected" && trip.rejectionReason && (
                 <View style={[styles.banner, { backgroundColor: rnAlpha(reimbursementChip.rejected.bg, 0.4) }]}>
                   <Text style={[styles.bannerTitle, { color: rn(reimbursementChip.rejected.text) }]}>
-                    Reason for rejection
+                    {t("tripDetail.reasonForRejection")}
                   </Text>
                   <Text style={[styles.bannerBody, { color: rn(reimbursementChip.rejected.text) }]}>
                     {trip.rejectionReason}
@@ -60,33 +62,35 @@ export function TripDetailModal({
 
               <View style={styles.detailsCard}>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Distance</Text>
+                  <Text style={styles.detailLabel}>{t("tripDetail.distance")}</Text>
                   <Text style={styles.detailValue}>
                     {formatDistance(convertDistance(trip.distance, trip.distanceUnit, displayUnit), displayUnit)}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Rate</Text>
+                  <Text style={styles.detailLabel}>{t("tripDetail.rate")}</Text>
                   <Text style={styles.detailValue}>
                     {/* trip.rateMilli is frozen at entry in trip.originalCurrency
                         if it was set in a currency other than the workspace's
                         own (see 0034_mileage_rate_currency.sql) -- `currency`
                         (the personal display currency) is only right for the
                         Reimbursement amount below, which amountMinor always is. */}
-                    {currencySymbol(trip.originalCurrency ?? workspaceCurrency)}
-                    {rateToDecimalString(trip.rateMilli)} per {trip.rateUnit}
+                    {t("tripDetail.ratePerUnit", {
+                      rate: `${currencySymbol(trip.originalCurrency ?? workspaceCurrency)}${rateToDecimalString(trip.rateMilli)}`,
+                      unit: trip.rateUnit,
+                    })}
                   </Text>
                 </View>
                 <View style={[styles.detailRow, styles.detailFinalRow]}>
                   <Text style={styles.detailFinalLabel}>
-                    {trip.reimbursementStatus === "reimbursed" ? "Reimbursed" : "Reimbursement"}
+                    {trip.reimbursementStatus === "reimbursed" ? t("tripDetail.reimbursed") : t("tripDetail.reimbursement")}
                   </Text>
                   <Text style={styles.detailFinalValue}>{formatMoney(trip.amountMinor, currency)}</Text>
                 </View>
               </View>
 
               <Pressable style={styles.closeButton} onPress={onClose}>
-                <Text style={styles.closeButtonLabel}>Close</Text>
+                <Text style={styles.closeButtonLabel}>{t("tripDetail.close")}</Text>
               </Pressable>
             </>
           )}

@@ -10,9 +10,23 @@ import { getSession, loadActiveWorkspaceId, onAuthStateChange } from "@rr/api";
 import { AcceptInviteModal } from "../components/AcceptInviteModal";
 import { FinishSetupScreen } from "../components/FinishSetupScreen";
 import { useCurrentUser, useInvalidateAll } from "../lib/queries";
+import { initI18n } from "../lib/i18n";
 // Side-effect import: creates this app's Supabase client and registers it
 // with @rr/api. Must run before any @rr/api call below.
 import "../lib/supabase";
+
+/**
+ * Gates the whole tree until translations are loaded -- every screen below
+ * calls useTranslation(), so rendering before this resolves would show raw
+ * keys for one frame on cold start.
+ */
+function useI18nReady(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    initI18n().then(() => setReady(true));
+  }, []);
+  return ready;
+}
 
 const queryClient = new QueryClient();
 
@@ -94,6 +108,9 @@ function SignedInGate({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
+  const i18nReady = useI18nReady();
+  if (!i18nReady) return null;
+
   return (
     // Required for any gesture-handler component to receive touches — without it
     // the swipe-to-delete rows silently do nothing.

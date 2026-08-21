@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import {
@@ -33,6 +34,7 @@ import { PickerSheet } from "../../components/PickerSheet";
 import { ZoomableImage } from "../../components/ZoomableImage";
 
 export default function ReceiptDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -67,8 +69,8 @@ export default function ReceiptDetailScreen() {
   if (!receipt) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + 14 }]}>
-        <BackLink onPress={() => router.back()} />
-        <Text style={styles.emptyText}>Receipt not found.</Text>
+        <BackLink label={t("receiptDetail.backLink")} onPress={() => router.back()} />
+        <Text style={styles.emptyText}>{t("receiptDetail.receiptNotFound")}</Text>
       </View>
     );
   }
@@ -111,9 +113,9 @@ export default function ReceiptDetailScreen() {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
     >
-      <BackLink onPress={() => router.back()} />
+      <BackLink label={t("receiptDetail.backLink")} onPress={() => router.back()} />
 
-      <Text style={styles.vendor}>{receipt.vendor ?? "Unknown vendor"}</Text>
+      <Text style={styles.vendor}>{receipt.vendor ?? t("receiptDetail.unknownVendor")}</Text>
       <Text style={styles.subMeta}>
         {receipt.receiptDate ? formatShortDate(receipt.receiptDate) : "—"} ·{" "}
         {formatPaymentMethod(receipt.paymentBrand, receipt.paymentLast4) ?? "—"}
@@ -139,32 +141,32 @@ export default function ReceiptDetailScreen() {
 
       {receipt.reimbursementStatus === "rejected" && receipt.rejectionReason && (
         <View style={[styles.banner, { backgroundColor: rnAlpha(reimbursementChip.rejected.bg, 0.4) }]}>
-          <Text style={[styles.bannerTitle, { color: rn(reimbursementChip.rejected.text) }]}>Reason for rejection</Text>
+          <Text style={[styles.bannerTitle, { color: rn(reimbursementChip.rejected.text) }]}>{t("receiptDetail.reasonForRejection")}</Text>
           <Text style={[styles.bannerBody, { color: rn(reimbursementChip.rejected.text) }]}>{receipt.rejectionReason}</Text>
         </View>
       )}
 
       {receipt.originalCurrency && (
         <View style={[styles.banner, { backgroundColor: rnAlpha(reimbursementChip.approved.bg, 0.4) }]}>
-          <Text style={[styles.bannerTitle, { color: rn(reimbursementChip.approved.text) }]}>Currency conversion</Text>
+          <Text style={[styles.bannerTitle, { color: rn(reimbursementChip.approved.text) }]}>{t("receiptDetail.currencyConversion")}</Text>
           <Text style={[styles.bannerBody, { color: rn(reimbursementChip.approved.text) }]}>
-            Originally {receipt.originalCurrency}{" "}
-            {receipt.originalTotalMinor !== null
-              ? formatMoney(receipt.originalTotalMinor, receipt.originalCurrency)
-              : ""}
-            {receipt.fxRate ? ` · converted at ${receipt.fxRate}` : ""}
-            {receipt.fxRateDate ? ` on ${formatShortDate(receipt.fxRateDate)}` : ""}
+            {t("receiptDetail.originally", {
+              currency: receipt.originalCurrency,
+              amount: receipt.originalTotalMinor !== null ? formatMoney(receipt.originalTotalMinor, receipt.originalCurrency) : "",
+            })}
+            {receipt.fxRate ? t("receiptDetail.convertedAt", { rate: receipt.fxRate }) : ""}
+            {receipt.fxRateDate ? t("receiptDetail.onDate", { date: formatShortDate(receipt.fxRateDate) }) : ""}
           </Text>
         </View>
       )}
 
       <View style={{ marginBottom: 14 }}>
-        <Text style={styles.sectionLabel}>Comment</Text>
+        <Text style={styles.sectionLabel}>{t("receiptDetail.comment")}</Text>
         {commentEditable ? (
           <TextInput
             value={comment}
             onChangeText={commitComment}
-            placeholder="e.g. reason for exception, attendees, purpose…"
+            placeholder={t("receiptDetail.commentPlaceholder")}
             placeholderTextColor={rn(color.textFaint)}
             multiline
             style={styles.commentInput}
@@ -172,16 +174,16 @@ export default function ReceiptDetailScreen() {
         ) : (
           <View style={styles.commentReadonly}>
             <Text style={comment ? styles.commentReadonlyText : styles.commentEmptyText}>
-              {comment || "No comment was added."}
+              {comment || t("receiptDetail.noComment")}
             </Text>
           </View>
         )}
       </View>
 
-      <Text style={styles.lineItemsTitle}>Line items</Text>
+      <Text style={styles.lineItemsTitle}>{t("receiptDetail.lineItems")}</Text>
       <View style={styles.lineItemsCard}>
         {lineItemsTotal.length === 0 ? (
-          <Text style={[styles.emptyText, { paddingVertical: 12 }]}>No line items captured.</Text>
+          <Text style={[styles.emptyText, { paddingVertical: 12 }]}>{t("receiptDetail.noLineItems")}</Text>
         ) : (
           lineItemsTotal.map((li, index) => (
             <View
@@ -200,13 +202,13 @@ export default function ReceiptDetailScreen() {
 
       <View style={styles.totalsCard}>
         <View style={styles.totalsRow}>
-          <Text style={styles.totalsLabel}>Subtotal</Text>
+          <Text style={styles.totalsLabel}>{t("receiptDetail.subtotal")}</Text>
           <Text style={styles.totalsValue}>
             {receipt.subtotalMinor !== null ? formatMoney(receipt.subtotalMinor, currency) : "—"}
           </Text>
         </View>
         <View style={styles.totalsRow}>
-          <Text style={styles.totalsLabel}>Tax</Text>
+          <Text style={styles.totalsLabel}>{t("receiptDetail.tax")}</Text>
           <Text style={styles.totalsValue}>
             {receipt.taxMinor !== null ? formatMoney(receipt.taxMinor, currency) : "—"}
           </Text>
@@ -214,7 +216,7 @@ export default function ReceiptDetailScreen() {
         {/* Total is a transcription of the document, never editable — correcting
             a misread goes through re-extraction, not by typing over it. */}
         <View style={[styles.totalsRow, styles.totalsFinalRow]}>
-          <Text style={styles.totalFinalLabel}>Total</Text>
+          <Text style={styles.totalFinalLabel}>{t("receiptDetail.total")}</Text>
           <Text style={styles.totalFinalValue}>{formatMoney(receipt.totalMinor, currency)}</Text>
         </View>
 
@@ -225,7 +227,7 @@ export default function ReceiptDetailScreen() {
           {/* Past tense once the money has actually been paid out — "to reclaim"
               reads as still outstanding, which it no longer is. */}
           <Text style={styles.totalFinalLabel}>
-            {receipt.reimbursementStatus === "reimbursed" ? "Amount reclaimed" : "Amount to reclaim"}
+            {receipt.reimbursementStatus === "reimbursed" ? t("receiptDetail.amountReclaimed") : t("receiptDetail.amountToReclaim")}
           </Text>
           {amountEditable ? (
             <View style={styles.totalInputRow}>
@@ -246,14 +248,14 @@ export default function ReceiptDetailScreen() {
         </View>
         {reclaimExceedsTotal && (
           <Text style={styles.reclaimError}>
-            Cannot reclaim more than the receipt total.
+            {t("receiptDetail.cannotReclaimMoreThanTotal")}
           </Text>
         )}
       </View>
 
       <PickerSheet
         visible={categoryPickerOpen}
-        title="Category"
+        title={t("receiptDetail.categoryPickerTitle")}
         options={(categories ?? []).map((c) => ({ value: c, label: c }))}
         selectedValue={receipt.categoryName ?? "Other"}
         onSelect={commitCategory}
@@ -284,10 +286,10 @@ export default function ReceiptDetailScreen() {
   );
 }
 
-function BackLink({ onPress }: { onPress: () => void }) {
+function BackLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={{ marginBottom: 12 }}>
-      <Text style={styles.backLink}>‹ Receipts</Text>
+      <Text style={styles.backLink}>{label}</Text>
     </Pressable>
   );
 }

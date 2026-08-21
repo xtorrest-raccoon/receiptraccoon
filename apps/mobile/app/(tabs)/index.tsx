@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
+import { useTranslation } from "react-i18next";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
@@ -38,6 +39,7 @@ function GearIcon({ tint }: { tint: string }) {
 }
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [breakdownMonth, setBreakdownMonth] = useState(CURRENT_MONTH);
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
@@ -85,7 +87,7 @@ export default function HomeScreen() {
   // see lib/data.ts's getDashboard, which converts before this ever reaches here.
   const currency = dashboard.currency;
 
-  const greeting = getGreeting();
+  const greeting = t(getGreetingKey());
   const breakdown = breakdownDashboard?.categoryBreakdown.filter((c) => c.pct > 0) ?? [];
   const selectedMonthLabel =
     monthOptions.find((m) => m.value === breakdownMonth)?.label ?? breakdownMonth;
@@ -105,7 +107,7 @@ export default function HomeScreen() {
             style={styles.settingsButton}
             onPress={() => setSettingsOpen(true)}
             accessibilityRole="button"
-            accessibilityLabel="Settings"
+            accessibilityLabel={t("home.settingsAccessibilityLabel")}
           >
             <GearIcon tint={rn(color.avatarText)} />
           </Pressable>
@@ -115,7 +117,7 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.darkCard}>
             <Text style={styles.darkCardLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              Spend this month
+              {t("home.spendThisMonth")}
             </Text>
             <Text style={styles.darkCardValue}>
               {formatMoney(dashboard.stats.monthTotalMinor, currency)}
@@ -127,18 +129,18 @@ export default function HomeScreen() {
           <View style={styles.statColumn}>
             <View style={styles.statCard}>
               <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                Owed to you
+                {t("home.owedToYou")}
               </Text>
               <Text style={styles.statValue}>
                 {formatMoney(owedToUser.amountMinor, currency)}
               </Text>
               <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                Incl. mileage
+                {t("home.inclMileage")}
               </Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                Receipts
+                {t("home.receipts")}
               </Text>
               {/* Count of the receipts behind "Owed to you" above, not the
                   unrelated "receipts logged this month" figure — the two cards
@@ -146,7 +148,7 @@ export default function HomeScreen() {
                   amount, made up of this many receipts". */}
               <Text style={styles.statValue}>{owedToUser.receiptCount}</Text>
               <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                Pending refund
+                {t("home.pendingRefund")}
               </Text>
             </View>
           </View>
@@ -169,7 +171,7 @@ export default function HomeScreen() {
               adjustsFontSizeToFit
               minimumFontScale={0.8}
             >
-              Category breakdown
+              {t("home.categoryBreakdown")}
             </Text>
             <Pressable style={styles.monthPicker} onPress={() => setMonthPickerOpen(true)}>
               <Text style={styles.monthPickerLabel}>{selectedMonthLabel}</Text>
@@ -178,7 +180,7 @@ export default function HomeScreen() {
 
           <View style={{ gap: 12, marginTop: 8 }}>
             {breakdown.length === 0 ? (
-              <Text style={styles.emptyText}>No receipts in {selectedMonthLabel}.</Text>
+              <Text style={styles.emptyText}>{t("home.noReceiptsInMonth", { month: selectedMonthLabel })}</Text>
             ) : (
               breakdown.map((c) => {
                 const accent = rn(categoryAccent(c.name));
@@ -207,7 +209,7 @@ export default function HomeScreen() {
 
       <PickerSheet
         visible={monthPickerOpen}
-        title="Select month"
+        title={t("home.selectMonth")}
         options={monthOptions}
         selectedValue={breakdownMonth}
         onSelect={setBreakdownMonth}
@@ -234,11 +236,11 @@ export default function HomeScreen() {
   );
 }
 
-function getGreeting(): string {
+function getGreetingKey(): "home.goodMorning" | "home.goodAfternoon" | "home.goodEvening" {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return "home.goodMorning";
+  if (hour < 18) return "home.goodAfternoon";
+  return "home.goodEvening";
 }
 
 const styles = StyleSheet.create({

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import {
@@ -34,6 +35,7 @@ import { TripDetailModal } from "../../components/TripDetailModal";
 import { SwipeToDelete } from "../../components/SwipeToDelete";
 
 export default function MileageScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   // "workspaceUnit" is the workspace's own raw default, used as a fallback
@@ -160,7 +162,7 @@ export default function MileageScreen() {
       const result = await calculateMileageDistance(newStartAddress.trim(), newEndAddress.trim(), unit);
       setCalculated(result);
     } catch (err) {
-      setCalcError(err instanceof Error ? err.message : "Couldn't calculate that distance.");
+      setCalcError(err instanceof Error ? err.message : t("mileage.couldntCalculateDistance"));
     } finally {
       setCalculating(false);
     }
@@ -174,7 +176,7 @@ export default function MileageScreen() {
         { id: editingId, patch: { tripDate: newDate, purpose: newPurpose.trim(), distance: distanceValue } },
         {
           onSuccess: (updated) => {
-            if (!updated) Alert.alert("Could not save", "Only pending trips can be edited.");
+            if (!updated) Alert.alert(t("mileage.couldNotSaveTitle"), t("mileage.onlyPendingCanBeEdited"));
           },
         },
       );
@@ -194,12 +196,12 @@ export default function MileageScreen() {
 
   const confirmDelete = (trip: MileageTrip) => {
     Alert.alert(
-      "Delete trip?",
-      `"${trip.purpose}" will be permanently removed. This cannot be undone.`,
+      t("mileage.deleteTripTitle"),
+      t("mileage.deleteTripBody", { purpose: trip.purpose }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => {
             deleteMileageTrip.mutate(trip.id, {
@@ -207,7 +209,7 @@ export default function MileageScreen() {
                 if (ok) {
                   if (editingId === trip.id) closeForm();
                 } else {
-                  Alert.alert("Could not delete", "Only pending trips can be deleted.");
+                  Alert.alert(t("mileage.couldNotDeleteTitle"), t("mileage.onlyPendingCanBeDeleted"));
                 }
               },
             });
@@ -229,17 +231,17 @@ export default function MileageScreen() {
             same personal unit/currency preference, editable only from the
             web app's Profile page. */}
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Mileage</Text>
+          <Text style={styles.title}>{t("mileage.title")}</Text>
         </View>
 
         <View style={styles.statsRow}>
           <View style={styles.darkCard}>
             <Text style={styles.darkCardLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              Reimbursement this month
+              {t("mileage.reimbursementThisMonth")}
             </Text>
             <Text style={styles.darkCardValue}>{formatMoney(monthReimbMinor, currency)}</Text>
             <Text style={styles.darkCardSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              {formatDistance(monthDistanceInUnit, unit)} logged
+              {t("mileage.logged", { distance: formatDistance(monthDistanceInUnit, unit) })}
             </Text>
           </View>
           {/* Read-only here. This is MY effective rate — either a per-user
@@ -247,7 +249,7 @@ export default function MileageScreen() {
               from Settings if they haven't. */}
           <View style={styles.rateCard}>
             <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              Rate
+              {t("mileage.rate")}
             </Text>
             {/* Not formatMoney: that rounds to two decimals and would show a
                 0.675 rate as 0.68, understating what a long trip is worth. */}
@@ -256,44 +258,41 @@ export default function MileageScreen() {
               {rateToDecimalString(myRate.rateMilli)}
             </Text>
             <Text style={styles.statCaption} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              per {myRate.unit}
+              {t("mileage.perUnit", { unit: myRate.unit })}
             </Text>
           </View>
         </View>
 
         <View style={styles.tripsHeaderRow}>
-          <Text style={styles.tripsHeaderTitle}>Recent trips</Text>
+          <Text style={styles.tripsHeaderTitle}>{t("mileage.recentTrips")}</Text>
           {isHome !== false && (
             <Pressable
               style={styles.addTripButton}
               onPress={() => (addTripOpen ? closeForm() : setAddTripOpen(true))}
             >
-              <Text style={styles.addTripLabel}>{addTripOpen ? "Close" : "+ Add trip"}</Text>
+              <Text style={styles.addTripLabel}>{addTripOpen ? t("mileage.close") : t("mileage.addTrip")}</Text>
             </Pressable>
           )}
         </View>
 
         {isHome === false && (
-          <Text style={styles.emptyText}>
-            You can only log trips into the workspace you were originally added to. Switch back to it from the web
-            app to add a new one.
-          </Text>
+          <Text style={styles.emptyText}>{t("mileage.onlyHomeWorkspace")}</Text>
         )}
 
         {addTripOpen && (
           <View style={styles.addTripCard}>
-            <Text style={styles.formTitle}>{editingId ? "Edit trip" : "New trip"}</Text>
+            <Text style={styles.formTitle}>{editingId ? t("mileage.editTrip") : t("mileage.newTrip")}</Text>
             <TextInput
               value={newPurpose}
               onChangeText={setNewPurpose}
-              placeholder="Trip purpose…"
+              placeholder={t("mileage.purposePlaceholder")}
               placeholderTextColor={rn(color.textFaint)}
               style={styles.addTripInput}
             />
             <TextInput
               value={newDate}
               onChangeText={setNewDate}
-              placeholder="YYYY-MM-DD"
+              placeholder={t("mileage.datePlaceholder")}
               placeholderTextColor={rn(color.textFaint)}
               style={styles.addTripInput}
             />
@@ -312,7 +311,7 @@ export default function MileageScreen() {
                       style={[styles.segment, on && styles.segmentOn]}
                     >
                       <Text style={[styles.segmentLabel, on && styles.segmentLabelOn]}>
-                        {m === "automatic" ? "Automatic" : "Manual"}
+                        {m === "automatic" ? t("mileage.automatic") : t("mileage.manual")}
                       </Text>
                     </Pressable>
                   );
@@ -325,14 +324,14 @@ export default function MileageScreen() {
                 <TextInput
                   value={newStartAddress}
                   onChangeText={setNewStartAddress}
-                  placeholder="Start address…"
+                  placeholder={t("mileage.startAddressPlaceholder")}
                   placeholderTextColor={rn(color.textFaint)}
                   style={styles.addTripInput}
                 />
                 <TextInput
                   value={newEndAddress}
                   onChangeText={setNewEndAddress}
-                  placeholder="End address…"
+                  placeholder={t("mileage.endAddressPlaceholder")}
                   placeholderTextColor={rn(color.textFaint)}
                   style={styles.addTripInput}
                 />
@@ -344,7 +343,7 @@ export default function MileageScreen() {
                   {calculating ? (
                     <ActivityIndicator color={rn(color.brand)} size="small" />
                   ) : (
-                    <Text style={styles.calculateButtonLabel}>Calculate distance</Text>
+                    <Text style={styles.calculateButtonLabel}>{t("mileage.calculateDistance")}</Text>
                   )}
                 </Pressable>
                 {calcError && <Text style={styles.calcErrorText}>{calcError}</Text>}
@@ -359,7 +358,7 @@ export default function MileageScreen() {
               <TextInput
                 value={newDistance}
                 onChangeText={setNewDistance}
-                placeholder={`Distance (${unit})`}
+                placeholder={t("mileage.distancePlaceholder", { unit })}
                 placeholderTextColor={rn(color.textFaint)}
                 keyboardType="decimal-pad"
                 style={styles.addTripInput}
@@ -367,11 +366,11 @@ export default function MileageScreen() {
             )}
 
             {estimateMinor !== null && (
-              <Text style={styles.estimateText}>Estimated reimbursement: {formatMoney(estimateMinor, myRate.currency)}</Text>
+              <Text style={styles.estimateText}>{t("mileage.estimatedReimbursement", { amount: formatMoney(estimateMinor, myRate.currency) })}</Text>
             )}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
               <Pressable style={styles.cancelButton} onPress={closeForm}>
-                <Text style={styles.cancelButtonLabel}>Cancel</Text>
+                <Text style={styles.cancelButtonLabel}>{t("mileage.cancel")}</Text>
               </Pressable>
               <Pressable
                 style={[styles.saveTripButton, isNaN(distanceValue) && { opacity: 0.5 }]}
@@ -379,7 +378,7 @@ export default function MileageScreen() {
                 onPress={saveTrip}
               >
                 <Text style={styles.saveButtonLabel}>
-                  {editingId ? "Save changes" : "Save trip"}
+                  {editingId ? t("mileage.saveChanges") : t("mileage.saveTrip")}
                 </Text>
               </Pressable>
             </View>
@@ -387,9 +386,9 @@ export default function MileageScreen() {
         )}
 
         {trips.length === 0 ? (
-          <Text style={styles.emptyText}>No trips logged yet.</Text>
+          <Text style={styles.emptyText}>{t("mileage.noTripsYet")}</Text>
         ) : visibleTrips.length === 0 ? (
-          <Text style={styles.emptyText}>Nothing needs attention — older reimbursed trips are on the web app.</Text>
+          <Text style={styles.emptyText}>{t("mileage.nothingNeedsAttention")}</Text>
         ) : (
           <View style={{ gap: 8 }}>
             {visibleTrips.map((t) => {

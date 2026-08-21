@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Image } from "expo-image";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, reimbursementChip } from "@rr/ui-tokens";
 import { formatMoney, formatShortDate, minorToDecimalString, parseMoneyToMinor, currencySymbol } from "@rr/shared";
@@ -15,6 +16,7 @@ import { CategoryChip } from "../../components/CategoryChip";
 import { PickerSheet } from "../../components/PickerSheet";
 
 export default function ConfirmScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data: currency } = useHomeCurrency();
@@ -70,11 +72,11 @@ export default function ConfirmScreen() {
       // Vendor+date+total matching isn't proof — two identical coffees on the
       // same day would match too. Framed as a question, not an assertion.
       Alert.alert(
-        "Possible duplicate?",
-        `You already have a receipt from "${vendor.trim()}" on this date for this amount. Is this a different purchase?`,
+        t("confirm.possibleDuplicateTitle"),
+        t("confirm.possibleDuplicateBody", { vendor: vendor.trim() }),
         [
-          { text: "Cancel", style: "cancel" },
-          { text: "Yes, save it", onPress: () => doSave() },
+          { text: t("common.cancel"), style: "cancel" },
+          { text: t("confirm.yesSaveIt"), onPress: () => doSave() },
         ],
       );
       return;
@@ -130,10 +132,10 @@ export default function ConfirmScreen() {
   };
 
   const onCancel = () => {
-    Alert.alert("Discard this receipt?", "The scanned photo and details will be lost.", [
-      { text: "Keep editing", style: "cancel" },
+    Alert.alert(t("confirm.discardTitle"), t("confirm.discardBody"), [
+      { text: t("confirm.keepEditing"), style: "cancel" },
       {
-        text: "Discard",
+        text: t("confirm.discard"),
         style: "destructive",
         onPress: () => {
           resetCapture();
@@ -153,30 +155,30 @@ export default function ConfirmScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        <Text style={styles.title}>Review receipt</Text>
-        <Text style={styles.subtitle}>Confirm the details we found</Text>
+        <Text style={styles.title}>{t("confirm.title")}</Text>
+        <Text style={styles.subtitle}>{t("confirm.subtitle")}</Text>
 
         {draft?.photoUri ? (
           <Image source={{ uri: draft.photoUri }} style={styles.photo} contentFit="cover" />
         ) : (
           <View style={styles.photoPlaceholder}>
-            <Text style={styles.photoPlaceholderText}>[ captured photo ]</Text>
+            <Text style={styles.photoPlaceholderText}>{t("confirm.photoPlaceholder")}</Text>
           </View>
         )}
 
         <View style={{ gap: 10 }}>
-          <Field label="Vendor">
-            <TextInput value={vendor} onChangeText={setVendor} placeholder="Vendor name" style={styles.input} />
+          <Field label={t("confirm.vendorLabel")}>
+            <TextInput value={vendor} onChangeText={setVendor} placeholder={t("confirm.vendorPlaceholder")} style={styles.input} />
           </Field>
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <Field label="Date">
-                <TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" style={styles.input} />
+              <Field label={t("confirm.dateLabel")}>
+                <TextInput value={date} onChangeText={setDate} placeholder={t("confirm.datePlaceholder")} style={styles.input} />
               </Field>
             </View>
             <View style={{ flex: 1 }}>
-              <Field label={`Total (${currencySymbol(currency)})`}>
+              <Field label={t("confirm.totalLabel", { symbol: currencySymbol(currency) })}>
                 <TextInput
                   value={totalText}
                   onChangeText={setTotalText}
@@ -190,40 +192,40 @@ export default function ConfirmScreen() {
           {draft?.originalCurrency && draft.originalTotalMinor !== null ? (
             <View style={styles.fxBanner}>
               <Text style={styles.fxBannerText}>
-                Originally {formatMoney(draft.originalTotalMinor, draft.originalCurrency)}
-                {draft.fxRate !== null ? ` · converted at ${draft.fxRate.toFixed(4)}` : ""}
-                {draft.fxRateDate ? ` on ${formatShortDate(draft.fxRateDate)}` : ""}
+                {t("confirm.originally", { amount: formatMoney(draft.originalTotalMinor, draft.originalCurrency) })}
+                {draft.fxRate !== null ? t("confirm.convertedAt", { rate: draft.fxRate.toFixed(4) }) : ""}
+                {draft.fxRateDate ? t("confirm.onDate", { date: formatShortDate(draft.fxRateDate) }) : ""}
               </Text>
             </View>
           ) : null}
 
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <Field label={`Tax (${currencySymbol(currency)})`}>
+              <Field label={t("confirm.taxLabel", { symbol: currencySymbol(currency) })}>
                 <TextInput value={taxText} onChangeText={setTaxText} keyboardType="decimal-pad" style={styles.input} />
               </Field>
             </View>
             <View style={{ flex: 1 }}>
-              <Field label="Payment">
+              <Field label={t("confirm.paymentLabel")}>
                 <TextInput
                   value={payment}
                   onChangeText={setPayment}
-                  placeholder="Visa •1234"
+                  placeholder={t("confirm.paymentPlaceholder")}
                   style={styles.input}
                 />
               </Field>
             </View>
           </View>
 
-          <Field label="Category">
+          <Field label={t("confirm.categoryLabel")}>
             <CategoryChip category={category} onPress={() => setCategoryPickerOpen(true)} />
           </Field>
 
-          <Field label="Comment">
+          <Field label={t("confirm.commentLabel")}>
             <TextInput
               value={comment}
               onChangeText={setComment}
-              placeholder="e.g. reason for exception, attendees, purpose…"
+              placeholder={t("confirm.commentPlaceholder")}
               placeholderTextColor={rn(color.textFaint)}
               multiline
               style={styles.commentInput}
@@ -233,7 +235,7 @@ export default function ConfirmScreen() {
 
         <View style={styles.actionsRow}>
           <Pressable onPress={onCancel} disabled={saving} style={[styles.cancelButton, saving && { opacity: 0.5 }]}>
-            <Text style={styles.cancelButtonLabel}>Cancel</Text>
+            <Text style={styles.cancelButtonLabel}>{t("common.cancel")}</Text>
           </Pressable>
           <Pressable
             onPress={onSave}
@@ -243,7 +245,7 @@ export default function ConfirmScreen() {
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.saveButtonLabel}>Save receipt</Text>
+              <Text style={styles.saveButtonLabel}>{t("confirm.saveReceipt")}</Text>
             )}
           </Pressable>
         </View>
@@ -251,7 +253,7 @@ export default function ConfirmScreen() {
 
       <PickerSheet
         visible={categoryPickerOpen}
-        title="Category"
+        title={t("confirm.categoryPickerTitle")}
         options={categories.map((c) => ({ value: c, label: c }))}
         selectedValue={category}
         onSelect={setCategory}

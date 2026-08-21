@@ -18,7 +18,10 @@
     },
     "android": {
       "package": "com.receiptraccoon.mobile",
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"],
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#5EAE7C"
@@ -37,7 +40,8 @@
         {
           "photosPermission": "ReceiptRaccoon needs photo library access to import receipt photos."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

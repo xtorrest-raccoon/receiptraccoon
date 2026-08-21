@@ -1,4 +1,5 @@
 import { View, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { color, healthChip, radius } from "@rr/ui-tokens";
 import { formatMoneyCompact, formatShortDate } from "@rr/shared";
 import { rn } from "../lib/colors";
@@ -14,14 +15,15 @@ export function SpendBarChart({
   weeklySpend: { weekStart: string; totalMinor: number }[];
   currency: string;
 }) {
+  const { t } = useTranslation();
   const max = Math.max(...weeklySpend.map((w) => w.totalMinor), 1);
 
   return (
     <View>
       <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-        Spend over time
+        {t("spendChart.title")}
       </Text>
-      <Text style={styles.subtitle}>Last {weeklySpend.length} weeks</Text>
+      <Text style={styles.subtitle}>{t("spendChart.lastNWeeks", { count: weeklySpend.length })}</Text>
       <View style={styles.row}>
         {weeklySpend.map((wk, i) => {
           const heightPx = Math.max(8, Math.round((wk.totalMinor / max) * BAR_MAX_HEIGHT));

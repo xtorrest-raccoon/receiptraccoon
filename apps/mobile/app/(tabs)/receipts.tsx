@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { canDeleteReceipt, isRecentOrActionable, type Receipt } from "@rr/shared";
@@ -11,6 +12,7 @@ import { ReceiptRow } from "../../components/ReceiptRow";
 import { SwipeToDelete } from "../../components/SwipeToDelete";
 
 export default function ReceiptsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: receipts, isLoading, refetch } = useReceipts();
@@ -34,19 +36,19 @@ export default function ReceiptsScreen() {
 
   const confirmDelete = (receipt: Receipt) => {
     Alert.alert(
-      "Delete receipt?",
-      `${receipt.vendor ?? "This receipt"} will be permanently removed. This cannot be undone.`,
+      t("receiptsScreen.deleteReceiptTitle"),
+      t("receiptsScreen.deleteReceiptBody", { vendor: receipt.vendor ?? t("receiptsScreen.thisReceipt") }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => {
             deleteReceipt.mutate(receipt.id, {
               onSuccess: (ok) => {
                 // Should be unreachable — only pending/rejected rows swipe — but
                 // report it rather than appearing to succeed.
-                if (!ok) Alert.alert("Could not delete", "Only pending or rejected receipts can be deleted.");
+                if (!ok) Alert.alert(t("receiptsScreen.couldNotDeleteTitle"), t("receiptsScreen.couldNotDeleteBody"));
               },
             });
           },
@@ -58,7 +60,7 @@ export default function ReceiptsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
       <View style={{ paddingTop: insets.top + 14, paddingHorizontal: 16, paddingBottom: 8 }}>
-        <Text style={styles.title}>Receipts</Text>
+        <Text style={styles.title}>{t("receiptsScreen.title")}</Text>
       </View>
 
       {isLoading ? (
@@ -67,11 +69,11 @@ export default function ReceiptsScreen() {
         </View>
       ) : !receipts || receipts.length === 0 ? (
         <View style={styles.centerFill}>
-          <Text style={styles.emptyText}>No receipts yet. Tap Capture to add one.</Text>
+          <Text style={styles.emptyText}>{t("receiptsScreen.noReceiptsYet")}</Text>
         </View>
       ) : visibleReceipts.length === 0 ? (
         <View style={styles.centerFill}>
-          <Text style={styles.emptyText}>Nothing needs attention — older reimbursed receipts are on the web app.</Text>
+          <Text style={styles.emptyText}>{t("receiptsScreen.nothingNeedsAttention")}</Text>
         </View>
       ) : (
         <FlatList

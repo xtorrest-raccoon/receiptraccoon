@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { BlurView } from "expo-blur";
 import Svg, { Path, Circle, Rect, Line } from "react-native-svg";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color, layout } from "@rr/ui-tokens";
 import { rn, rnAlpha } from "../lib/colors";
@@ -65,12 +66,22 @@ function CaptureIcon({ tint }: { tint: string }) {
   );
 }
 
-const TAB_META: Record<string, { label: string; icon: (tint: string) => ReactNode }> = {
-  index: { label: "Home", icon: (t) => <HomeIcon tint={t} /> },
-  analytics: { label: "Analytics", icon: (t) => <AnalyticsIcon tint={t} /> },
-  capture: { label: "Capture", icon: (t) => <CaptureIcon tint={t} /> },
-  receipts: { label: "Receipts", icon: (t) => <ReceiptsIcon tint={t} /> },
-  mileage: { label: "Mileage", icon: (t) => <MileageIcon tint={t} /> },
+// Route name -> translation key under "tabs.*" (route names don't line up
+// 1:1 with the key names -- "index" is the Home tab).
+const TAB_TRANSLATION_KEY: Record<string, "home" | "analytics" | "capture" | "receipts" | "mileage"> = {
+  index: "home",
+  analytics: "analytics",
+  capture: "capture",
+  receipts: "receipts",
+  mileage: "mileage",
+};
+
+const TAB_ICON: Record<string, (tint: string) => ReactNode> = {
+  index: (t) => <HomeIcon tint={t} />,
+  analytics: (t) => <AnalyticsIcon tint={t} />,
+  capture: (t) => <CaptureIcon tint={t} />,
+  receipts: (t) => <ReceiptsIcon tint={t} />,
+  mileage: (t) => <MileageIcon tint={t} />,
 };
 
 /**
@@ -83,6 +94,7 @@ const TAB_META: Record<string, { label: string; icon: (tint: string) => ReactNod
 const ICON_SLOT = 36;
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   // The capture screen is a full-screen live camera view — this floating bar
@@ -102,8 +114,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       <View style={[styles.overlay, { borderTopColor: rn(color.border) }]} />
       <View style={[styles.row, { paddingBottom: insets.bottom }]}>
         {state.routes.map((route, index) => {
-          const meta = TAB_META[route.name];
-          if (!meta) return null;
+          const translationKey = TAB_TRANSLATION_KEY[route.name];
+          const icon = TAB_ICON[route.name];
+          if (!translationKey || !icon) return null;
           const focused = state.index === index;
           // Icon glyphs stay a single neutral grey always -- focus is shown by
           // the green circle behind them, not by recoloring the glyph itself.
@@ -120,12 +133,12 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             <Pressable key={route.key} onPress={onPress} style={styles.item} accessibilityRole="button">
               <View style={styles.iconSlot}>
                 {focused ? (
-                  <View style={styles.activeIconCircle}>{meta.icon(INACTIVE)}</View>
+                  <View style={styles.activeIconCircle}>{icon(INACTIVE)}</View>
                 ) : (
-                  meta.icon(INACTIVE)
+                  icon(INACTIVE)
                 )}
               </View>
-              <Text style={[styles.tabLabel, { color: labelTint }]}>{meta.label}</Text>
+              <Text style={[styles.tabLabel, { color: labelTint }]}>{t(`tabs.${translationKey}`)}</Text>
             </Pressable>
           );
         })}

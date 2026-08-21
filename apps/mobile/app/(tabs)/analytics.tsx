@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
@@ -31,6 +32,7 @@ const TOTAL_COUNTRIES = 195;
 const CURRENT_YEAR = CURRENT_MONTH.slice(0, 4);
 
 export default function AnalyticsScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const cardRef = useRef<View>(null);
@@ -67,7 +69,7 @@ export default function AnalyticsScreen() {
     try {
       const uri = await captureRef(cardRef, { format: "png", quality: 1 });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share your travels" });
+        await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: t("analytics.shareDialogTitle") });
       }
     } finally {
       setSharing(false);
@@ -80,14 +82,14 @@ export default function AnalyticsScreen() {
           the ScrollView's own comment. */}
       <View style={{ paddingTop: insets.top + 14, paddingHorizontal: 16 }}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Analytics</Text>
-          <Pressable style={styles.shareButton} onPress={onShare} disabled={sharing} accessibilityRole="button" accessibilityLabel="Share">
+          <Text style={styles.title}>{t("analytics.title")}</Text>
+          <Pressable style={styles.shareButton} onPress={onShare} disabled={sharing} accessibilityRole="button" accessibilityLabel={t("analytics.shareAccessibilityLabel")}>
             {sharing ? (
               <ActivityIndicator size="small" color={rn(color.text)} />
             ) : (
               <>
                 <ShareIcon tint={rn(color.text)} />
-                <Text style={styles.shareLabel}>Share</Text>
+                <Text style={styles.shareLabel}>{t("analytics.share")}</Text>
               </>
             )}
           </Pressable>
@@ -107,12 +109,12 @@ export default function AnalyticsScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 16, paddingBottom: 96 + insets.bottom }}>
         <View style={styles.card}>
           <View style={styles.yearRow}>
-            <Text style={styles.yearLabel}>This year</Text>
+            <Text style={styles.yearLabel}>{t("analytics.thisYear")}</Text>
             <Text style={styles.yearValue}>{formatMoney(yearTotalMinor, currency)}</Text>
           </View>
 
           {visits.length === 0 ? (
-            <Text style={styles.emptyText}>No receipts with a detected country yet.</Text>
+            <Text style={styles.emptyText}>{t("analytics.noCountriesYet")}</Text>
           ) : (
             visits.map((v, i) => (
               <Pressable

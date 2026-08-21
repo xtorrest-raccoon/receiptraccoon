@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { color } from "@rr/ui-tokens";
 import { rn, rnAlpha } from "../lib/colors";
 import { useAcceptInvite, useMyPendingInvite } from "../lib/queries";
@@ -12,6 +13,7 @@ import { Text } from "./Text";
  * session; it reappears next launch since the invite itself stays pending.
  */
 export function AcceptInviteModal() {
+  const { t } = useTranslation();
   const { data: invite } = useMyPendingInvite();
   const acceptInvite = useAcceptInvite();
   const [dismissed, setDismissed] = useState(false);
@@ -22,21 +24,19 @@ export function AcceptInviteModal() {
     <Modal visible transparent animationType="fade">
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>You&rsquo;re invited</Text>
-          <Text style={styles.body}>
-            Join {invite.workspaceName} as {invite.role}? Your own receipts and mileage trips will move with you.
-          </Text>
-          {acceptInvite.isError ? <Text style={styles.error}>Couldn&rsquo;t accept that invite — try again.</Text> : null}
+          <Text style={styles.title}>{t("invite.title")}</Text>
+          <Text style={styles.body}>{t("invite.body", { workspace: invite.workspaceName, role: invite.role })}</Text>
+          {acceptInvite.isError ? <Text style={styles.error}>{t("invite.couldntAccept")}</Text> : null}
           <View style={styles.actions}>
             <Pressable style={styles.notNow} onPress={() => setDismissed(true)} disabled={acceptInvite.isPending}>
-              <Text style={styles.notNowLabel}>Not now</Text>
+              <Text style={styles.notNowLabel}>{t("invite.notNow")}</Text>
             </Pressable>
             <Pressable
               style={[styles.accept, acceptInvite.isPending && { opacity: 0.6 }]}
               onPress={() => acceptInvite.mutate(invite.id)}
               disabled={acceptInvite.isPending}
             >
-              {acceptInvite.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.acceptLabel}>Accept</Text>}
+              {acceptInvite.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.acceptLabel}>{t("invite.accept")}</Text>}
             </Pressable>
           </View>
         </View>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet } from "react-native";
 import { Image } from "expo-image";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { color } from "@rr/ui-tokens";
 import { signInWithPassword } from "@rr/api";
@@ -16,6 +17,7 @@ import { TextInput } from "../../components/TextInput";
  * brand-new paid workspace is still a public flow, but only on the web app.
  */
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<"signIn" | "forgotPassword">("signIn");
   const [email, setEmail] = useState("");
@@ -53,7 +55,7 @@ export default function LoginScreen() {
           <Image source={require("../../assets/images/logo.png")} style={styles.logo} contentFit="contain" />
           <Text style={styles.title}>ReceiptRaccoon</Text>
           <Text style={[styles.subtitle, { textAlign: "center", marginBottom: 0 }]}>
-            Check {email.trim()} for a link to reset your password — it opens on the web app.
+            {t("auth.checkEmailForReset", { email: email.trim() })}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -71,12 +73,12 @@ export default function LoginScreen() {
       >
         <Image source={require("../../assets/images/logo.png")} style={styles.logo} contentFit="contain" />
         <Text style={styles.title}>ReceiptRaccoon</Text>
-        <Text style={styles.subtitle}>{mode === "forgotPassword" ? "Reset your password" : "Sign in"}</Text>
+        <Text style={styles.subtitle}>{mode === "forgotPassword" ? t("auth.resetPasswordTitle") : t("auth.signIn")}</Text>
 
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder={t("auth.email")}
           placeholderTextColor={rn(color.textFaint)}
           style={styles.input}
           autoCapitalize="none"
@@ -88,7 +90,7 @@ export default function LoginScreen() {
           <TextInput
             value={password}
             onChangeText={setPassword}
-            placeholder="Password"
+            placeholder={t("auth.password")}
             placeholderTextColor={rn(color.textFaint)}
             style={styles.input}
             secureTextEntry
@@ -98,7 +100,7 @@ export default function LoginScreen() {
 
         {mode === "signIn" && (
           <Pressable onPress={() => setMode("forgotPassword")} style={styles.forgotLink}>
-            <Text style={styles.forgotLabel}>Forgot password?</Text>
+            <Text style={styles.forgotLabel}>{t("auth.forgotPassword")}</Text>
           </Pressable>
         )}
 
@@ -112,13 +114,13 @@ export default function LoginScreen() {
           {busy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitLabel}>{mode === "forgotPassword" ? "Send reset link" : "Sign in"}</Text>
+            <Text style={styles.submitLabel}>{mode === "forgotPassword" ? t("auth.sendResetLink") : t("auth.signIn")}</Text>
           )}
         </Pressable>
 
         {mode === "forgotPassword" && (
           <Pressable onPress={() => setMode("signIn")} style={{ marginTop: 16 }}>
-            <Text style={styles.switchLabel}>Back to sign in</Text>
+            <Text style={styles.switchLabel}>{t("auth.backToSignIn")}</Text>
           </Pressable>
         )}
       </ScrollView>
