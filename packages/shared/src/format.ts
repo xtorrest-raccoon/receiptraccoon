@@ -191,8 +191,13 @@ export function formatDeltaCompact(pct: number): string {
   return `${deltaArrow(pct)}${Math.abs(pct).toFixed(1)}%`;
 }
 
-/** "↓ 12.4% vs last month" — the full sentence, for a stat card's subtitle. */
-export function formatDelta(pct: number): string {
+/**
+ * "↓ 12.4% vs last month" — the full sentence, for a stat card's subtitle.
+ * null means last month's to-date spend was too small to be a meaningful
+ * baseline (see MIN_PACE_BASELINE_MINOR in aggregate.ts).
+ */
+export function formatDelta(pct: number | null): string {
+  if (pct === null) return "Not enough spending last month to compare";
   return `${deltaArrow(pct)} ${Math.abs(pct).toFixed(1)}% vs last month`;
 }
 
@@ -211,7 +216,11 @@ const PACE_FLAT_THRESHOLD_PCT = 0.5;
  *
  * Whole percentages — a tenth of a percent is noise at this size.
  */
-export function formatPaceComparison(deltaPct: number): string {
+export function formatPaceComparison(deltaPct: number | null): string {
+  // null means last month's to-date spend was too small to be a meaningful
+  // baseline (see MIN_PACE_BASELINE_MINOR in aggregate.ts) — a percentage
+  // here would technically be correct but wildly overstated.
+  if (deltaPct === null) return "Not enough spending last month to compare";
   if (Math.abs(deltaPct) < PACE_FLAT_THRESHOLD_PCT) return "On last month's pace";
   const direction = deltaPct > 0 ? "ahead of" : "behind";
   return `${Math.abs(deltaPct).toFixed(0)}% ${direction} last month's pace`;

@@ -28,7 +28,7 @@ export function SpendPacingCard({
 }: {
   monthToDateMinor: number;
   prevMonthTotalMinor: number;
-  deltaPct: number;
+  deltaPct: number | null;
   elapsedFraction: number;
   currency: string;
 }) {
@@ -61,8 +61,9 @@ export function SpendPacingCard({
   const fillLen = fill * CIRCUMFERENCE * progress;
 
   // Spend up is bad, flat-or-down is good — same boundary used for this figure
-  // everywhere else it appears.
-  const deltaColor = deltaPct > 0 ? color.up : color.down;
+  // everywhere else it appears. null (no meaningful baseline to compare
+  // against — see MIN_PACE_BASELINE_MINOR) gets a neutral, non-alarming color.
+  const deltaColor = deltaPct === null ? color.textMuted : deltaPct > 0 ? color.up : color.down;
 
   // The <svg> is rotated -90deg so the circle starts at 12 o'clock; the marker
   // is positioned in the untransformed space and carried round by that same

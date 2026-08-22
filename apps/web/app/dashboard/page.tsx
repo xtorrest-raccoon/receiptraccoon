@@ -48,7 +48,11 @@ export default function DashboardPage() {
   if (!displayDashboard) return null;
   const { stats, currency } = displayDashboard;
 
-  const deltaUp = stats.monthDeltaPct > 0;
+  // null: last month's to-date spend was too small to compare against
+  // meaningfully (see MIN_PACE_BASELINE_MINOR in aggregate.ts) — neutral
+  // color, no up/down claim.
+  const deltaUp = stats.monthDeltaPct !== null && stats.monthDeltaPct > 0;
+  const deltaColor = stats.monthDeltaPct === null ? color.textMuted : deltaUp ? color.up : color.down;
 
   return (
     <div>
@@ -66,7 +70,7 @@ export default function DashboardPage() {
           label="Spend this month (incl. tax)"
           value={formatMoney(stats.monthTotalMinor, currency)}
           sub={formatDelta(stats.monthDeltaPct)}
-          subColor={deltaUp ? color.up : color.down}
+          subColor={deltaColor}
         />
         <StatCard
           label="Current annual spend to date"

@@ -72,11 +72,30 @@ export function computeCategoryBreakdown(receiptsIncludingRejected: Receipt[]): 
 
 export interface MonthPacing {
   monthTotalMinor: number;
-  monthDeltaPct: number;
+  /**
+   * null when last month's same-day-to-date spend is too small to divide by
+   * meaningfully (see MIN_PACE_BASELINE_MINOR below) — a near-zero
+   * denominator turns any real spend this month into a percentage in the
+   * thousands, which is technically correct but not an honest "you're
+   * spending more" signal. Callers should show a "not enough data" message
+   * instead of a percentage in that case.
+   */
+  monthDeltaPct: number | null;
   prevMonthTotalMinor: number;
   prevMonthToDateMinor: number;
   elapsedFraction: number;
 }
+
+/**
+ * Below this, last month's to-date total is treated as noise rather than a
+ * real baseline — e.g. one €3 coffee logged on day 1 of an otherwise
+ * receipt-free month shouldn't be able to turn this month's spend into a
+ * "20,000% ahead" headline. Expressed in minor units and not currency-aware
+ * (Receipt totals arrive already converted to the workspace's home currency
+ * upstream, and this is a coarse noise floor, not a precise figure) —
+ * equivalent to 5.00 in a 2-decimal currency.
+ */
+const MIN_PACE_BASELINE_MINOR = 500;
 
 /**
  * Same-day-of-month spend comparison, plus the pacing ring's inputs.
@@ -101,7 +120,7 @@ export function computeMonthPacing(allReceiptsIncludingRejected: Receipt[], mont
   const prevToDate = prevReceipts
     .filter((r) => Number((r.receiptDate ?? "").slice(8, 10)) <= cutoffDay)
     .reduce((s, r) => s + reclaimMinor(r), 0);
-  const monthDeltaPct = prevToDate ? ((monthTotal - prevToDate) / prevToDate) * 100 : 0;
+  const monthDeltaPct = prevToDate >= MIN_PACE_BASELINE_MINOR ? ((monthTotal - prevToDate) / prevToDate) * 100 : null;
 
   // Day 0 of the following month is the last day of this one.
   const [viewYear, viewMonth] = month.split("-").map(Number) as [number, number];

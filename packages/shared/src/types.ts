@@ -165,9 +165,12 @@ export interface DashboardStats {
   /**
    * % change against the SAME DAY-OF-MONTH last month, not against last month's
    * full total. A partial month compared to a complete one reads as a decrease
-   * almost every month until the last day — see SpendPacing.
+   * almost every month until the last day — see SpendPacing. null when last
+   * month's to-date spend was too small to divide by meaningfully (see
+   * MIN_PACE_BASELINE_MINOR in aggregate.ts) — show a "not enough data"
+   * message instead of a percentage in that case.
    */
-  monthDeltaPct: number;
+  monthDeltaPct: number | null;
   ytdTotalMinor: number;
   ytdCount: number;
   taxMinor: number;
