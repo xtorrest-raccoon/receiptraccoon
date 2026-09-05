@@ -87,9 +87,7 @@ export function LandingNav() {
     <header style={{ position: "sticky", top: 0, zIndex: 20, background: color.surface, borderBottom: `1px solid ${color.border}` }}>
       <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", gap: 12 }}>
         <Link href="/" className="flex items-center" style={{ gap: 10, textDecoration: "none" }}>
-          <span style={{ fontSize: fontSize.xl + 3, fontWeight: fontWeight.bold, color: color.textStrong }}>
-            Claim<span style={{ color: color.brand }}>eo</span> Pro
-          </span>
+          <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={150} height={50} />
         </Link>
         <nav className="hidden sm:flex" style={{ gap: 28 }}>
           {NAV_LINKS.map((l) => (
@@ -584,11 +582,18 @@ function ClosingCta() {
         }}
       />
       <div style={{ position: "relative", maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-        {/* Text placeholder for the decorative logo badge that used to sit here (old
-            ReceiptRaccoon logo.png) -- swap for the real Claimeo Pro logo image once
-            that asset file exists. */}
-        <div style={{ fontSize: fontSize.xl + 3, fontWeight: fontWeight.bold, color: "#fff", marginBottom: 18 }}>
-          Claim<span style={{ color: color.brand }}>eo</span> Pro
+        {/* Wrapped in a light box -- the logo's dark navy wordmark has poor contrast
+            directly on this dark panel background. */}
+        <div
+          style={{
+            display: "inline-flex",
+            background: color.surface,
+            borderRadius: radius.lg,
+            padding: "14px 22px",
+            marginBottom: 24,
+          }}
+        >
+          <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={180} height={60} />
         </div>
         <div style={{ fontSize: fontSize.h1 + 16, fontWeight: fontWeight.heavy, color: "#fff", letterSpacing: "-0.01em", marginBottom: 12 }}>
           Stop chasing receipts.

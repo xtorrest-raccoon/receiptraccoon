@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { color, fontSize, fontWeight, radius } from "@rr/ui-tokens";
 import { requestPasswordReset, signInWithPassword, signUp } from "@rr/api";
@@ -55,11 +56,7 @@ export default function LoginPage() {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: color.bgWeb }}>
         <div style={{ width: 340, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 28, textAlign: "center" }}>
           <div style={{ textAlign: "center", marginBottom: 14 }}>
-            {/* Text placeholder -- the old ReceiptRaccoon logo.png was removed pending the
-                new Claimeo Pro logo asset. Swap back to an <Image> once that file exists. */}
-            <span style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, color: color.textStrong }}>
-              Claim<span style={{ color: color.brand }}>eo</span> Pro
-            </span>
+            <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={210} height={70} />
           </div>
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a link to reset your password.
@@ -91,11 +88,7 @@ export default function LoginPage() {
           }}
         >
           <div style={{ textAlign: "center", marginBottom: 14 }}>
-            {/* Text placeholder -- the old ReceiptRaccoon logo.png was removed pending the
-                new Claimeo Pro logo asset. Swap back to an <Image> once that file exists. */}
-            <span style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, color: color.textStrong }}>
-              Claim<span style={{ color: color.brand }}>eo</span> Pro
-            </span>
+            <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={210} height={70} />
           </div>
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a confirmation link, then sign in.
@@ -129,9 +122,7 @@ export default function LoginPage() {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 4 }}>
-          <span style={{ fontSize: fontSize.h1, fontWeight: fontWeight.heavy, color: color.textStrong }}>
-            Claim<span style={{ color: color.brand }}>eo</span> Pro
-          </span>
+          <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={210} height={70} />
         </div>
         <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 8, textAlign: "center" }}>
           {mode === "signUp" ? "Create your workspace" : mode === "forgotPassword" ? "Reset your password" : "Sign in"}

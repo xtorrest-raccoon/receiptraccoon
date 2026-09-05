@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { color, fontSize, fontWeight } from "@rr/ui-tokens";
 import { Footer } from "./LandingPage";
@@ -17,9 +18,7 @@ function LegalNav() {
     <header style={{ position: "sticky", top: 0, zIndex: 20, background: color.surface, borderBottom: `1px solid ${color.border}` }}>
       <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", gap: 12 }}>
         <Link href="/" className="flex items-center" style={{ gap: 10, textDecoration: "none" }}>
-          <span style={{ fontSize: fontSize.xl + 1, fontWeight: fontWeight.bold, color: color.textStrong }}>
-            Claim<span style={{ color: color.brand }}>eo</span> Pro
-          </span>
+          <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={140} height={47} />
         </Link>
         <Link href="/login" style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.text, textDecoration: "none" }}>
           Log in
