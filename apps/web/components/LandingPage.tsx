@@ -584,8 +584,12 @@ function ClosingCta() {
         }}
       />
       <div style={{ position: "relative", maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-        {/* The decorative logo badge here (old ReceiptRaccoon logo.png) was removed
-            pending the new Claimeo Pro logo asset -- restore it once that file exists. */}
+        {/* Text placeholder for the decorative logo badge that used to sit here (old
+            ReceiptRaccoon logo.png) -- swap for the real Claimeo Pro logo image once
+            that asset file exists. */}
+        <div style={{ fontSize: fontSize.xl + 3, fontWeight: fontWeight.bold, color: "#fff", marginBottom: 18 }}>
+          Claim<span style={{ color: color.brand }}>eo</span> Pro
+        </div>
         <div style={{ fontSize: fontSize.h1 + 16, fontWeight: fontWeight.heavy, color: "#fff", letterSpacing: "-0.01em", marginBottom: 12 }}>
           Stop chasing receipts.
         </div>
