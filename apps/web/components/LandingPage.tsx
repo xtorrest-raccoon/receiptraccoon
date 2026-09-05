@@ -87,7 +87,6 @@ export function LandingNav() {
     <header style={{ position: "sticky", top: 0, zIndex: 20, background: color.surface, borderBottom: `1px solid ${color.border}` }}>
       <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", gap: 12 }}>
         <Link href="/" className="flex items-center" style={{ gap: 10, textDecoration: "none" }}>
-          <Image src="/logo.png" alt="Claimeo Pro" width={44} height={44} style={{ borderRadius: radius.sm }} />
           <span style={{ fontSize: fontSize.xl + 3, fontWeight: fontWeight.bold, color: color.textStrong }}>
             Claim<span style={{ color: color.brand }}>eo</span> Pro
           </span>
@@ -585,21 +584,8 @@ function ClosingCta() {
         }}
       />
       <div style={{ position: "relative", maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-        <div
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: radius["2xl"],
-            background: color.surface,
-            margin: "0 auto 28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-          }}
-        >
-          <Image src="/logo.png" alt="Claimeo Pro" width={88} height={88} />
-        </div>
+        {/* The decorative logo badge here (old ReceiptRaccoon logo.png) was removed
+            pending the new Claimeo Pro logo asset -- restore it once that file exists. */}
         <div style={{ fontSize: fontSize.h1 + 16, fontWeight: fontWeight.heavy, color: "#fff", letterSpacing: "-0.01em", marginBottom: 12 }}>
           Stop chasing receipts.
         </div>
@@ -634,20 +620,8 @@ export function Footer() {
     <footer style={{ background: color.inkPanel, borderTop: "1px solid rgba(255,255,255,0.08)", padding: "24px" }}>
       <div className="flex flex-col sm:flex-row" style={{ maxWidth: 1200, margin: "0 auto", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <div className="flex items-center" style={{ gap: 12 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: radius.sm,
-              background: color.surface,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-            }}
-          >
-            <Image src="/logo.png" alt="" width={32} height={32} />
-          </div>
+          {/* The small logo badge here (old ReceiptRaccoon logo.png) was removed
+              pending the new Claimeo Pro logo asset -- restore it once that file exists. */}
           <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>
             © {new Date().getFullYear()} Claimeo Pro. All rights reserved.
           </span>

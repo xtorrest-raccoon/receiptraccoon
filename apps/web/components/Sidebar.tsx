@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { canManageReimbursementAuthority, canViewTeamPage, isAdmin } from "@rr/shared";
@@ -421,8 +420,12 @@ export function Sidebar() {
         height: "100vh",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "center", padding: "0 8px 10px 8px" }}>
-        <Image src="/logo.png" alt="Claimeo Pro" width={110} height={110} />
+      <div style={{ display: "flex", justifyContent: "center", padding: "10px 8px" }}>
+        {/* Text placeholder — the old ReceiptRaccoon logo.png was removed pending the new
+            Claimeo Pro logo asset. Swap back to an <Image> once that file exists. */}
+        <span style={{ fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: color.textStrong }}>
+          Claim<span style={{ color: color.brand }}>eo</span> Pro
+        </span>
       </div>
 
       <WorkspaceSwitcher currentUser={currentUser} />
@@ -524,7 +527,9 @@ export function MobileTopBar() {
         zIndex: 5,
       }}
     >
-      <Image src="/logo.png" alt="Claimeo Pro" width={44} height={44} />
+      <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: color.textStrong }}>
+        Claim<span style={{ color: color.brand }}>eo</span> Pro
+      </span>
       <div style={{ display: "flex", gap: 4 }}>
         {items.map((item) => {
           const active = pathname?.startsWith(item.href) ?? false;
