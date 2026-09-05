@@ -2,15 +2,15 @@ import { LegalPageLayout, LegalSection } from "../../components/LegalPageLayout"
 
 export default function TermsPage() {
   return (
-    <LegalPageLayout title="Terms of Service" updated="August 3, 2026">
+    <LegalPageLayout title="Terms of Service" updated="September 5, 2026">
       <p>
-        These terms cover your use of ReceiptRaccoon's web and mobile apps. By creating a workspace, accepting an
+        These terms cover your use of Claimeo Pro's web and mobile apps. By creating a workspace, accepting an
         invite to one, or using the mobile app, you agree to them.
       </p>
 
       <LegalSection heading="The service">
         <p>
-          ReceiptRaccoon lets a company track employee expenses: scanning receipts, logging mileage, routing them
+          Claimeo Pro lets a company track employee expenses: scanning receipts, logging mileage, routing them
           through an approval workflow, and reporting on spend. The mobile app is a companion to the web app — new
           accounts are created on the web, and the mobile app is for signing in, capturing receipts, and logging
           trips against an account your company has already set up.
@@ -19,7 +19,7 @@ export default function TermsPage() {
 
       <LegalSection heading="Accounts">
         <p>
-          A workspace is created by whoever sets your company up on ReceiptRaccoon; everyone else joins by invite
+          A workspace is created by whoever sets your company up on Claimeo Pro; everyone else joins by invite
           from a workspace admin. You're responsible for keeping your own login credentials confidential, and for
           anything that happens under your account. If a System Admin leaves the company or loses access, workspace
           admins can promote another team member to take over — see the in-app Setup page.
@@ -38,7 +38,7 @@ export default function TermsPage() {
 
       <LegalSection heading="Acceptable use">
         <p>
-          Use ReceiptRaccoon for legitimate business expense tracking. Don't use it to submit fraudulent receipts or
+          Use Claimeo Pro for legitimate business expense tracking. Don't use it to submit fraudulent receipts or
           mileage, attempt to access another company's workspace, interfere with the service, or reverse-engineer any
           part of it.
         </p>
@@ -57,7 +57,7 @@ export default function TermsPage() {
 
       <LegalSection heading="Disclaimers">
         <p>
-          ReceiptRaccoon is provided "as is." Receipt data is extracted automatically and can occasionally be wrong —
+          Claimeo Pro is provided "as is." Receipt data is extracted automatically and can occasionally be wrong —
           always confirm important figures before relying on them for reimbursement or tax purposes. We don't
           guarantee the service will be uninterrupted or error-free.
         </p>
@@ -65,7 +65,7 @@ export default function TermsPage() {
 
       <LegalSection heading="Limitation of liability">
         <p>
-          To the fullest extent the law allows, ReceiptRaccoon isn't liable for indirect, incidental, or consequential
+          To the fullest extent the law allows, Claimeo Pro isn't liable for indirect, incidental, or consequential
           damages arising from your use of the service, including errors in extracted receipt data or mileage
           calculations.
         </p>

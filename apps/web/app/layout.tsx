@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ReceiptRaccoon",
+  title: "Claimeo Pro",
   description: "Team expense management",
 };
 

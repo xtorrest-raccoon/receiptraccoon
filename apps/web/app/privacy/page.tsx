@@ -2,9 +2,9 @@ import { LegalPageLayout, LegalSection } from "../../components/LegalPageLayout"
 
 export default function PrivacyPage() {
   return (
-    <LegalPageLayout title="Privacy Policy" updated="August 3, 2026">
+    <LegalPageLayout title="Privacy Policy" updated="September 5, 2026">
       <p>
-        This policy explains what ReceiptRaccoon ("we", "us") collects when you or your company uses our expense
+        This policy explains what Claimeo Pro ("we", "us") collects when you or your company uses our expense
         tracking service — the web app, the mobile app, and everything behind them — and what we do with it.
       </p>
 
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection heading="Who we share it with">
-        <p>We use a small number of service providers to run ReceiptRaccoon, each only for what they need:</p>
+        <p>We use a small number of service providers to run Claimeo Pro, each only for what they need:</p>
         <ul style={{ paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
           <li><strong>Supabase</strong> — hosts our database, authentication, and receipt photo storage.</li>
           <li><strong>OpenAI</strong> — reads receipt photos to extract vendor, amounts, and other line items.</li>
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection heading="Children's privacy">
-        <p>ReceiptRaccoon is a workplace tool and isn't directed at, or knowingly used by, anyone under 16.</p>
+        <p>Claimeo Pro is a workplace tool and isn't directed at, or knowingly used by, anyone under 16.</p>
       </LegalSection>
 
       <LegalSection heading="Security">

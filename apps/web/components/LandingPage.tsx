@@ -87,9 +87,9 @@ export function LandingNav() {
     <header style={{ position: "sticky", top: 0, zIndex: 20, background: color.surface, borderBottom: `1px solid ${color.border}` }}>
       <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", gap: 12 }}>
         <Link href="/" className="flex items-center" style={{ gap: 10, textDecoration: "none" }}>
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={44} height={44} style={{ borderRadius: radius.sm }} />
+          <Image src="/logo.png" alt="Claimeo Pro" width={44} height={44} style={{ borderRadius: radius.sm }} />
           <span style={{ fontSize: fontSize.xl + 3, fontWeight: fontWeight.bold, color: color.textStrong }}>
-            receipt<span style={{ color: color.brand }}>raccoon</span>
+            Claim<span style={{ color: color.brand }}>eo</span> Pro
           </span>
         </Link>
         <nav className="hidden sm:flex" style={{ gap: 28 }}>
@@ -264,7 +264,7 @@ const STEPS: Step[] = [
     n: "01",
     icon: CameraIcon,
     title: "Capture",
-    body: "Take a photo on your phone or drag a file into the browser. ReceiptRaccoon reads the vendor, date, total, tax, and category automatically — you just check it over.",
+    body: "Take a photo on your phone or drag a file into the browser. Claimeo Pro reads the vendor, date, total, tax, and category automatically — you just check it over.",
     photo: "/Capture-photo.png",
   },
   {
@@ -598,7 +598,7 @@ function ClosingCta() {
             overflow: "hidden",
           }}
         >
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={88} height={88} />
+          <Image src="/logo.png" alt="Claimeo Pro" width={88} height={88} />
         </div>
         <div style={{ fontSize: fontSize.h1 + 16, fontWeight: fontWeight.heavy, color: "#fff", letterSpacing: "-0.01em", marginBottom: 12 }}>
           Stop chasing receipts.
@@ -649,7 +649,7 @@ export function Footer() {
             <Image src="/logo.png" alt="" width={32} height={32} />
           </div>
           <span style={{ fontSize: fontSize.body, color: color.inkPanelText }}>
-            © {new Date().getFullYear()} ReceiptRaccoon. All rights reserved.
+            © {new Date().getFullYear()} Claimeo Pro. All rights reserved.
           </span>
         </div>
         <div className="flex items-center" style={{ gap: 24 }}>

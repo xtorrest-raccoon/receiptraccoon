@@ -55,7 +55,7 @@ export default {
   },
   capture: {
     cameraAccessTitle: "Camera access needed",
-    cameraAccessBody: "ReceiptRaccoon needs your camera to photograph and scan receipts.",
+    cameraAccessBody: "Claimeo Pro needs your camera to photograph and scan receipts.",
     grantAccess: "Grant access",
     notYourHomeWorkspaceTitle: "Not your home workspace",
     notYourHomeWorkspaceBody:

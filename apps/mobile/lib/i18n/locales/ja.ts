@@ -50,7 +50,7 @@ export default {
   },
   capture: {
     cameraAccessTitle: "カメラへのアクセスが必要です",
-    cameraAccessBody: "ReceiptRaccoonが領収書を撮影・スキャンするにはカメラへのアクセスが必要です。",
+    cameraAccessBody: "Claimeo Proが領収書を撮影・スキャンするにはカメラへのアクセスが必要です。",
     grantAccess: "アクセスを許可",
     notYourHomeWorkspaceTitle: "自分のホームワークスペースではありません",
     notYourHomeWorkspaceBody:

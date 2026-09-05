@@ -1,30 +1,30 @@
 {
   "expo": {
-    "name": "ReceiptRaccoon",
-    "slug": "receiptraccoon-mobile",
+    "name": "Claimeo Pro",
+    "slug": "claimeo-pro-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "receiptraccoon",
-    "icon": "./assets/images/icon.png",
+    "scheme": "claimeopro",
+    "icon": "./assets/images/claimeo-pro-icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.receiptraccoon.mobile",
+      "bundleIdentifier": "com.claimeo.pro",
       "infoPlist": {
-        "NSCameraUsageDescription": "ReceiptRaccoon needs camera access to photograph and scan receipts.",
-        "NSPhotoLibraryUsageDescription": "ReceiptRaccoon needs photo library access to import receipt photos."
+        "NSCameraUsageDescription": "Claimeo Pro needs camera access to photograph and scan receipts.",
+        "NSPhotoLibraryUsageDescription": "Claimeo Pro needs photo library access to import receipt photos."
       }
     },
     "android": {
-      "package": "com.receiptraccoon.mobile",
+      "package": "com.claimeo.pro",
       "permissions": [
         "CAMERA",
         "READ_MEDIA_IMAGES"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#5EAE7C"
+        "foregroundImage": "./assets/images/claimeo-pro-icon.png",
+        "backgroundColor": "#0B4A50"
       }
     },
     "plugins": [
@@ -32,13 +32,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "ReceiptRaccoon needs camera access to photograph and scan receipts."
+          "cameraPermission": "Claimeo Pro needs camera access to photograph and scan receipts."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "ReceiptRaccoon needs photo library access to import receipt photos."
+          "photosPermission": "Claimeo Pro needs photo library access to import receipt photos."
         }
       ],
       "expo-localization",

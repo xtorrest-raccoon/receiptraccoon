@@ -51,7 +51,7 @@ export default {
   },
   capture: {
     cameraAccessTitle: "Cameratoegang vereist",
-    cameraAccessBody: "ReceiptRaccoon heeft je camera nodig om bonnen te fotograferen en scannen.",
+    cameraAccessBody: "Claimeo Pro heeft je camera nodig om bonnen te fotograferen en scannen.",
     grantAccess: "Toegang geven",
     notYourHomeWorkspaceTitle: "Niet je eigen werkruimte",
     notYourHomeWorkspaceBody:

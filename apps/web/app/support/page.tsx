@@ -2,7 +2,7 @@ import { LegalPageLayout, LegalSection } from "../../components/LegalPageLayout"
 
 export default function SupportPage() {
   return (
-    <LegalPageLayout title="Support" updated="August 3, 2026">
+    <LegalPageLayout title="Support" updated="September 5, 2026">
       <p>
         Need help, or something not working as expected? Email us at{" "}
         <a href="mailto:contact@receiptraccoon.io" style={{ color: "inherit" }}>
@@ -19,7 +19,7 @@ export default function SupportPage() {
         </p>
         <p>
           <strong>I was invited but never got the email.</strong> Ask whoever invited you to resend it from the web
-          app's Setup page, and check your spam folder for a message from ReceiptRaccoon.
+          app's Setup page, and check your spam folder for a message from Claimeo Pro.
         </p>
         <p>
           <strong>How do I cancel my company's subscription?</strong> Whoever manages billing for your workspace can
@@ -34,7 +34,7 @@ export default function SupportPage() {
 
       <LegalSection heading="Deleting your account">
         <p>
-          To delete your ReceiptRaccoon account and personal data, email{" "}
+          To delete your Claimeo Pro account and personal data, email{" "}
           <a href="mailto:contact@receiptraccoon.io" style={{ color: "inherit" }}>
             contact@receiptraccoon.io
           </a>{" "}

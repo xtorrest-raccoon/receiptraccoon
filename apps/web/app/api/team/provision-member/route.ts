@@ -40,7 +40,7 @@ const GROUP_TO_MEMBER_ROW: Record<string, { role: "admin" | "member"; canApprove
   member: { role: "member", canApprove: false, canProcess: false },
 };
 const ALLOWED_GROUPS = Object.keys(GROUP_TO_MEMBER_ROW);
-const FROM_ADDRESS = "ReceiptRaccoon <noreply@receiptraccoon.fr>";
+const FROM_ADDRESS = "Claimeo Pro <noreply@receiptraccoon.fr>";
 
 function generateTempPassword(): string {
   // Excludes visually ambiguous characters (0/O, 1/l/I) — this gets typed by
@@ -67,9 +67,9 @@ async function sendWelcomeEmail(email: string, loginUrl: string): Promise<boolea
       body: JSON.stringify({
         from: FROM_ADDRESS,
         to: email,
-        subject: "Your ReceiptRaccoon account is ready",
+        subject: "Your Claimeo Pro account is ready",
         html: `
-          <p>An account was just created for you on ReceiptRaccoon.</p>
+          <p>An account was just created for you on Claimeo Pro.</p>
           <p><a href="${loginUrl}">Sign in at ${loginUrl}</a> using the temporary password your admin gave you separately.</p>
           <p>You'll be asked to choose your own password the first time you sign in.</p>
         `,
@@ -92,9 +92,9 @@ async function sendReactivatedEmail(email: string, loginUrl: string): Promise<bo
       body: JSON.stringify({
         from: FROM_ADDRESS,
         to: email,
-        subject: "Your ReceiptRaccoon access has been restored",
+        subject: "Your Claimeo Pro access has been restored",
         html: `
-          <p>Your access to ReceiptRaccoon has been restored.</p>
+          <p>Your access to Claimeo Pro has been restored.</p>
           <p><a href="${loginUrl}">Sign in at ${loginUrl}</a> with your existing password, or use "Forgot password?" there if you don't remember it.</p>
         `,
       }),

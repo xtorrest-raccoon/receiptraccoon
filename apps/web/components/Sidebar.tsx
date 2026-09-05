@@ -422,7 +422,7 @@ export function Sidebar() {
       }}
     >
       <div style={{ display: "flex", justifyContent: "center", padding: "0 8px 10px 8px" }}>
-        <Image src="/logo.png" alt="ReceiptRaccoon" width={110} height={110} />
+        <Image src="/logo.png" alt="Claimeo Pro" width={110} height={110} />
       </div>
 
       <WorkspaceSwitcher currentUser={currentUser} />
@@ -524,7 +524,7 @@ export function MobileTopBar() {
         zIndex: 5,
       }}
     >
-      <Image src="/logo.png" alt="ReceiptRaccoon" width={44} height={44} />
+      <Image src="/logo.png" alt="Claimeo Pro" width={44} height={44} />
       <div style={{ display: "flex", gap: 4 }}>
         {items.map((item) => {
           const active = pathname?.startsWith(item.href) ?? false;

@@ -1,4 +1,4 @@
-# ReceiptRaccoon
+# Claimeo Pro
 
 Receipt capture on iOS, expense management on the web. Employees photograph receipts
 and log mileage; admins approve and reimburse.

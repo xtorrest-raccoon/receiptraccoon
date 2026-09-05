@@ -18,9 +18,9 @@ function LegalNav() {
     <header style={{ position: "sticky", top: 0, zIndex: 20, background: color.surface, borderBottom: `1px solid ${color.border}` }}>
       <div className="flex items-center justify-between" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", gap: 12 }}>
         <Link href="/" className="flex items-center" style={{ gap: 10, textDecoration: "none" }}>
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={40} height={40} style={{ borderRadius: radius.sm }} />
+          <Image src="/logo.png" alt="Claimeo Pro" width={40} height={40} style={{ borderRadius: radius.sm }} />
           <span style={{ fontSize: fontSize.xl + 1, fontWeight: fontWeight.bold, color: color.textStrong }}>
-            receipt<span style={{ color: color.brand }}>raccoon</span>
+            Claim<span style={{ color: color.brand }}>eo</span> Pro
           </span>
         </Link>
         <Link href="/login" style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.text, textDecoration: "none" }}>

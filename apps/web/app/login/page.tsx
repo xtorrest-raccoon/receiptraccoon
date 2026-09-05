@@ -55,7 +55,7 @@ export default function LoginPage() {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: color.bgWeb }}>
         <div style={{ width: 340, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 28, textAlign: "center" }}>
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={132} height={132} style={{ display: "block", margin: "0 auto 14px" }} />
+          <Image src="/logo.png" alt="Claimeo Pro" width={132} height={132} style={{ display: "block", margin: "0 auto 14px" }} />
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a link to reset your password.
           </div>
@@ -85,7 +85,7 @@ export default function LoginPage() {
             textAlign: "center",
           }}
         >
-          <Image src="/logo.png" alt="ReceiptRaccoon" width={132} height={132} style={{ display: "block", margin: "0 auto 14px" }} />
+          <Image src="/logo.png" alt="Claimeo Pro" width={132} height={132} style={{ display: "block", margin: "0 auto 14px" }} />
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a confirmation link, then sign in.
           </div>
@@ -117,7 +117,7 @@ export default function LoginPage() {
           gap: 12,
         }}
       >
-        <Image src="/logo.png" alt="ReceiptRaccoon" width={132} height={132} style={{ alignSelf: "center", marginBottom: 4 }} />
+        <Image src="/logo.png" alt="Claimeo Pro" width={132} height={132} style={{ alignSelf: "center", marginBottom: 4 }} />
         <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 8, textAlign: "center" }}>
           {mode === "signUp" ? "Create your workspace" : mode === "forgotPassword" ? "Reset your password" : "Sign in"}
         </div>

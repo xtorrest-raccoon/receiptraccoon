@@ -18,7 +18,7 @@ import { getActiveMembership, requireUser } from "../../../../lib/auth";
 export const runtime = "nodejs";
 
 const TRIAL_SEAT_CAP = 5;
-const FROM_ADDRESS = "ReceiptRaccoon <noreply@receiptraccoon.fr>";
+const FROM_ADDRESS = "Claimeo Pro <noreply@receiptraccoon.fr>";
 
 function serviceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -49,7 +49,7 @@ async function notifyTrialEndedEarly(workspaceId: string, origin: string): Promi
       body: JSON.stringify({
         from: FROM_ADDRESS,
         to: email,
-        subject: "Your ReceiptRaccoon trial has ended",
+        subject: "Your Claimeo Pro trial has ended",
         html: `
           <p>Your workspace just went over the ${TRIAL_SEAT_CAP}-seat limit for the free trial.</p>
           <p>Your subscription has started and your card has been charged for the current seat count.</p>

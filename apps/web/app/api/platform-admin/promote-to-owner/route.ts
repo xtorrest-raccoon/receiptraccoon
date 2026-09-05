@@ -16,7 +16,7 @@ import { requireUser } from "../../../../lib/auth";
  */
 export const runtime = "nodejs";
 
-const FROM_ADDRESS = "ReceiptRaccoon <noreply@receiptraccoon.fr>";
+const FROM_ADDRESS = "Claimeo Pro <noreply@receiptraccoon.fr>";
 
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             from: FROM_ADDRESS,
             to,
-            subject: "A System Admin was restored on your ReceiptRaccoon workspace",
+            subject: "A System Admin was restored on your Claimeo Pro workspace",
             html: `
-              <p>ReceiptRaccoon support just promoted <strong>${targetName}</strong> to System Admin on your workspace, as part of an account-recovery request.</p>
+              <p>Claimeo Pro support just promoted <strong>${targetName}</strong> to System Admin on your workspace, as part of an account-recovery request.</p>
               <p>If you didn't expect this, contact support immediately.</p>
             `,
           }),

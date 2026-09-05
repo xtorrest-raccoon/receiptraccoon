@@ -18,7 +18,7 @@ import { formatMoney, formatShortDate } from "@rr/shared";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const FROM_ADDRESS = "ReceiptRaccoon <noreply@receiptraccoon.fr>";
+const FROM_ADDRESS = "Claimeo Pro <noreply@receiptraccoon.fr>";
 
 function serviceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -43,7 +43,7 @@ async function sendReminderEmail(apiKey: string, to: string, items: PendingItem[
         html: `
           <p>You have ${items.length} pending item${items.length === 1 ? "" : "s"} to review:</p>
           <ul>${rows}</ul>
-          <p><a href="${origin}/team">Review in ReceiptRaccoon</a></p>
+          <p><a href="${origin}/team">Review in Claimeo Pro</a></p>
         `,
       }),
     });

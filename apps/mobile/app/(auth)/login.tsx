@@ -53,7 +53,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: rn(color.bgMobile) }}>
         <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 60, flex: 1, justifyContent: "center" }]}>
           <Image source={require("../../assets/images/logo.png")} style={styles.logo} contentFit="contain" />
-          <Text style={styles.title}>ReceiptRaccoon</Text>
+          <Text style={styles.title}>Claimeo Pro</Text>
           <Text style={[styles.subtitle, { textAlign: "center", marginBottom: 0 }]}>
             {t("auth.checkEmailForReset", { email: email.trim() })}
           </Text>
@@ -72,7 +72,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Image source={require("../../assets/images/logo.png")} style={styles.logo} contentFit="contain" />
-        <Text style={styles.title}>ReceiptRaccoon</Text>
+        <Text style={styles.title}>Claimeo Pro</Text>
         <Text style={styles.subtitle}>{mode === "forgotPassword" ? t("auth.resetPasswordTitle") : t("auth.signIn")}</Text>
 
         <TextInput
