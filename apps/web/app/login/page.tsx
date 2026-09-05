@@ -56,7 +56,13 @@ export default function LoginPage() {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: color.bgWeb }}>
         <div style={{ width: 340, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius["2xl"], padding: 28, textAlign: "center" }}>
           <div style={{ textAlign: "center", marginBottom: 14 }}>
-            <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={210} height={70} />
+            <Image
+            src="/claimeo-pro-logo.png"
+            alt="Claimeo Pro"
+            width={210}
+            height={70}
+            style={{ display: "block", margin: "0 auto" }}
+          />
           </div>
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a link to reset your password.
@@ -88,7 +94,13 @@ export default function LoginPage() {
           }}
         >
           <div style={{ textAlign: "center", marginBottom: 14 }}>
-            <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={210} height={70} />
+            <Image
+            src="/claimeo-pro-logo.png"
+            alt="Claimeo Pro"
+            width={210}
+            height={70}
+            style={{ display: "block", margin: "0 auto" }}
+          />
           </div>
           <div style={{ fontSize: fontSize.body, color: color.text, lineHeight: 1.5 }}>
             Check <strong>{email.trim()}</strong> for a confirmation link, then sign in.
@@ -122,7 +134,13 @@ export default function LoginPage() {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 4 }}>
-          <Image src="/claimeo-pro-logo.png" alt="Claimeo Pro" width={210} height={70} />
+          <Image
+            src="/claimeo-pro-logo.png"
+            alt="Claimeo Pro"
+            width={210}
+            height={70}
+            style={{ display: "block", margin: "0 auto" }}
+          />
         </div>
         <div style={{ fontSize: fontSize.body, color: color.textMuted, marginBottom: 8, textAlign: "center" }}>
           {mode === "signUp" ? "Create your workspace" : mode === "forgotPassword" ? "Reset your password" : "Sign in"}
